@@ -29,7 +29,7 @@
         acc += w;
         if (r < acc) { wins = randInt(rng, lo, hi); break; }
       }
-      npcs.push({ id: "n" + (npcs.length + 1), name, classId: pick(rng, Object.keys(CLASSES)), wins });
+      npcs.push({ id: "n" + (npcs.length + 1), name, classId: pick(rng, Object.keys(CLASSES)), wins, popularity: 0 });
     }
     return npcs;
   }

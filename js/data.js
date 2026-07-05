@@ -165,5 +165,13 @@
     winTiers: [[0, 4, 0.4], [5, 14, 0.3], [15, 29, 0.2], [30, 60, 0.1]],
   };
 
-  G.data = { CLASSES, WEAPONS, ARMOR, ARMOR_MAXTIER, VENDORS, ITEMS, ARROWS, GOLD_PER_WIN, goldForWin, totalGoldAt, POINTS_PER_WIN, CRIT_MULT, FOE_NAMES, EPITHETS, ROSTER };
+  /* Popularity (fame, GUI-7). The day's band champion earns
+   *   boutsWon × perBout(band)   (× Spectacle once GUI-8 lands)
+   * perBout = 5 + band — the decided `5 + winFloor/5` with 5-wide bands
+   * (band 0 → 5/bout, 25 wins → 10, 50 wins → 15). Fame decays −50% at the
+   * start of each season; the season's #1 may challenge the Lord (GUI-9). */
+  const POPULARITY = { perBout: (band) => 5 + band };
+  const SEASON = { days: 10 }; // days per season — first guess, tune via sim (GUI-30)
+
+  G.data = { CLASSES, WEAPONS, ARMOR, ARMOR_MAXTIER, VENDORS, ITEMS, ARROWS, GOLD_PER_WIN, goldForWin, totalGoldAt, POINTS_PER_WIN, CRIT_MULT, FOE_NAMES, EPITHETS, ROSTER, POPULARITY, SEASON };
 })(typeof window !== "undefined" ? window : globalThis);

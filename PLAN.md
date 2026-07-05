@@ -255,6 +255,16 @@ cap (3) & per-bout replenish (50%)**, servant **upkeep/housing** cost, and **ser
   day tests (`tools/test_day.js`) + smoke-rendered all new screens; AI-driven player won 1/9
   days (knockouts are properly hard). Old streak-vs-generated-foe loop retired.
 
+- **GUI-7 Popularity ladder — v0.4.0** ✅ Fame + the world clock. Award (decided formula):
+  `boutsWon × perBout(band)` with `perBout = 5 + band` (data.POPULARITY; × Spectacle slots in
+  with GUI-8) — applied at sunset to EVERY band champion (walkover = 0). World clock
+  {day, season} persisted; **SEASON.days = 10** (NEW tunable, first guess — GUI-30 sim).
+  Season roll: final standings recorded pre-decay (lastSeason.top), then **all fame −50%**
+  (round), surfaced on the sunset screens ("Season ends!"). New ⭐ Fame tab: ranked ladder
+  (top 10 + your rank), clock, last season's most-famous; topbar ⭐; sunset board shows +⭐
+  per champion. Migrations for pre-fame saves. 16 headless tests (`tools/test_popularity.js`)
+  + 52 regressions green. The season's #1 challenging the Lord = GUI-9.
+
 ### Build order (when the user says go)
 1. **Champion summit** — NPC population + Popularity ladder + Lord boss fight (finish
    the Rise). Small, self-contained, reuses combat entirely.

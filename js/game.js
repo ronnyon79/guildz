@@ -7,7 +7,7 @@
  */
 (function (root) {
   const G = (root.G = root.G || {});
-  const { CLASSES, ITEMS, ARROWS, ARMOR, ARMOR_MAXTIER, goldForWin, POINTS_PER_WIN } = G.data;
+  const { CLASSES, ITEMS, ARROWS, ARMOR, ARMOR_MAXTIER, goldForWin, POINTS_PER_WIN, POPULARITY, SEASON } = G.data;
 
   const SAVE_KEY = "guildz.save.v2";
   const listeners = new Set();
@@ -16,6 +16,8 @@
     screen: "title", // title | class-select | home | bracket | battle | win | loss | day-champion | shop | hero
     player: null,
     npcs: [],            // the Stronghold's resident champions (persisted)
+    clock: { day: 1, season: 1 }, // the world clock (persisted)
+    lastSeason: null,    // last season's final fame standings (persisted)
     streak: 0,           // bouts won today
     battle: null,
     foe: null,
@@ -50,7 +52,7 @@
 
   // ---- persistence ----
   function save() {
-    try { localStorage.setItem(SAVE_KEY, JSON.stringify({ player: state.player, npcs: state.npcs, seedCounter: state.seedCounter })); }
+    try { localStorage.setItem(SAVE_KEY, JSON.stringify({ player: state.player, npcs: state.npcs, clock: state.clock, lastSeason: state.lastSeason, seedCounter: state.seedCounter })); }
     catch (e) {}
   }
   function load() {
@@ -71,6 +73,11 @@
       state.npcs = Array.isArray(data.npcs) && data.npcs.length
         ? data.npcs
         : G.roster.generateRoster((state.player.worldSeed || state.seedCounter * 2654435761) >>> 0, state.player.name);
+      // Migrate saves created before fame / the world clock existed.
+      if (state.player.popularity == null) state.player.popularity = 0;
+      for (const n of state.npcs) if (n.popularity == null) n.popularity = 0;
+      state.clock = data.clock && data.clock.day ? data.clock : { day: 1, season: 1 };
+      state.lastSeason = data.lastSeason || null;
       state.screen = "home";
       return true;
     } catch (e) { return false; }
@@ -98,9 +105,12 @@
       activeArrow: "normal",
       armor: null,   // equipped armor id
       armorDurability: 0,
+      popularity: 0, // fame — the ladder to the Lord's throne
       worldSeed: seed, // seeds this world's population (deterministic world-gen)
     };
     state.npcs = G.roster.generateRoster(seed, state.player.name);
+    state.clock = { day: 1, season: 1 };
+    state.lastSeason = null;
     state.screen = "home";
     save(); emit();
   }
@@ -208,27 +218,62 @@
     finishDay();
   }
 
-  // Sunset: build the winners' board, crown the day, clean up.
+  // Sunset: award fame to every band champion, build the winners' board,
+  // advance the world clock (season roll = −50% fame decay), clean up.
   function finishDay(keepScreen) {
     const champion = state.playerBracket && state.playerBracket.winner === "player";
+    // Popularity: boutsWon × perBout(band). (× Spectacle once GUI-8 lands.)
+    const awardFame = (br) => {
+      const gain = (br.boutsWon[br.winner] || 0) * POPULARITY.perBout(br.band);
+      if (br.winner === "player") state.player.popularity = (state.player.popularity || 0) + gain;
+      else { const n = npcById(br.winner); if (n) n.popularity = (n.popularity || 0) + gain; }
+      return gain;
+    };
     state.lastDay = {
       band: state.playerBracket ? state.playerBracket.band : 0,
       bandLabel: G.tournament.bandLabel(state.playerBracket ? state.playerBracket.band : 0),
       boutsWon: state.playerBracket ? state.playerBracket.boutsWon.player || 0 : 0,
       champion,
+      popGain: 0,
       board: state.day.brackets.map((br) => ({
         band: br.band,
         label: G.tournament.bandLabel(br.band),
         name: champName(br.winner),
         classId: br.winner === "player" ? state.player.classId : (state.dayById[br.winner] || {}).classId,
         boutsWon: br.boutsWon[br.winner] || 0,
+        popGain: awardFame(br),
         isPlayer: br.winner === "player",
       })),
     };
+    if (champion) state.lastDay.popGain = (state.lastDay.board.find((w) => w.isPlayer) || {}).popGain || 0;
+
+    // The sun sets: the world clock ticks; a finished season halves all fame.
+    state.clock.day += 1;
+    if (state.clock.day > SEASON.days) {
+      state.lastSeason = {
+        season: state.clock.season,
+        top: fameLadder().slice(0, 3).map((r) => ({ name: r.name, classId: r.classId, popularity: r.popularity, isPlayer: !!r.isPlayer })),
+      };
+      state.player.popularity = Math.round((state.player.popularity || 0) / 2);
+      for (const n of state.npcs) n.popularity = Math.round((n.popularity || 0) / 2);
+      state.clock.season += 1;
+      state.clock.day = 1;
+      state.lastDay.seasonEnd = state.lastSeason; // surfaced on the sunset screens
+    }
+
     state.day = null; state.playerBracket = null; state.dayById = null; state.pendingBout = null;
     if (champion) state.screen = "day-champion";
     else if (!keepScreen) state.screen = "loss"; // normally already there
     save(); emit();
+  }
+
+  // The Stronghold's fame ladder: player + residents, most famous first.
+  function fameLadder() {
+    const rows = [
+      { id: "player", name: state.player.name, classId: state.player.classId, wins: state.player.wins, popularity: state.player.popularity || 0, isPlayer: true },
+      ...state.npcs.map((n) => ({ id: n.id, name: n.name, classId: n.classId, wins: n.wins, popularity: n.popularity || 0 })),
+    ];
+    return rows.sort((a, b) => b.popularity - a.popularity || b.wins - a.wins);
   }
 
   function champName(id) {
@@ -362,7 +407,7 @@
 
   G.game = {
     state, subscribe, load, save,
-    computeMax, champName,
+    computeMax, champName, fameLadder,
     createCharacter, go, enterArena, fightBout, chooseAction,
     allocate, fightOn, retreat, returnHome, resetGame,
     openVendor, closeVendor, buyItem, buyArrow, loadArrow, buyArmor,
