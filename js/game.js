@@ -7,7 +7,7 @@
  */
 (function (root) {
   const G = (root.G = root.G || {});
-  const { CLASSES, ITEMS, ARROWS, ARMOR, ARMOR_MAXTIER, goldForWin, POINTS_PER_WIN, POPULARITY, SEASON, LORD, FOE_NAMES, EPITHETS, totalGoldAt } = G.data;
+  const { CLASSES, ITEMS, ARROWS, ARMOR, ARMOR_MAXTIER, goldForWin, POINTS_PER_WIN, POPULARITY, SEASON, LORD, ECONOMY, FOE_NAMES, EPITHETS, totalGoldAt } = G.data;
 
   /* ---- worlds: each universe is a SEPARATE save game (decided design) ----
    * An index lists the universes; each world lives under its own key. Within a
@@ -24,6 +24,7 @@
     player: null,
     npcs: [],            // the Stronghold's resident champions (persisted)
     lord: null,          // the reigning Lord (persisted; null once YOU reign)
+    stronghold: null,    // treasury + the Lord's decrees (persisted)
     clock: { day: 1, season: 1 }, // the world clock (persisted)
     lastSeason: null,    // last season's final fame standings (persisted)
     challengeOpen: false, // season's #1 = you → the throne may be challenged (persisted)
@@ -99,7 +100,7 @@
   function save() {
     if (!state.worldId) return;
     try {
-      const blob = { player: state.player, npcs: state.npcs, lord: state.lord, clock: state.clock, lastSeason: state.lastSeason, challengeOpen: state.challengeOpen, seedCounter: state.seedCounter };
+      const blob = { player: state.player, npcs: state.npcs, lord: state.lord, stronghold: state.stronghold, clock: state.clock, lastSeason: state.lastSeason, challengeOpen: state.challengeOpen, seedCounter: state.seedCounter };
       localStorage.setItem(worldKey(state.worldId), JSON.stringify(blob));
       const ix = readIndex();
       const i = ix.worlds.findIndex((w) => w.id === state.worldId);
@@ -152,6 +153,8 @@
       state.lord = data.lord !== undefined ? data.lord
         : generateLord((state.player.worldSeed || state.seedCounter * 97) + 1);
       state.challengeOpen = !!data.challengeOpen;
+      // Migrate saves created before the economy existed.
+      state.stronghold = data.stronghold || { ...ECONOMY.start };
       state.screen = "home";
       return true;
     } catch (e) { return false; }
@@ -188,6 +191,7 @@
     };
     state.npcs = G.roster.generateRoster(seed, state.player.name);
     state.lord = generateLord(seed + 1);
+    state.stronghold = { ...ECONOMY.start };
     state.clock = { day: 1, season: 1 };
     state.lastSeason = null;
     state.challengeOpen = false;
@@ -201,10 +205,20 @@
   function openVendor(id) { state.vendor = id; emit(); }
   function closeVendor() { state.vendor = null; emit(); }
 
+  /* The Lord's sales tax: champions pay it on every purchase; the Lord himself
+   * pays none (he IS the taxman). */
+  function taxedCost(base) {
+    if (state.player && state.player.role === "lord") return base;
+    const rate = state.stronghold ? state.stronghold.taxRate : 0;
+    return Math.round(base * (1 + rate / 100));
+  }
+  // Residents' gear budgets shrink under a heavy sales tax (the core tension).
+  function gearScale() { return 1 - (state.stronghold ? state.stronghold.taxRate : 0) / 100; }
+
   function buyItem(itemId) {
     const p = state.player, it = ITEMS[itemId];
-    if (!it || p.gold < it.cost) return false;
-    p.gold -= it.cost;
+    if (!it || p.gold < taxedCost(it.cost)) return false;
+    p.gold -= taxedCost(it.cost);
     p.inventory[itemId] = (p.inventory[itemId] || 0) + 1;
     save(); emit();
     return true;
@@ -214,8 +228,8 @@
   function buyArrow(arrowId) {
     const p = state.player, ar = ARROWS[arrowId];
     if (p.classId !== "thief" || !ar || arrowId === "normal") return false;
-    if (p.arrows.includes(arrowId) || p.gold < ar.cost) return false;
-    p.gold -= ar.cost;
+    if (p.arrows.includes(arrowId) || p.gold < taxedCost(ar.cost)) return false;
+    p.gold -= taxedCost(ar.cost);
     p.arrows.push(arrowId);
     p.activeArrow = arrowId; // auto-load the new arrow
     save(); emit();
@@ -229,8 +243,8 @@
   // Buy & equip armor (Blacksmith). Must be within the class's tier and affordable.
   function buyArmor(armorId) {
     const p = state.player, a = ARMOR[armorId];
-    if (!a || a.tier > (ARMOR_MAXTIER[p.classId] || 0) || p.gold < a.cost) return false;
-    p.gold -= a.cost;
+    if (!a || a.tier > (ARMOR_MAXTIER[p.classId] || 0) || p.gold < taxedCost(a.cost)) return false;
+    p.gold -= taxedCost(a.cost);
     p.armor = armorId;
     p.armorDurability = a.durability; // fresh piece
     save(); emit();
@@ -249,7 +263,7 @@
     const n = npcById(winnerId);
     if (!n) return;
     n.wins += 1;
-    if (state.dayById) state.dayById[n.id] = G.roster.combatChar(n); // mid-day growth
+    if (state.dayById) state.dayById[n.id] = G.roster.combatChar(n, gearScale()); // mid-day growth
   }
 
   function autoResolveMatch(br, m) {
@@ -265,7 +279,7 @@
     state.challengeOpen = false; // stepping onto the sand lets the moment pass
     const pc = playerCombatChar();
     pc.id = "player";
-    const champs = [pc, ...state.npcs.map((n) => G.roster.combatChar(n))];
+    const champs = [pc, ...state.npcs.map((n) => G.roster.combatChar(n, gearScale()))];
     state.dayById = {};
     for (const c of champs) state.dayById[c.id] = c;
     state.day = G.tournament.newDay(champs, nextSeed());
@@ -477,6 +491,15 @@
     save(); emit();
   }
 
+  // The Lord's decrees (GUI-13): nudge a knob within its bounds.
+  function setDecree(key, delta) {
+    if (!state.player || state.player.role !== "lord" || !state.stronghold) return;
+    const lim = ECONOMY.limits[key];
+    if (!lim) return;
+    state.stronghold[key] = Math.max(lim[0], Math.min(lim[1], (state.stronghold[key] || 0) + delta));
+    save(); emit();
+  }
+
   // From the win screen: continue the day (next bout, or the sunset if you
   // just took the final).
   function fightOn() {
@@ -655,6 +678,7 @@
     challengeLord, chooseFate,
     allocate, fightOn, retreat, returnHome, resetGame,
     openVendor, closeVendor, buyItem, buyArrow, loadArrow, buyArmor,
+    taxedCost, gearScale, setDecree,
     nextSeed, settleDay, emit, // the seam lord.js drives the shared day through
   };
 })(typeof window !== "undefined" ? window : globalThis);

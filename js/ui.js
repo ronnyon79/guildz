@@ -54,9 +54,12 @@
 
   // ---------- top bar / nav ----------
   function topbar(p) {
+    const lord = p && p.role === "lord";
+    const st = game.state.stronghold;
     return `<div class="topbar">
       <div class="brand">⚔️ Guildz</div>
       <div class="resources">
+        ${lord && st ? `<span class="res">🏛️ <b>${st.treasury}</b></span>` : ""}
         <span class="res">🪙 <b>${p ? p.gold : 0}</b></span>
         <span class="res">🏅 <b>${p ? p.wins : 0}</b></span>
         <span class="res">⭐ <b>${p ? p.popularity || 0 : 0}</b></span>
@@ -144,7 +147,8 @@
       </div>
       ${lordBlock(s)}
       ${p.role === "lord"
-        ? `<button class="btn block lg gold" data-act="hold-games">👑 Hold the Day's Games</button>
+        ? `${decreesBlock(s)}
+      <button class="btn block lg gold" data-act="hold-games">👑 Hold the Day's Games</button>
       <p class="card-sub center" style="margin-top:12px"><b>Day ${s.clock.day} · Season ${s.clock.season}</b></p>
       <p class="card-sub center" style="margin-top:6px">Every band fights while you watch from the high seat. Champions earn fame in your arena — and one day, the boldest of them will come for your throne.</p>`
         : `<button class="btn block lg gold" data-act="enter-arena">🌅 Enter the Day's Tournament</button>
@@ -232,6 +236,22 @@
     </div>`;
   }
 
+  // The Lord's decrees (GUI-13): the knobs of the realm.
+  function decreesBlock(s) {
+    const st = s.stronghold;
+    if (!st) return "";
+    const row = (key, emoji, label, unit, hint) => `<div class="card-row" style="margin-top:6px">
+      <div style="flex:1"><div class="card-title" style="font-size:14px">${emoji} ${label}: <b>${st[key]}${unit}</b></div>
+      <div class="card-sub">${hint}</div></div>
+      <button class="btn sm ghost" data-act="decree" data-arg="${key}:-1">−</button>
+      <button class="btn sm" data-act="decree" data-arg="${key}:1" style="margin-left:6px">+</button></div>`;
+    return `<div class="card"><div class="card-title">📜 Decrees</div>
+      ${row("ticketPrice", "🎫", "Ticket price", "g", "Steeper tickets thin the crowd.")}
+      ${row("taxRate", "🧾", "Sales tax", "%", "Heavy taxes leave champions poorly geared — and the fights duller.")}
+      ${row("purse", "🏆", "Band purse", "g", "Fat purses draw crowds — and drain the coffers.")}
+    </div>`;
+  }
+
   // The Lord's view of a finished day: the games he presided over.
   function screenLordSunset(s) {
     const d = s.lastDay || {};
@@ -240,8 +260,15 @@
       const t = d.seasonEnd.top[0];
       seasonNote = `<div class="levelup">🍂 Season ${d.seasonEnd.season} closes under your reign. ${t ? `<b>${esc(t.name)}</b> is the people's favourite (⭐ ${t.popularity}).` : ""} None dare challenge you… yet.</div>`;
     }
+    const L = d.ledger;
+    const money = L ? `<div class="card"><div class="card-title">🏛️ The day's ledger <span class="pill">${L.attendance} spectators · avg ${L.avgSpec}★</span></div>
+      <div class="card-sub">🎫 Gate ${L.gate} · 🎲 Wagers ${L.wagers} · 🏪 Licences ${L.licences} · 🧾 Tax ${L.tax}</div>
+      <div class="card-sub">🏆 Purses −${L.purses} · 🏗️ Upkeep −${L.upkeep}</div>
+      <div class="card-title" style="margin-top:6px">${L.net >= 0 ? "Net +" : "Net "}${L.net} 🪙 → treasury <b>${s.stronghold.treasury}</b>${s.stronghold.treasury < 0 ? ' <span class="pill">⚠️ the coffers run dry</span>' : ""}</div>
+    </div>` : "";
     return topbar(s.player) + `<div class="screen">
       <div class="screen-title">👑 The games conclude — Day ${d.seasonEnd ? G.data.SEASON.days : s.clock.day - 1}, Season ${d.seasonEnd ? d.seasonEnd.season : s.clock.season}</div>
+      ${money}
       ${sunsetBoard(d)}
       ${seasonNote}
       <button class="btn block lg" data-act="return-home">To the high seat</button>
@@ -628,12 +655,12 @@
       const v = VENDORS.find((x) => x.id === s.vendor);
       const items = s.vendor === "blacksmith" ? "" : Object.values(ITEMS).filter((it) => it.vendor === s.vendor).map((it) => {
         const owned = (p.inventory && p.inventory[it.id]) || 0;
-        const afford = p.gold >= it.cost;
+        const cost = game.taxedCost(it.cost), afford = p.gold >= cost;
         return `<div class="card"><div class="card-row"><div class="avatar">${it.emoji}</div>
           <div><div class="card-title">${it.name} ${owned ? `<span class="pill">owned ×${owned}</span>` : ""}</div>
           <div class="card-sub">${it.desc}</div></div>
           <div class="spacer"></div>
-          <button class="btn sm gold" data-act="buy-item" data-arg="${it.id}" ${afford ? "" : "disabled"}>🪙 ${it.cost}</button></div></div>`;
+          <button class="btn sm gold" data-act="buy-item" data-arg="${it.id}" ${afford ? "" : "disabled"}>🪙 ${cost}</button></div></div>`;
       }).join("") || `<p class="card-sub center">Nothing in stock yet.</p>`;
       // Special arrows — Thief only.
       let arrowsBlock = "";
@@ -641,9 +668,9 @@
         const cards = Object.values(ARROWS).filter((a) => a.id !== "normal").map((a) => {
           const owned = p.arrows.includes(a.id);
           const active = p.activeArrow === a.id;
-          const afford = p.gold >= a.cost;
+          const cost = game.taxedCost(a.cost), afford = p.gold >= cost;
           let btn;
-          if (!owned) btn = `<button class="btn sm gold" data-act="buy-arrow" data-arg="${a.id}" ${afford ? "" : "disabled"}>🪙 ${a.cost}</button>`;
+          if (!owned) btn = `<button class="btn sm gold" data-act="buy-arrow" data-arg="${a.id}" ${afford ? "" : "disabled"}>🪙 ${cost}</button>`;
           else if (active) btn = `<button class="btn sm ghost" disabled>Loaded ✓</button>`;
           else btn = `<button class="btn sm" data-act="load-arrow" data-arg="${a.id}">Load</button>`;
           return `<div class="card"><div class="card-row"><div class="avatar">${a.emoji}</div>
@@ -659,12 +686,13 @@
         const maxTier = ARMOR_MAXTIER[p.classId] || 0;
         const cur = p.armor ? ARMOR[p.armor] : null;
         const cards = Object.values(ARMOR).filter((a) => a.tier <= maxTier).map((a) => {
-          const worn = p.armor === a.id, afford = p.gold >= a.cost;
+          const cost = game.taxedCost(a.cost);
+          const worn = p.armor === a.id, afford = p.gold >= cost;
           const pen = a.initPenalty ? ` · −${a.initPenalty} init` : "";
           const mag = a.magical ? ` · ✨ blocks magic` : "";
           const btn = worn
             ? `<button class="btn sm ghost" disabled>Worn ✓</button>`
-            : `<button class="btn sm gold" data-act="buy-armor" data-arg="${a.id}" ${afford ? "" : "disabled"}>🪙 ${a.cost}</button>`;
+            : `<button class="btn sm gold" data-act="buy-armor" data-arg="${a.id}" ${afford ? "" : "disabled"}>🪙 ${cost}</button>`;
           return `<div class="card"><div class="card-row"><div class="avatar">${a.emoji}</div>
             <div><div class="card-title">${a.name} ${worn ? `<span class="pill on">worn</span>` : ""}</div>
             <div class="card-sub">🛡️ DR ${a.dr}${mag}${pen} · ${a.durability} durability</div></div>
@@ -685,9 +713,11 @@
         <div><div class="card-title">${v.name} ${v.soon ? `<span class="pill">soon</span>` : ""}</div>
         <div class="card-sub">${v.blurb}</div></div>
         ${v.soon ? "" : `<div class="spacer"></div><span class="pill">Browse →</span>`}</div></div>`).join("");
+    const taxNote = p.role !== "lord" && s.stronghold && s.stronghold.taxRate
+      ? ` Prices include the Lord's <b>${s.stronghold.taxRate}%</b> sales tax.` : "";
     return topbar(p) + `<div class="screen">
       <div class="screen-title">Vendors</div>${vendors}
-      <p class="card-sub center" style="margin-top:10px">You have 🪙 <b>${p.gold}</b> gold.</p>
+      <p class="card-sub center" style="margin-top:10px">You have 🪙 <b>${p.gold}</b> gold.${taxNote}</p>
     </div>` + tabbar("shop");
   }
 
@@ -815,6 +845,7 @@
         break;
       }
       case "hold-games": G.lord.holdGames(); break;
+      case "decree": { const [k, d] = arg.split(":"); game.setDecree(k, parseInt(d, 10)); break; }
       case "pick-class": ui.selectedClass = arg; render(game.state); break;
       case "create": {
         const name = (document.getElementById("hero-name") || {}).value || "";

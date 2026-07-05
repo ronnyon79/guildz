@@ -305,6 +305,21 @@ cap (3) & per-bout replenish (50%)**, servant **upkeep/housing** cost, and **ser
   exile now erase the WORLD (index + blob). 22 headless tests (`tools/test_worlds.js`) +
   113 regressions (old suites reworked to multi-world keys).
 
+- **GUI-12 + GUI-13 Treasury, income & decrees — v0.8.0** ✅ The money flows. Stronghold
+  state {treasury, ticketPrice, taxRate, purse} (data.ECONOMY defaults, all sim-tunable
+  GUI-36; migrations). **Income lines:** gate (attendance × price; attendance = (base +
+  2/resident) × avg★/3 × demand(price) × prestige(purse)) · wager cut (10% of the book) ·
+  stall licences (5g/open vendor/day) · **sales tax** (rate × modelled shop spend/bout).
+  **Expenses:** band purses + upkeep. **Tensions WIRED, not cosmetic:** steep tickets thin
+  the crowd (demand curve) · heavy tax → residents' gear budgets shrink (roster.combatChar
+  goldScale) → weaker fields → duller fights → smaller gate · fat purses draw crowds but
+  drain coffers. **Champions pay the tax** at the vendors (taxed prices shown; the Lord pays
+  none); NPC-lord default 10% now applies in champion mode too (watch in GUI-36/37 sims).
+  **Decrees UI** (Lord home): ticket/tax/purse steppers, clamped; ledger card on the Lord's
+  sunset (attendance, all lines, net → treasury; ⚠️ warning when coffers run dry — actual
+  bankruptcy-deposition arrives with the Defend phase). Guild rent joins with Guilds. 21
+  headless tests (`tools/test_economy.js`) + 135 regressions.
+
 ### Build order (when the user says go)
 1. **Champion summit** — NPC population + Popularity ladder + Lord boss fight (finish
    the Rise). Small, self-contained, reuses combat entirely.
