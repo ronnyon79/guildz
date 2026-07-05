@@ -72,11 +72,21 @@
 
   // ---------- screens ----------
   function screenTitle() {
+    const worlds = game.listWorlds();
+    const roleBadge = (w) => (w.role === "lord" ? "👑 Lord" : w.role === "servant" ? "🙇 Servant" : "⚔️ Champion");
+    const cards = worlds.map((w) => `<div class="card class-card" data-act="load-world" data-arg="${w.id}">
+      <div class="card-row"><div class="avatar">${CLASSES[w.classId] ? CLASSES[w.classId].emoji : "⚔️"}</div>
+        <div><div class="card-title">${esc(w.name)} <span class="pill">${roleBadge(w)}</span></div>
+        <div class="card-sub">${CLASSES[w.classId] ? CLASSES[w.classId].name : ""} · ${w.wins} wins · Season ${w.season}, Day ${w.day}</div></div>
+        <div class="spacer"></div>
+        <button class="btn sm ghost" data-act="delete-world" data-arg="${w.id}">🗑</button></div></div>`).join("");
     return `<div class="title-wrap">
       <div class="title-logo">⚔️</div>
       <div class="title-name">Guildz</div>
       <div class="title-sub">Arena of champions</div>
-      <button class="btn lg" data-act="new-character">Enter the Arena</button>
+      ${worlds.length ? `<div class="screen" style="width:100%;max-width:420px">${cards}</div>` : ""}
+      <button class="btn lg ${worlds.length ? "" : "gold"}" data-act="new-character">${worlds.length ? "➕ New World" : "Enter the Arena"}</button>
+      ${worlds.length ? `<p class="card-sub center" style="margin-top:8px">Each world is its own universe — its own Stronghold, residents and Lord.</p>` : ""}
     </div>`;
   }
 
@@ -103,7 +113,7 @@
     if (p.role === "lord") {
       return `<div class="card"><div class="card-row"><div class="avatar">👑</div>
         <div><div class="card-title"><span class="you">${esc(p.name)}</span> <span class="pill on">Lord of the Stronghold</span></div>
-        <div class="card-sub">You rule these sands. (Running the Stronghold — Lord mode — arrives in a coming update; the arena remains yours to fight in.)</div></div></div></div>`;
+        <div class="card-sub">${s.npcs.length} champions fight under your banner. Preside over the games — treasury, rents and taxes arrive with the coming updates.</div></div></div></div>`;
     }
     const L = s.lord;
     if (!L) return "";
@@ -133,9 +143,13 @@
         ${classStats(p.classId)}
       </div>
       ${lordBlock(s)}
-      <button class="btn block lg gold" data-act="enter-arena">🌅 Enter the Day's Tournament</button>
+      ${p.role === "lord"
+        ? `<button class="btn block lg gold" data-act="hold-games">👑 Hold the Day's Games</button>
       <p class="card-sub center" style="margin-top:12px"><b>Day ${s.clock.day} · Season ${s.clock.season}</b></p>
-      <p class="card-sub center" style="margin-top:6px">Each day is a knockout tournament in your win-band (${G.tournament.bandLabel(G.tournament.bandOf(p.wins))}). Every bout won earns gold and stats — lose once and your day ends, but you keep everything. Take the band to be <b>Champion of the Day</b> and earn ⭐ fame — the most famous at season's end may challenge the Lord.</p>
+      <p class="card-sub center" style="margin-top:6px">Every band fights while you watch from the high seat. Champions earn fame in your arena — and one day, the boldest of them will come for your throne.</p>`
+        : `<button class="btn block lg gold" data-act="enter-arena">🌅 Enter the Day's Tournament</button>
+      <p class="card-sub center" style="margin-top:12px"><b>Day ${s.clock.day} · Season ${s.clock.season}</b></p>
+      <p class="card-sub center" style="margin-top:6px">Each day is a knockout tournament in your win-band (${G.tournament.bandLabel(G.tournament.bandOf(p.wins))}). Every bout won earns gold and stats — lose once and your day ends, but you keep everything. Take the band to be <b>Champion of the Day</b> and earn ⭐ fame — the most famous at season's end may challenge the Lord.</p>`}
     </div>` + tabbar("home");
   }
 
@@ -215,6 +229,22 @@
       ${d.popGain ? `<div class="reward-grid"><div class="reward"><b>+${d.popGain}</b><span>⭐ fame</span></div></div>` : ""}
       ${sunsetBoard(d)}
       <div class="result-actions"><button class="btn block" data-act="return-home">Return home 🌇</button></div>
+    </div>`;
+  }
+
+  // The Lord's view of a finished day: the games he presided over.
+  function screenLordSunset(s) {
+    const d = s.lastDay || {};
+    let seasonNote = "";
+    if (d.seasonEnd) {
+      const t = d.seasonEnd.top[0];
+      seasonNote = `<div class="levelup">🍂 Season ${d.seasonEnd.season} closes under your reign. ${t ? `<b>${esc(t.name)}</b> is the people's favourite (⭐ ${t.popularity}).` : ""} None dare challenge you… yet.</div>`;
+    }
+    return topbar(s.player) + `<div class="screen">
+      <div class="screen-title">👑 The games conclude — Day ${d.seasonEnd ? G.data.SEASON.days : s.clock.day - 1}, Season ${d.seasonEnd ? d.seasonEnd.season : s.clock.season}</div>
+      ${sunsetBoard(d)}
+      ${seasonNote}
+      <button class="btn block lg" data-act="return-home">To the high seat</button>
     </div>`;
   }
 
@@ -750,6 +780,7 @@
       case "fame": html = screenFame(s); break;
       case "bracket": html = screenBracket(s); break;
       case "day-champion": html = screenDayChampion(s); break;
+      case "lord-sunset": html = screenLordSunset(s); break;
       case "coronation": html = screenCoronation(s); break;
       case "throne-fate": html = screenThroneFate(s); break;
       case "memorial": html = screenMemorial(s); break;
@@ -777,6 +808,13 @@
     const act = el.dataset.act, arg = el.dataset.arg;
     switch (act) {
       case "new-character": game.go("class-select"); break;
+      case "load-world": game.load(arg) && render(game.state); break;
+      case "delete-world": {
+        e.stopPropagation();
+        if (confirm("Delete this world FOREVER? Its champion, residents and Lord are all erased.")) { game.deleteWorld(arg); render(game.state); }
+        break;
+      }
+      case "hold-games": G.lord.holdGames(); break;
       case "pick-class": ui.selectedClass = arg; render(game.state); break;
       case "create": {
         const name = (document.getElementById("hero-name") || {}).value || "";

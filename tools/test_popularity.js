@@ -85,18 +85,19 @@ ok(S.lastSeason.top[0].popularity === preTop, "season top recorded pre-decay");
 
 console.log("— persistence —");
 const savedPop = S.player.popularity, savedClock = { ...S.clock };
-const raw = JSON.parse(store["guildz.save.v2"]);
+const wkey = "guildz.world." + S.worldId, wid = S.worldId;
+const raw = JSON.parse(store[wkey]);
 ok(raw.clock && raw.npcs.every((n) => n.popularity != null), "clock + fame persisted");
 S.player.popularity = -1; S.clock = { day: 0, season: 0 };
-ok(game.load() && S.player.popularity === savedPop && S.clock.day === savedClock.day && S.clock.season === savedClock.season,
+ok(game.load(wid) && S.player.popularity === savedPop && S.clock.day === savedClock.day && S.clock.season === savedClock.season,
   "load restores fame + clock");
 
 console.log("— old-save migration —");
-const stripped = JSON.parse(store["guildz.save.v2"]);
+const stripped = JSON.parse(store[wkey]);
 delete stripped.clock; delete stripped.lastSeason; delete stripped.player.popularity;
 stripped.npcs.forEach((n) => delete n.popularity);
-store["guildz.save.v2"] = JSON.stringify(stripped);
-ok(game.load() && S.player.popularity === 0 && S.clock.day === 1 && S.clock.season === 1 && S.npcs.every((n) => n.popularity === 0),
+store[wkey] = JSON.stringify(stripped);
+ok(game.load(wid) && S.player.popularity === 0 && S.clock.day === 1 && S.clock.season === 1 && S.npcs.every((n) => n.popularity === 0),
   "pre-fame save migrates to zeroed fame + fresh clock");
 
 console.log(`\n${pass} passed, ${fail} failed`);

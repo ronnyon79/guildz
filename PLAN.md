@@ -293,6 +293,18 @@ cap (3) & per-bout replenish (50%)**, servant **upkeep/housing** cost, and **ser
   — a 60-win MAGE lord (poison bypasses armor + elemental + mana potion) burned down a
   481-HP test titan, while martial lords are far tamer. Tune in the reign sim.
 
+- **GUI-11 Worlds + role-aware boot + lord.js — v0.7.0** ✅ Lord mode BEGINS. **Multi-world
+  saves** (decided design): `guildz.worlds.v1` index + per-world keys; each universe a
+  separate save game; the pre-worlds single save auto-migrates to slot 1 (legacy key
+  consumed). **World-select title screen** (role badge, class, wins, clock; delete with
+  confirm). **Role-aware boot**: a crowned world resumes as the Lord. **`js/lord.js`** —
+  the other chair at the same arena: `holdGames()` runs the whole day NPC-only through the
+  SHARED seam (`runDay` → the newly extracted `game.settleDay`), residents earn wins+fame,
+  clock/seasons roll under your reign ("none dare challenge you… yet" — Defend phase later),
+  Lord dashboard replaces the arena button, lord-sunset screen shows the board. Permadeath/
+  exile now erase the WORLD (index + blob). 22 headless tests (`tools/test_worlds.js`) +
+  113 regressions (old suites reworked to multi-world keys).
+
 ### Build order (when the user says go)
 1. **Champion summit** — NPC population + Popularity ladder + Lord boss fight (finish
    the Rise). Small, self-contained, reuses combat entirely.

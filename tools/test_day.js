@@ -90,15 +90,23 @@ game.returnHome();
 
 console.log("— save / load round-trip —");
 const savedWins = S.npcs.map((n) => n.wins).join(",");
-const raw = JSON.parse(store["guildz.save.v2"]);
+const wid = S.worldId;
+const raw = JSON.parse(store["guildz.world." + wid]);
 ok(Array.isArray(raw.npcs) && raw.npcs.length === S.npcs.length, "npcs persisted in the save");
 S.npcs = []; // simulate fresh boot
-ok(game.load() && S.npcs.map((n) => n.wins).join(",") === savedWins, "load restores the roster (with earned wins)");
+ok(game.load(wid) && S.npcs.map((n) => n.wins).join(",") === savedWins, "load restores the roster (with earned wins)");
 
-console.log("— old-save migration —");
-store["guildz.save.v2"] = JSON.stringify({ player: raw.player, seedCounter: 9 }); // pre-roster save
-ok(game.load() && S.npcs.length === G.data.ROSTER.size, "pre-roster save gets a generated roster");
-store["guildz.save.v2"] = JSON.stringify(raw); game.load();
+console.log("— old-save (legacy single-slot) migration —");
+{
+  const keep = { ...store };
+  for (const k of Object.keys(store)) delete store[k];
+  store["guildz.save.v2"] = JSON.stringify({ player: raw.player, seedCounter: 9 }); // pre-roster, pre-worlds save
+  ok(game.load() && S.npcs.length === G.data.ROSTER.size, "pre-roster legacy save migrates to a world + gains a roster");
+  ok(store["guildz.save.v2"] == null && game.listWorlds().length === 1, "legacy key consumed into the worlds index");
+  for (const k of Object.keys(store)) delete store[k];
+  Object.assign(store, keep);
+  game.load(wid);
+}
 
 console.log("— many days (stability) —");
 let champs = 0, losses = 0;
