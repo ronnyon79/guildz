@@ -42,12 +42,13 @@
       <div class="brand">⚔️ Guildz</div>
       <div class="resources">
         <span class="res">🪙 <b>${p ? p.gold : 0}</b></span>
-        <span class="res">🏅 <b>${p ? p.wins : 0}</b> wins</span>
+        <span class="res">🏅 <b>${p ? p.wins : 0}</b></span>
+        <span class="res">⭐ <b>${p ? p.popularity || 0 : 0}</b></span>
       </div>
     </div>`;
   }
   function tabbar(active) {
-    const tabs = [["home", "🏟️", "Arena"], ["shop", "🛒", "Shop"], ["hero", "🛡️", "Hero"]];
+    const tabs = [["home", "🏟️", "Arena"], ["fame", "⭐", "Fame"], ["shop", "🛒", "Shop"], ["hero", "🛡️", "Hero"]];
     return `<nav class="tabbar">${tabs
       .map(([id, ic, label]) => `<button class="tab ${active === id ? "is-active" : ""}" data-act="tab" data-arg="${id}">${ic}<span>${label}</span></button>`)
       .join("")}</nav>`;
@@ -91,7 +92,8 @@
         ${classStats(p.classId)}
       </div>
       <button class="btn block lg gold" data-act="enter-arena">🌅 Enter the Day's Tournament</button>
-      <p class="card-sub center" style="margin-top:12px">Each day is a knockout tournament in your win-band (${G.tournament.bandLabel(G.tournament.bandOf(p.wins))}). Every bout won earns gold and stats — lose once and your day ends, but you keep everything. Win them all to be <b>Champion of the Day</b>.</p>
+      <p class="card-sub center" style="margin-top:12px"><b>Day ${s.clock.day} · Season ${s.clock.season}</b></p>
+      <p class="card-sub center" style="margin-top:6px">Each day is a knockout tournament in your win-band (${G.tournament.bandLabel(G.tournament.bandOf(p.wins))}). Every bout won earns gold and stats — lose once and your day ends, but you keep everything. Take the band to be <b>Champion of the Day</b> and earn ⭐ fame — the most famous at season's end may challenge the Lord.</p>
     </div>` + tabbar("home");
   }
 
@@ -101,8 +103,35 @@
     const rows = lastDay.board.map((w) => `<div class="card"><div class="card-row">
       <div class="avatar">${w.classId && CLASSES[w.classId] ? CLASSES[w.classId].emoji : "🏆"}</div>
       <div><div class="card-title">${w.isPlayer ? `<span class="you">${esc(w.name)}</span>` : esc(w.name)} ${w.isPlayer ? '<span class="pill on">you</span>' : ""}</div>
-      <div class="card-sub">Band ${w.label} · ${w.boutsWon} bout${w.boutsWon === 1 ? "" : "s"} won</div></div></div></div>`).join("");
-    return `<div class="screen-title">🌇 Sunset — champions of the day</div>${rows}`;
+      <div class="card-sub">Band ${w.label} · ${w.boutsWon} bout${w.boutsWon === 1 ? "" : "s"} won · <b>+${w.popGain} ⭐</b></div></div></div></div>`).join("");
+    let season = "";
+    if (lastDay.seasonEnd) {
+      const t = lastDay.seasonEnd.top[0];
+      season = `<div class="levelup">🍂 Season ${lastDay.seasonEnd.season} ends! ${t ? `${t.isPlayer ? "<b>You</b>" : `<b>${esc(t.name)}</b>`} top${t.isPlayer ? "" : "s"} the fame ladder with ⭐ ${t.popularity}.` : ""} All fame fades by half as the new season dawns.</div>`;
+    }
+    return `<div class="screen-title">🌇 Sunset — champions of the day</div>${rows}${season}`;
+  }
+
+  function screenFame(s) {
+    const ladder = game.fameLadder();
+    const myRank = ladder.findIndex((r) => r.isPlayer) + 1;
+    const shown = ladder.slice(0, 10);
+    if (myRank > 10) shown.push(ladder[myRank - 1]);
+    const rows = shown.map((r) => {
+      const rank = ladder.indexOf(r) + 1;
+      return `<div class="card"><div class="card-row">
+        <div class="avatar">${rank === 1 ? "👑" : CLASSES[r.classId].emoji}</div>
+        <div><div class="card-title">#${rank} ${r.isPlayer ? `<span class="you">${esc(r.name)}</span> <span class="pill on">you</span>` : esc(r.name)}</div>
+        <div class="card-sub">${CLASSES[r.classId].name} · ${r.wins} wins</div></div>
+        <div class="spacer"></div><span class="pill">⭐ ${r.popularity}</span></div></div>`;
+    }).join("");
+    const last = s.lastSeason && s.lastSeason.top[0]
+      ? `<p class="card-sub center" style="margin-top:10px">Last season's most famous: <b>${esc(s.lastSeason.top[0].name)}</b> (⭐ ${s.lastSeason.top[0].popularity})</p>` : "";
+    return topbar(s.player) + `<div class="screen">
+      <div class="screen-title">⭐ Fame — Day ${s.clock.day}, Season ${s.clock.season}</div>
+      <p class="card-sub center" style="margin-bottom:10px">Day champions earn fame by band and bouts won. Fame fades by half each season — the most famous at season's end may challenge the Lord.</p>
+      ${rows}${last}
+    </div>` + tabbar("fame");
   }
 
   function screenBracket(s) {
@@ -141,6 +170,7 @@
       <div class="result-emoji">👑</div>
       <div class="result-title">Champion of the Day!</div>
       <p class="muted">You took Band ${d.bandLabel} — ${d.boutsWon} bout${d.boutsWon === 1 ? "" : "s"} won${d.boutsWon === 0 ? " (a walkover — no challengers)" : ""}.</p>
+      ${d.popGain ? `<div class="reward-grid"><div class="reward"><b>+${d.popGain}</b><span>⭐ fame</span></div></div>` : ""}
       ${sunsetBoard(d)}
       <div class="result-actions"><button class="btn block" data-act="return-home">Return home 🌇</button></div>
     </div>`;
@@ -619,6 +649,7 @@
       case "title": html = screenTitle(); break;
       case "class-select": html = screenClassSelect(); break;
       case "home": html = screenHome(s); break;
+      case "fame": html = screenFame(s); break;
       case "bracket": html = screenBracket(s); break;
       case "day-champion": html = screenDayChampion(s); break;
       case "battle": html = screenBattle(s); break;
