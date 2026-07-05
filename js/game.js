@@ -9,11 +9,18 @@
   const G = (root.G = root.G || {});
   const { CLASSES, ITEMS, ARROWS, ARMOR, ARMOR_MAXTIER, goldForWin, POINTS_PER_WIN, POPULARITY, SEASON, LORD, FOE_NAMES, EPITHETS, totalGoldAt } = G.data;
 
-  const SAVE_KEY = "guildz.save.v2";
+  /* ---- worlds: each universe is a SEPARATE save game (decided design) ----
+   * An index lists the universes; each world lives under its own key. Within a
+   * world your role changes in place (champion → servant/lord) — one
+   * continuous save per world. The pre-worlds single save migrates to slot 1. */
+  const LEGACY_KEY = "guildz.save.v2";
+  const INDEX_KEY = "guildz.worlds.v1";
+  const worldKey = (id) => "guildz.world." + id;
   const listeners = new Set();
 
   const state = {
     screen: "title", // title | class-select | home | bracket | battle | win | loss | day-champion | shop | hero
+    worldId: null,       // which universe this session lives in
     player: null,
     npcs: [],            // the Stronghold's resident champions (persisted)
     lord: null,          // the reigning Lord (persisted; null once YOU reign)
@@ -54,17 +61,75 @@
     };
   }
 
-  // ---- persistence ----
-  function save() {
-    try { localStorage.setItem(SAVE_KEY, JSON.stringify({ player: state.player, npcs: state.npcs, lord: state.lord, clock: state.clock, lastSeason: state.lastSeason, challengeOpen: state.challengeOpen, seedCounter: state.seedCounter })); }
-    catch (e) {}
-  }
-  function load() {
+  // ---- persistence (multi-world) ----
+  function readIndex() {
     try {
-      const raw = localStorage.getItem(SAVE_KEY);
+      const ix = JSON.parse(localStorage.getItem(INDEX_KEY));
+      if (ix && Array.isArray(ix.worlds)) return ix;
+    } catch (e) {}
+    return { nextId: 1, worlds: [] };
+  }
+  function writeIndex(ix) { try { localStorage.setItem(INDEX_KEY, JSON.stringify(ix)); } catch (e) {} }
+  function worldMeta(id, d) {
+    return {
+      id, name: d.player.name, classId: d.player.classId,
+      role: d.player.role || "champion", wins: d.player.wins,
+      season: (d.clock || {}).season || 1, day: (d.clock || {}).day || 1,
+    };
+  }
+  // One-time: the pre-worlds single save becomes a world slot.
+  function migrateLegacy() {
+    try {
+      const raw = localStorage.getItem(LEGACY_KEY);
+      if (!raw) return;
+      const d = JSON.parse(raw);
+      if (d && d.player) {
+        const ix = readIndex();
+        const id = "w" + ix.nextId++;
+        localStorage.setItem(worldKey(id), raw);
+        ix.worlds.push(worldMeta(id, d));
+        writeIndex(ix);
+      }
+      localStorage.removeItem(LEGACY_KEY);
+    } catch (e) {}
+  }
+  function listWorlds() { migrateLegacy(); return readIndex().worlds; }
+  function boot() { migrateLegacy(); state.screen = "title"; emit(); }
+
+  function save() {
+    if (!state.worldId) return;
+    try {
+      const blob = { player: state.player, npcs: state.npcs, lord: state.lord, clock: state.clock, lastSeason: state.lastSeason, challengeOpen: state.challengeOpen, seedCounter: state.seedCounter };
+      localStorage.setItem(worldKey(state.worldId), JSON.stringify(blob));
+      const ix = readIndex();
+      const i = ix.worlds.findIndex((w) => w.id === state.worldId);
+      const meta = worldMeta(state.worldId, blob);
+      if (i >= 0) ix.worlds[i] = meta; else ix.worlds.push(meta);
+      writeIndex(ix);
+    } catch (e) {}
+  }
+  // Erase a universe (permadeath / exile / start-over). In-memory state is
+  // untouched so memorial screens can still render.
+  function deleteWorld(id) {
+    if (!id) return;
+    try { localStorage.removeItem(worldKey(id)); } catch (e) {}
+    const ix = readIndex();
+    ix.worlds = ix.worlds.filter((w) => w.id !== id);
+    writeIndex(ix);
+  }
+  function load(worldId) {
+    try {
+      migrateLegacy();
+      if (!worldId) {
+        const ws = readIndex().worlds;
+        if (!ws.length) return false;
+        worldId = ws[0].id;
+      }
+      const raw = localStorage.getItem(worldKey(worldId));
       if (!raw) return false;
       const data = JSON.parse(raw);
       if (!data.player) return false;
+      state.worldId = worldId;
       state.player = data.player;
       // Migrate saves created before equipment / inventory existed.
       if (!state.player.equipment) state.player.equipment = { ...CLASSES[state.player.classId].startEq };
@@ -99,6 +164,9 @@
   // ---- actions ----
   function createCharacter(classId, name, worldSeed) {
     const seed = (worldSeed != null ? worldSeed : Date.now()) >>> 0;
+    const ix = readIndex();
+    state.worldId = "w" + ix.nextId++;
+    writeIndex(ix);
     state.player = {
       name: (name || "Hero").slice(0, 14) || "Hero",
       classId,
@@ -233,10 +301,11 @@
     finishDay();
   }
 
-  // Sunset: award fame to every band champion, build the winners' board,
-  // advance the world clock (season roll = −50% fame decay), clean up.
-  function finishDay(keepScreen) {
-    const champion = state.playerBracket && state.playerBracket.winner === "player";
+  /* Sunset (shared by champion days AND the Lord's presided games): award fame
+   * to every band champion, build the winners' board, tick the world clock
+   * (season roll = −50% fame decay + the challenge gate). */
+  function settleDay(day, byId, playerBracket) {
+    const nameOf = (id) => (id === "player" ? state.player.name : ((byId && byId[id]) || npcById(id) || {}).name || "?");
     // Popularity: Σ perBout(band) × Crowd Rating over the champion's won bouts
     // (the decided formula, per-bout variant; a forfeit walkover pays 0).
     const awardFame = (br) => {
@@ -245,17 +314,18 @@
       else { const n = npcById(br.winner); if (n) n.popularity = (n.popularity || 0) + gain; }
       return gain;
     };
+    const champion = playerBracket && playerBracket.winner === "player";
     state.lastDay = {
-      band: state.playerBracket ? state.playerBracket.band : 0,
-      bandLabel: G.tournament.bandLabel(state.playerBracket ? state.playerBracket.band : 0),
-      boutsWon: state.playerBracket ? state.playerBracket.boutsWon.player || 0 : 0,
-      champion,
+      band: playerBracket ? playerBracket.band : 0,
+      bandLabel: G.tournament.bandLabel(playerBracket ? playerBracket.band : 0),
+      boutsWon: playerBracket ? playerBracket.boutsWon.player || 0 : 0,
+      champion: !!champion,
       popGain: 0,
-      board: state.day.brackets.map((br) => ({
+      board: day.brackets.map((br) => ({
         band: br.band,
         label: G.tournament.bandLabel(br.band),
-        name: champName(br.winner),
-        classId: br.winner === "player" ? state.player.classId : (state.dayById[br.winner] || {}).classId,
+        name: nameOf(br.winner),
+        classId: br.winner === "player" ? state.player.classId : ((byId && byId[br.winner]) || {}).classId,
         boutsWon: br.boutsWon[br.winner] || 0,
         popGain: awardFame(br),
         isPlayer: br.winner === "player",
@@ -281,7 +351,12 @@
       state.lastDay.seasonEnd = state.lastSeason; // surfaced on the sunset screens
       state.lastDay.mayChallenge = state.challengeOpen;
     }
+    return state.lastDay;
+  }
 
+  function finishDay(keepScreen) {
+    const champion = state.playerBracket && state.playerBracket.winner === "player";
+    settleDay(state.day, state.dayById, state.playerBracket);
     state.day = null; state.playerBracket = null; state.dayById = null; state.pendingBout = null;
     if (champion) state.screen = "day-champion";
     else if (!keepScreen) state.screen = "loss"; // normally already there
@@ -530,10 +605,10 @@
     save();
   }
 
-  // Permadeath: the save is wiped NOW (no reload resurrection); the memorial
+  // Permadeath: the world is erased NOW (no reload resurrection); the memorial
   // screen lives on in-memory until "New Game".
   function perish(kind) {
-    try { localStorage.removeItem(SAVE_KEY); } catch (e) {}
+    deleteWorld(state.worldId);
     state.lastThrone = { ...(state.lastThrone || {}), fate: kind === "uprising" ? "uprising" : "die" };
     state.screen = "memorial";
     emit();
@@ -546,7 +621,7 @@
     if (fate === "exile") {
       // One-way: you leave the Stronghold forever. (Exile mode — the wilds,
       // founding your own hold — is a later build; the run ends here for now.)
-      try { localStorage.removeItem(SAVE_KEY); } catch (e) {}
+      deleteWorld(state.worldId);
       state.lastThrone.fate = "exile";
       state.screen = "exiled";
       emit();
@@ -563,7 +638,8 @@
   }
 
   function resetGame() {
-    try { localStorage.removeItem(SAVE_KEY); } catch (e) {}
+    deleteWorld(state.worldId);
+    state.worldId = null;
     state.player = null; state.npcs = []; state.lord = null; state.streak = 0; state.battle = null; state.foe = null;
     state.day = null; state.playerBracket = null; state.dayById = null; state.pendingBout = null; state.lastDay = null;
     state.clock = { day: 1, season: 1 }; state.lastSeason = null;
@@ -573,11 +649,12 @@
   }
 
   G.game = {
-    state, subscribe, load, save,
+    state, subscribe, boot, load, save, listWorlds, deleteWorld,
     computeMax, champName, fameLadder, lordCombatChar,
     createCharacter, go, enterArena, fightBout, chooseAction,
     challengeLord, chooseFate,
     allocate, fightOn, retreat, returnHome, resetGame,
     openVendor, closeVendor, buyItem, buyArrow, loadArrow, buyArmor,
+    nextSeed, settleDay, emit, // the seam lord.js drives the shared day through
   };
 })(typeof window !== "undefined" ? window : globalThis);

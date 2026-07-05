@@ -4,7 +4,7 @@
   const G = root.G;
   // Re-render on every state change.
   G.game.subscribe((state) => G.ui.render(state));
-  // Resume a saved character, or land on the title screen.
-  G.game.load();
+  // Boot to the world-select (migrating any pre-worlds save into slot 1).
+  G.game.boot();
   G.ui.render(G.game.state);
 })(typeof window !== "undefined" ? window : globalThis);

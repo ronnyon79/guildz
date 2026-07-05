@@ -86,7 +86,7 @@ game.returnHome();
 S.player.popularity = 99999;
 { const s0 = S.clock.season; while (S.clock.season === s0) playDay(); }
 ok(S.challengeOpen === false, "a reigning Lord gets no challenge banner");
-ok(JSON.parse(store["guildz.save.v2"]).player.role === "lord", "the crown persists in the save");
+ok(JSON.parse(store["guildz.world." + S.worldId]).player.role === "lord", "the crown persists in the save");
 
 console.log("— the fates (loss path) —");
 game.resetGame(); game.createCharacter("mage", "Moth", 80808);
@@ -97,10 +97,10 @@ ok(S.challengeOpen, "doomed challenger has the right");
 game.challengeLord();
 playBattle();
 ok(S.screen === "throne-fate", "defeat → choose your fate");
-ok(store["guildz.save.v2"] != null, "save still exists at the choice");
+ok(store["guildz.world." + S.worldId] != null, "save still exists at the choice");
 game.chooseFate("serve");
 ok(S.screen === "home" && S.player.role === "servant", "serve: you stay, as his servant");
-ok(JSON.parse(store["guildz.save.v2"]).player.role === "servant", "servitude persists");
+ok(JSON.parse(store["guildz.world." + S.worldId]).player.role === "servant", "servitude persists");
 playDay();
 ok(["home"].includes(S.screen), "a servant still fights the daily brackets");
 
@@ -111,7 +111,7 @@ ok(S.challengeOpen, "a famous servant may rise");
 game.challengeLord();
 playBattle();
 ok(S.screen === "memorial" && S.lastThrone.fate === "uprising", "failed uprising = death, no mercy");
-ok(store["guildz.save.v2"] == null, "the save is gone — permadeath");
+ok(store["guildz.world." + S.worldId] == null, "the save is gone — permadeath");
 game.resetGame();
 
 console.log("— die & exile —");
@@ -120,22 +120,22 @@ S.player.bonusHp = -15; S.player.popularity = 99999;
 while (S.clock.season === 1) playDay();
 game.challengeLord(); playBattle();
 game.chooseFate("die");
-ok(S.screen === "memorial" && store["guildz.save.v2"] == null, "die: memorial + save erased");
+ok(S.screen === "memorial" && store["guildz.world." + S.worldId] == null, "die: memorial + save erased");
 game.resetGame();
 game.createCharacter("mage", "Reed", 91919);
 S.player.bonusHp = -15; S.player.popularity = 99999;
 while (S.clock.season === 1) playDay();
 game.challengeLord(); playBattle();
 game.chooseFate("exile");
-ok(S.screen === "exiled" && store["guildz.save.v2"] == null, "exile: one-way — gates close, save erased");
+ok(S.screen === "exiled" && store["guildz.world." + S.worldId] == null, "exile: one-way — gates close, save erased");
 game.resetGame();
 
 console.log("— old-save migration —");
 game.createCharacter("thief", "Old", 93939);
-const raw = JSON.parse(store["guildz.save.v2"]);
+const raw = JSON.parse(store["guildz.world." + S.worldId]);
 delete raw.lord; delete raw.challengeOpen; delete raw.player.role;
-store["guildz.save.v2"] = JSON.stringify(raw);
-ok(game.load() && S.lord && S.lord.name && S.player.role === "champion", "pre-throne save gains a Lord + champion role");
+store["guildz.world." + S.worldId] = JSON.stringify(raw);
+ok(game.load(S.worldId) && S.lord && S.lord.name && S.player.role === "champion", "pre-throne save gains a Lord + champion role");
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
