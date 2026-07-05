@@ -7,7 +7,7 @@
  */
 (function (root) {
   const G = (root.G = root.G || {});
-  const { CLASSES, ITEMS, ARROWS, ARMOR, ARMOR_MAXTIER, goldForWin, POINTS_PER_WIN, POPULARITY, SEASON, LORD, ECONOMY, BOARD, FOE_NAMES, EPITHETS, totalGoldAt } = G.data;
+  const { CLASSES, ITEMS, ARROWS, ARMOR, ARMOR_MAXTIER, goldForWin, POINTS_PER_WIN, POPULARITY, SEASON, LORD, ECONOMY, BOARD, BUILDINGS, BUILDING_FX, FOE_NAMES, EPITHETS, totalGoldAt } = G.data;
 
   /* ---- worlds: each universe is a SEPARATE save game (decided design) ----
    * An index lists the universes; each world lives under its own key. Within a
@@ -157,6 +157,7 @@
       state.challengeOpen = !!data.challengeOpen;
       // Migrate saves created before the economy existed.
       state.stronghold = data.stronghold || { ...ECONOMY.start };
+      if (!state.stronghold.buildings) state.stronghold.buildings = { seating: 0, armory: 0, infirmary: 0, barracks: 0, yard: 0 };
       state.board = Array.isArray(data.board) ? data.board : [];
       state.screen = "home";
       return true;
@@ -194,7 +195,7 @@
     };
     state.npcs = G.roster.generateRoster(seed, state.player.name);
     state.lord = generateLord(seed + 1);
-    state.stronghold = { ...ECONOMY.start };
+    state.stronghold = { ...ECONOMY.start, buildings: { seating: 0, armory: 0, infirmary: 0, barracks: 0, yard: 0 } };
     state.board = [];
     state.clock = { day: 1, season: 1 };
     state.lastSeason = null;
@@ -216,8 +217,24 @@
     const rate = state.stronghold ? state.stronghold.taxRate : 0;
     return Math.round(base * (1 + rate / 100));
   }
-  // Residents' gear budgets shrink under a heavy sales tax (the core tension).
-  function gearScale() { return 1 - (state.stronghold ? state.stronghold.taxRate : 0) / 100; }
+  // Residents' gear budgets: shrunk by the sales tax, lifted by the Armory.
+  function gearScale() {
+    const st = state.stronghold;
+    if (!st) return 1;
+    return 1 - st.taxRate / 100 + ((st.buildings || {}).armory || 0) * BUILDING_FX.armoryGear;
+  }
+
+  // Raise a building one level, paid from the treasury (GUI-15).
+  function buyBuilding(id) {
+    const st = state.stronghold, def = BUILDINGS[id];
+    if (!def || !st || !state.player || state.player.role !== "lord") return false;
+    const lvl = (st.buildings || {})[id] || 0;
+    if (lvl >= def.max || st.treasury < def.costs[lvl]) return false;
+    st.treasury -= def.costs[lvl];
+    st.buildings[id] = lvl + 1;
+    save(); emit();
+    return true;
+  }
 
   function buyItem(itemId) {
     const p = state.player, it = ITEMS[itemId];
@@ -721,7 +738,7 @@
     challengeLord, chooseFate,
     allocate, fightOn, retreat, returnHome, resetGame,
     openVendor, closeVendor, buyItem, buyArrow, loadArrow, buyArmor,
-    taxedCost, gearScale, setDecree, recordBout, openBout,
+    taxedCost, gearScale, setDecree, buyBuilding, recordBout, openBout,
     nextSeed, settleDay, emit, // the seam lord.js drives the shared day through
   };
 })(typeof window !== "undefined" ? window : globalThis);

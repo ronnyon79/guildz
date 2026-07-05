@@ -22,8 +22,9 @@
       if (m.spec) { specSum += m.spec; rated += 1; }
     }
     const avgSpec = rated ? specSum / rated : 3;
+    const seating = ((st.buildings || {}).seating || 0) * G.data.BUILDING_FX.seatingCrowd;
     const attendance = Math.round(
-      (E.crowdBase + E.crowdPerResident * state.npcs.length) *
+      (E.crowdBase + seating + E.crowdPerResident * state.npcs.length) *
       (avgSpec / 3) * E.demand(st.ticketPrice) * E.prestige(st.purse));
     const gate = attendance * st.ticketPrice;
     const wagers = Math.round(attendance * E.wagerStake * E.wagerCut);
@@ -47,6 +48,12 @@
       // The Scribe records every bout of the presided games.
       game.recordBout({ band: br.band, round: m.round, a: byId[m.a], b: byId[m.b], winner: w.name, rounds: res.rounds, spec: res.spec, seed: m.seed });
     });
+    // Training Yard: each level drills one resident a day (+1 win of sparring).
+    const yard = ((state.stronghold.buildings || {}).yard || 0);
+    if (yard > 0 && state.npcs.length) {
+      const rng = G.engine.makeRng(day.seed ^ 0x5eed);
+      for (let i = 0; i < yard; i++) G.engine.pick(rng, state.npcs).wins += 1;
+    }
     game.settleDay(day, byId, null); // fame, board, clock, season roll
     const ledger = ledgerFor(day, state);
     state.stronghold.treasury += ledger.net;
