@@ -13,15 +13,22 @@
   const listeners = new Set();
 
   const state = {
-    screen: "title", // title | class-select | home | battle | win | loss | shop | hero
+    screen: "title", // title | class-select | home | bracket | battle | win | loss | day-champion | shop | hero
     player: null,
-    streak: 0,
+    npcs: [],            // the Stronghold's resident champions (persisted)
+    streak: 0,           // bouts won today
     battle: null,
     foe: null,
     lastReward: null,
     allocPending: false, // Mage must spend 2 points before continuing
     vendor: null,        // which shop vendor is open (null = vendor list)
     seedCounter: 1,
+    // --- the current Day (transient — an abandoned mid-day is not resumed) ---
+    day: null,           // tournament state (all brackets)
+    playerBracket: null, // the bracket the player fights in
+    dayById: null,       // id -> battle-ready char, rebuilt as champions grow
+    pendingBout: null,   // the player's next unresolved match
+    lastDay: null,       // sunset summary of the most recent finished day
   };
 
   function computeMax(player) {
@@ -43,7 +50,7 @@
 
   // ---- persistence ----
   function save() {
-    try { localStorage.setItem(SAVE_KEY, JSON.stringify({ player: state.player, seedCounter: state.seedCounter })); }
+    try { localStorage.setItem(SAVE_KEY, JSON.stringify({ player: state.player, npcs: state.npcs, seedCounter: state.seedCounter })); }
     catch (e) {}
   }
   function load() {
@@ -60,6 +67,10 @@
       if (!state.player.activeArrow) state.player.activeArrow = "normal";
       if (state.player.armor === undefined) { state.player.armor = null; state.player.armorDurability = 0; }
       state.seedCounter = data.seedCounter || 1;
+      // Migrate saves created before the resident roster existed.
+      state.npcs = Array.isArray(data.npcs) && data.npcs.length
+        ? data.npcs
+        : G.roster.generateRoster((state.player.worldSeed || state.seedCounter * 2654435761) >>> 0, state.player.name);
       state.screen = "home";
       return true;
     } catch (e) { return false; }
@@ -70,7 +81,8 @@
   function emit() { for (const fn of listeners) fn(state); }
 
   // ---- actions ----
-  function createCharacter(classId, name) {
+  function createCharacter(classId, name, worldSeed) {
+    const seed = (worldSeed != null ? worldSeed : Date.now()) >>> 0;
     state.player = {
       name: (name || "Hero").slice(0, 14) || "Hero",
       classId,
@@ -86,7 +98,9 @@
       activeArrow: "normal",
       armor: null,   // equipped armor id
       armorDurability: 0,
+      worldSeed: seed, // seeds this world's population (deterministic world-gen)
     };
+    state.npcs = G.roster.generateRoster(seed, state.player.name);
     state.screen = "home";
     save(); emit();
   }
@@ -132,14 +146,108 @@
     return true;
   }
 
-  function startBattle() {
-    state.foe = G.ai.generateFoe(state.player.wins, state.streak, nextSeed());
-    state.battle = G.combat.newBattle(playerCombatChar(), state.foe, nextSeed());
+  /* ---- the Day: a knockout tournament in your win-band (GUI-5/GUI-6) ----
+   * Sunrise buckets everyone (player + residents) into bands-of-5 brackets.
+   * Other bands auto-resolve; in YOUR band, your bouts are played turn-based
+   * and the rest auto-resolve around you. One winner per band at sunset. */
+
+  const npcById = (id) => state.npcs.find((n) => n.id === id);
+
+  // NPC career effect for a won bout: +1 permanent win (gear derives from wins).
+  function applyNpcBout(winnerId) {
+    const n = npcById(winnerId);
+    if (!n) return;
+    n.wins += 1;
+    if (state.dayById) state.dayById[n.id] = G.roster.combatChar(n); // mid-day growth
+  }
+
+  function autoResolveMatch(br, m) {
+    const res = G.tournament.autoBout(state.dayById[m.a], state.dayById[m.b], m.seed);
+    m.rounds = res.rounds;
+    G.tournament.reportBout(br, m, res.winnerId);
+    applyNpcBout(res.winnerId);
+  }
+
+  function startDay() {
+    state.streak = 0;
+    const pc = playerCombatChar();
+    pc.id = "player";
+    const champs = [pc, ...state.npcs.map((n) => G.roster.combatChar(n))];
+    state.dayById = {};
+    for (const c of champs) state.dayById[c.id] = c;
+    state.day = G.tournament.newDay(champs, nextSeed());
+    state.playerBracket = state.day.brackets.find((b) => b.entrants.includes("player"));
+    // The other bands fight at dawn, off-screen.
+    for (const br of state.day.brackets) {
+      if (br === state.playerBracket) continue;
+      let m;
+      while (!br.winner && (m = G.tournament.pendingMatch(br))) autoResolveMatch(br, m);
+    }
+    resumeDay();
+  }
+  function enterArena() { startDay(); }
+
+  /* Advance the player's bracket: NPC bouts resolve instantly; stop when it's
+   * the player's turn to fight (bracket screen) or the band is decided. */
+  function resumeDay() {
+    const br = state.playerBracket;
+    if (!br) { go("home"); return; }
+    while (!br.winner) {
+      const pending = br.matches.filter((m) => !m.winner);
+      const npcMatch = pending.find((m) => m.a !== "player" && m.b !== "player");
+      if (npcMatch) { autoResolveMatch(br, npcMatch); continue; }
+      const mine = pending.find((m) => m.a === "player" || m.b === "player");
+      if (mine) {
+        state.pendingBout = mine;
+        state.screen = "bracket";
+        save(); emit();
+        return;
+      }
+      break; // no pending matches at all (shouldn't happen)
+    }
+    finishDay();
+  }
+
+  // Sunset: build the winners' board, crown the day, clean up.
+  function finishDay(keepScreen) {
+    const champion = state.playerBracket && state.playerBracket.winner === "player";
+    state.lastDay = {
+      band: state.playerBracket ? state.playerBracket.band : 0,
+      bandLabel: G.tournament.bandLabel(state.playerBracket ? state.playerBracket.band : 0),
+      boutsWon: state.playerBracket ? state.playerBracket.boutsWon.player || 0 : 0,
+      champion,
+      board: state.day.brackets.map((br) => ({
+        band: br.band,
+        label: G.tournament.bandLabel(br.band),
+        name: champName(br.winner),
+        classId: br.winner === "player" ? state.player.classId : (state.dayById[br.winner] || {}).classId,
+        boutsWon: br.boutsWon[br.winner] || 0,
+        isPlayer: br.winner === "player",
+      })),
+    };
+    state.day = null; state.playerBracket = null; state.dayById = null; state.pendingBout = null;
+    if (champion) state.screen = "day-champion";
+    else if (!keepScreen) state.screen = "loss"; // normally already there
+    save(); emit();
+  }
+
+  function champName(id) {
+    if (id === "player") return state.player.name;
+    const c = (state.dayById && state.dayById[id]) || npcById(id);
+    return c ? c.name : "?";
+  }
+
+  // The player steps onto the sand for their pending bout.
+  function fightBout() {
+    const m = state.pendingBout;
+    if (!m || state.screen !== "bracket") return;
+    const foeId = m.a === "player" ? m.b : m.a;
+    state.foe = state.dayById[foeId];
+    state.battle = G.combat.newBattle(playerCombatChar(), state.foe, m.seed);
     state.allocPending = false;
     state.screen = "battle";
     emit();
   }
-  function enterArena() { state.streak = 0; startBattle(); }
 
   function chooseAction(actionId) {
     const b = state.battle;
@@ -152,8 +260,32 @@
     state.player.activeArrow = state.battle.you.activeArrow || "normal";
     state.player.armor = state.battle.you.armor; // may become null if it broke
     state.player.armorDurability = state.battle.you.armorDurability;
-    if (state.battle.phase === "won") onWin();
-    else if (state.battle.phase === "lost") onLoss();
+    if (state.battle.phase === "won") {
+      const m = state.pendingBout;
+      if (m && state.playerBracket) {
+        m.rounds = state.battle.round;
+        G.tournament.reportBout(state.playerBracket, m, "player");
+        state.pendingBout = null;
+      }
+      onWin(); // win screen first; "Continue the day" resumes the bracket
+    } else if (state.battle.phase === "lost") {
+      const m = state.pendingBout;
+      if (m && state.playerBracket) {
+        m.rounds = state.battle.round;
+        const foeId = m.a === "player" ? m.b : m.a;
+        G.tournament.reportBout(state.playerBracket, m, foeId);
+        applyNpcBout(foeId); // beating you is a career win for them
+        state.pendingBout = null;
+      }
+      onLoss(); // loss screen
+      // The bracket finishes without you; sunset board lands on the loss screen.
+      if (state.playerBracket) {
+        const br = state.playerBracket;
+        let nm;
+        while (!br.winner && (nm = G.tournament.pendingMatch(br))) autoResolveMatch(br, nm);
+        finishDay(true); // keep the loss screen
+      }
+    }
     emit();
   }
 
@@ -192,21 +324,46 @@
     save(); emit();
   }
 
-  function fightOn() { startBattle(); }
-  function retreat() { state.streak = 0; go("home"); }
+  // From the win screen: continue the day (next bout, or the sunset if you
+  // just took the final).
+  function fightOn() {
+    if (state.day && state.playerBracket) resumeDay();
+    else go("home");
+  }
+
+  /* Withdraw from the day. Mid-tournament this is a FORFEIT: your remaining
+   * opponents advance by walkover (no career win — nobody fought). */
+  function retreat() {
+    if (state.day && state.playerBracket && state.playerBracket.winner) { finishDay(); return; } // day already decided
+    if (state.day && state.playerBracket) {
+      const br = state.playerBracket;
+      let m;
+      while (!br.winner && (m = G.tournament.pendingMatch(br))) {
+        if (m.a === "player" || m.b === "player") {
+          m.forfeit = true;
+          G.tournament.reportBout(br, m, m.a === "player" ? m.b : m.a); // walkover
+        } else {
+          autoResolveMatch(br, m);
+        }
+      }
+      finishDay(true); // never crowns the player — they withdrew
+    }
+    state.streak = 0; go("home");
+  }
   function returnHome() { state.streak = 0; go("home"); }
 
   function resetGame() {
     try { localStorage.removeItem(SAVE_KEY); } catch (e) {}
-    state.player = null; state.streak = 0; state.battle = null; state.foe = null;
+    state.player = null; state.npcs = []; state.streak = 0; state.battle = null; state.foe = null;
+    state.day = null; state.playerBracket = null; state.dayById = null; state.pendingBout = null; state.lastDay = null;
     state.allocPending = false; state.screen = "title";
     emit();
   }
 
   G.game = {
     state, subscribe, load, save,
-    computeMax,
-    createCharacter, go, enterArena, chooseAction,
+    computeMax, champName,
+    createCharacter, go, enterArena, fightBout, chooseAction,
     allocate, fightOn, retreat, returnHome, resetGame,
     openVendor, closeVendor, buyItem, buyArrow, loadArrow, buyArmor,
   };

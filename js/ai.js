@@ -101,5 +101,5 @@
     return "attack";
   }
 
-  G.ai = { generateFoe, chooseAction, maxPools };
+  G.ai = { generateFoe, chooseAction, maxPools, bestAffordableArmor };
 })(typeof window !== "undefined" ? window : globalThis);

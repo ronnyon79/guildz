@@ -90,9 +90,60 @@
           <div class="card-sub">${pools} · ${p.wins} wins · best streak ${p.bestStreak} 🔥</div></div></div>
         ${classStats(p.classId)}
       </div>
-      <button class="btn block lg gold" data-act="enter-arena">⚔️ Enter the Arena</button>
-      <p class="card-sub center" style="margin-top:12px">Win streaks earn 🪙50 gold each. Fights open at missile range — <b>Move</b> to close or open the gap, or <b>Attack</b>. Lose once and the day ends, but you keep all gold and stat gains.</p>
+      <button class="btn block lg gold" data-act="enter-arena">🌅 Enter the Day's Tournament</button>
+      <p class="card-sub center" style="margin-top:12px">Each day is a knockout tournament in your win-band (${G.tournament.bandLabel(G.tournament.bandOf(p.wins))}). Every bout won earns gold and stats — lose once and your day ends, but you keep everything. Win them all to be <b>Champion of the Day</b>.</p>
     </div>` + tabbar("home");
+  }
+
+  // ---------- the day's bracket ----------
+  function sunsetBoard(lastDay) {
+    if (!lastDay || !lastDay.board || !lastDay.board.length) return "";
+    const rows = lastDay.board.map((w) => `<div class="card"><div class="card-row">
+      <div class="avatar">${w.classId && CLASSES[w.classId] ? CLASSES[w.classId].emoji : "🏆"}</div>
+      <div><div class="card-title">${w.isPlayer ? `<span class="you">${esc(w.name)}</span>` : esc(w.name)} ${w.isPlayer ? '<span class="pill on">you</span>' : ""}</div>
+      <div class="card-sub">Band ${w.label} · ${w.boutsWon} bout${w.boutsWon === 1 ? "" : "s"} won</div></div></div></div>`).join("");
+    return `<div class="screen-title">🌇 Sunset — champions of the day</div>${rows}`;
+  }
+
+  function screenBracket(s) {
+    const br = s.playerBracket, m = s.pendingBout;
+    if (!br) return screenHome(s);
+    const name = (id) => game.champName(id);
+    const tag = (id) => (id === "player"
+      ? `<span class="you"><b>${esc(s.player.name)}</b></span>`
+      : esc(name(id)));
+    const rounds = [];
+    for (let r = 1; r <= br.round; r++) {
+      const ms = br.matches.filter((x) => x.round === r);
+      if (!ms.length) continue;
+      const lines = ms.map((x) => {
+        const vs = `${tag(x.a)} <span class="sys">vs</span> ${tag(x.b)}`;
+        if (x.winner) return `<div class="card-sub">⚔️ ${vs} — <b>${x.winner === "player" ? `<span class="you">${esc(s.player.name)}</span>` : esc(name(x.winner))}</b> wins${x.forfeit ? " (walkover)" : ""}</div>`;
+        if (x === m) return `<div class="card-sub">🔥 ${vs} — <b>your bout</b></div>`;
+        return `<div class="card-sub">⏳ ${vs}</div>`;
+      }).join("");
+      const bye = br.byes.filter((b) => b.round === r).map((b) => `<div class="card-sub">🍀 ${tag(b.id)} draws a bye</div>`).join("");
+      rounds.push(`<div class="card"><div class="card-title">Round ${r}</div>${lines}${bye}</div>`);
+    }
+    const alive = br.alive.length;
+    return topbar(s.player) + `<div class="screen">
+      <div class="screen-title">🏟️ Band ${G.tournament.bandLabel(br.band)} — ${br.entrants.length} fighters</div>
+      ${rounds.join("")}
+      <button class="btn block lg gold" data-act="fight-bout">⚔️ Fight your bout</button>
+      <button class="btn ghost block sm" style="margin-top:8px" data-act="retreat">Withdraw (forfeit the day)</button>
+      <p class="card-sub center" style="margin-top:10px">${alive} still standing. The other bands fought at dawn — all champions are honoured at sunset.</p>
+    </div>`;
+  }
+
+  function screenDayChampion(s) {
+    const d = s.lastDay || {};
+    return `<div class="result win">
+      <div class="result-emoji">👑</div>
+      <div class="result-title">Champion of the Day!</div>
+      <p class="muted">You took Band ${d.bandLabel} — ${d.boutsWon} bout${d.boutsWon === 1 ? "" : "s"} won${d.boutsWon === 0 ? " (a walkover — no challengers)" : ""}.</p>
+      ${sunsetBoard(d)}
+      <div class="result-actions"><button class="btn block" data-act="return-home">Return home 🌇</button></div>
+    </div>`;
   }
 
   // ---------- battle ----------
@@ -349,7 +400,7 @@
       : "";
 
     return `<div class="battle">
-      <div class="battle-head"><span class="round">Round ${b.round}</span><span class="streak-pill">${s.streak} win streak 🔥</span></div>
+      <div class="battle-head"><span class="round">Round ${b.round}</span><span class="streak-pill">${s.streak} bout${s.streak === 1 ? "" : "s"} won 🔥</span></div>
       ${fighterPanel(b.foe, "foe")}
       ${rangeBanner(b.range)}
       ${fighterPanel(b.you, "you")}
@@ -381,16 +432,18 @@
         </div></div>`;
     } else {
       const gained = isMage ? "Points allocated." : "+2 HP";
+      const tookFinal = s.playerBracket && s.playerBracket.winner === "player";
       allocBlock = `<p class="muted">${gained}</p>
-      <div class="result-actions">
-        <button class="btn ghost" data-act="retreat">Retreat &amp; bank</button>
-        <button class="btn good" data-act="fight-on">Fight on ⚔️</button>
+      <div class="result-actions">` + (tookFinal
+        ? `<button class="btn good" data-act="fight-on">🌇 To the sunset</button>`
+        : `<button class="btn ghost" data-act="retreat">Withdraw &amp; bank</button>
+        <button class="btn good" data-act="fight-on">Continue the day ⚔️</button>`) + `
       </div>`;
     }
     return `<div class="result win">
       <div class="result-emoji">🏆</div>
       <div class="result-title">Victory!</div>
-      <p class="muted">${s.streak} win streak</p>
+      <p class="muted">${s.streak} bout${s.streak === 1 ? "" : "s"} won today</p>
       ${recapBlock(s.battle, p.name, true)}
       <div class="reward-grid"><div class="reward"><b>+${r.gold}</b><span>🪙 gold</span></div></div>
       ${allocBlock}
@@ -403,8 +456,9 @@
       <div class="result-emoji">💀</div>
       <div class="result-title">Defeated</div>
       ${recapBlock(s.battle, s.player.name, false)}
-      <p class="muted">You fell after a streak of <b>${r.streak}</b>. The day is over — but your gold and stat gains are yours to keep.</p>
-      ${r.reachedBest && r.streak > 0 ? `<div class="levelup">🔥 New best streak: ${r.streak}!</div>` : ""}
+      <p class="muted">You fell after <b>${r.streak}</b> bout${r.streak === 1 ? "" : "s"} won. Your day is over — but your gold and stat gains are yours to keep.</p>
+      ${r.reachedBest && r.streak > 0 ? `<div class="levelup">🔥 New best day: ${r.streak} bouts!</div>` : ""}
+      ${sunsetBoard(s.lastDay)}
       <div class="result-actions"><button class="btn block" data-act="return-home">Return home</button></div>
     </div>`;
   }
@@ -565,6 +619,8 @@
       case "title": html = screenTitle(); break;
       case "class-select": html = screenClassSelect(); break;
       case "home": html = screenHome(s); break;
+      case "bracket": html = screenBracket(s); break;
+      case "day-champion": html = screenDayChampion(s); break;
       case "battle": html = screenBattle(s); break;
       case "win": html = screenWin(s); break;
       case "loss": html = screenLoss(s); break;
@@ -596,6 +652,7 @@
       }
       case "tab": game.go(arg); break;
       case "enter-arena": game.enterArena(); break;
+      case "fight-bout": game.fightBout(); break;
       case "battle-action": game.chooseAction(arg); break;
       case "alloc": game.allocate(parseInt(arg, 10)); break;
       case "fight-on": game.fightOn(); break;
