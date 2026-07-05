@@ -97,16 +97,42 @@
     </div>`;
   }
 
+  // The seat of power: who rules, and — when you've earned it — the challenge.
+  function lordBlock(s) {
+    const p = s.player;
+    if (p.role === "lord") {
+      return `<div class="card"><div class="card-row"><div class="avatar">👑</div>
+        <div><div class="card-title"><span class="you">${esc(p.name)}</span> <span class="pill on">Lord of the Stronghold</span></div>
+        <div class="card-sub">You rule these sands. (Running the Stronghold — Lord mode — arrives in a coming update; the arena remains yours to fight in.)</div></div></div></div>`;
+    }
+    const L = s.lord;
+    if (!L) return "";
+    const lordCard = `<div class="card"><div class="card-row"><div class="avatar">👑</div>
+      <div><div class="card-title">Lord ${esc(L.name)} <span class="pill">${CLASSES[L.classId].name}</span></div>
+      <div class="card-sub">${L.wins}-win champion of old · reigning ${L.reignSeasons} season${L.reignSeasons === 1 ? "" : "s"}${p.role === "servant" ? " · <b>you serve his household</b>" : ""}</div></div></div></div>`;
+    if (!s.challengeOpen) return lordCard;
+    const uprising = p.role === "servant";
+    return lordCard + `<div class="card" style="border-color:#b9a06a">
+      <div class="card-title">${uprising ? "🗡️ RISE AGAINST YOUR LORD" : "⚔️ The throne can be YOURS"}</div>
+      <div class="card-sub">${uprising
+        ? "You top the fame ladder — even in servitude. An uprising is a fight <b>to the death</b>: win and the throne is yours; lose and there is no mercy."
+        : `You ended the season as the most famous in the Stronghold. Challenge Lord ${esc(L.name)} for the throne — he'll be fresh, on his own sand, with the crowd at his back. Or enter the day's tournament and let the moment pass.`}</div>
+      <button class="btn block lg" style="margin-top:10px" data-act="challenge-lord">${uprising ? "🗡️ Rise — to the death" : "👑 Challenge the Lord"}</button>
+    </div>`;
+  }
+
   function screenHome(s) {
     const p = s.player, m = game.computeMax(p);
     const pools = CLASSES[p.classId].caster ? `${m.maxHp} HP · ${m.maxMp} MP` : `${m.maxHp} HP`;
+    const rolePill = p.role === "servant" ? ` <span class="pill">🙇 servant</span>` : p.role === "lord" ? ` <span class="pill on">👑 Lord</span>` : "";
     return topbar(p) + `<div class="screen">
       <div class="card">
         <div class="card-row"><div class="avatar">${CLASSES[p.classId].emoji}</div>
-          <div><div class="card-title">${esc(p.name)} <span class="pill">${CLASSES[p.classId].name}</span></div>
+          <div><div class="card-title">${esc(p.name)} <span class="pill">${CLASSES[p.classId].name}</span>${rolePill}</div>
           <div class="card-sub">${pools} · ${p.wins} wins · best streak ${p.bestStreak} 🔥</div></div></div>
         ${classStats(p.classId)}
       </div>
+      ${lordBlock(s)}
       <button class="btn block lg gold" data-act="enter-arena">🌅 Enter the Day's Tournament</button>
       <p class="card-sub center" style="margin-top:12px"><b>Day ${s.clock.day} · Season ${s.clock.season}</b></p>
       <p class="card-sub center" style="margin-top:6px">Each day is a knockout tournament in your win-band (${G.tournament.bandLabel(G.tournament.bandOf(p.wins))}). Every bout won earns gold and stats — lose once and your day ends, but you keep everything. Take the band to be <b>Champion of the Day</b> and earn ⭐ fame — the most famous at season's end may challenge the Lord.</p>
@@ -123,7 +149,7 @@
     let season = "";
     if (lastDay.seasonEnd) {
       const t = lastDay.seasonEnd.top[0];
-      season = `<div class="levelup">🍂 Season ${lastDay.seasonEnd.season} ends! ${t ? `${t.isPlayer ? "<b>You</b>" : `<b>${esc(t.name)}</b>`} top${t.isPlayer ? "" : "s"} the fame ladder with ⭐ ${t.popularity}.` : ""} All fame fades by half as the new season dawns.</div>`;
+      season = `<div class="levelup">🍂 Season ${lastDay.seasonEnd.season} ends! ${t ? `${t.isPlayer ? "<b>You</b>" : `<b>${esc(t.name)}</b>`} top${t.isPlayer ? "" : "s"} the fame ladder with ⭐ ${t.popularity}.` : ""} All fame fades by half as the new season dawns.${lastDay.mayChallenge ? " <b>👑 The right to challenge the Lord is yours — it awaits you at home.</b>" : ""}</div>`;
     }
     return `<div class="screen-title">🌇 Sunset — champions of the day</div>${rows}${season}`;
   }
@@ -189,6 +215,60 @@
       ${d.popGain ? `<div class="reward-grid"><div class="reward"><b>+${d.popGain}</b><span>⭐ fame</span></div></div>` : ""}
       ${sunsetBoard(d)}
       <div class="result-actions"><button class="btn block" data-act="return-home">Return home 🌇</button></div>
+    </div>`;
+  }
+
+  // ---------- the throne (GUI-9 / GUI-10) ----------
+  function screenCoronation(s) {
+    const t = s.lastThrone || {};
+    return `<div class="result win">
+      <div class="result-emoji">👑</div>
+      <div class="result-title">CORONATION</div>
+      <p class="muted">${t.uprising ? "The uprising succeeds — the household kneels to its new master." : "The crowd falls silent, then erupts —"} <b><span class="you">${esc(s.player.name)}</span>, Lord of the Stronghold!</b></p>
+      ${crowdBlock(s.lastSpec)}
+      <p class="muted">${esc(t.lordName)} ${t.lordStays
+        ? "swallows his pride and stays — the fallen Lord will fight in <b>your</b> arena."
+        : "rides out of the gates, never to return."}</p>
+      <p class="card-sub center">Ruling the Stronghold — rents, purses, taxes, your household — arrives with Lord mode in a coming update. Until then, the arena remains yours to fight in.</p>
+      <div class="result-actions"><button class="btn block" data-act="return-home">To the high seat 👑</button></div>
+    </div>`;
+  }
+
+  function screenThroneFate(s) {
+    const t = s.lastThrone || {};
+    return `<div class="result loss">
+      <div class="result-emoji">⚖️</div>
+      <div class="result-title">The Lord stands over you</div>
+      ${crowdBlock(s.lastSpec)}
+      <p class="muted">Lord ${esc(t.lordName)} lowers his blade and offers you a choice. Choose your fate:</p>
+      <div class="card class-card" data-act="fate" data-arg="serve"><div class="card-row"><div class="avatar">🙇</div>
+        <div><div class="card-title">Serve</div><div class="card-sub">Join his household. Keep fighting the daily brackets in his service — top the fame ladder again and you may <b>rise against him, to the death</b>.</div></div></div></div>
+      <div class="card class-card" data-act="fate" data-arg="exile"><div class="card-row"><div class="avatar">🚪</div>
+        <div><div class="card-title">Exile</div><div class="card-sub"><b>One-way.</b> Walk out of the gates forever. (The wilds — and founding your own Stronghold — arrive with Exile mode; your story ends here for now.)</div></div></div></div>
+      <div class="card class-card" data-act="fate" data-arg="die"><div class="card-row"><div class="avatar">💀</div>
+        <div><div class="card-title">Die</div><div class="card-sub">Meet the blade with your eyes open. <b>Permanent.</b></div></div></div></div>
+    </div>`;
+  }
+
+  function screenMemorial(s) {
+    const t = s.lastThrone || {};
+    return `<div class="result loss">
+      <div class="result-emoji">🪦</div>
+      <div class="result-title">${t.fate === "uprising" ? "The uprising fails" : "Here ends the tale"}</div>
+      <p class="muted">${t.fate === "uprising"
+        ? `A servant who rises gets no second chance. Lord ${esc(t.lordName)} shows no mercy.`
+        : `${esc((s.player || {}).name || "The champion")} chose to meet the end unbowed.`}</p>
+      <p class="card-sub center">The save is gone — as permanent as the grave. The Stronghold will remember.</p>
+      <div class="result-actions"><button class="btn block" data-act="reset-hard">⚔️ A new champion rises</button></div>
+    </div>`;
+  }
+
+  function screenExiled(s) {
+    return `<div class="result loss">
+      <div class="result-emoji">🚪</div>
+      <div class="result-title">Into the wilds</div>
+      <p class="muted">The gates close behind ${esc((s.player || {}).name || "you")}. The Stronghold, the crowds, the fame — all of it, behind you now. One day the wilds themselves will be yours to survive… but that story waits for Exile mode.</p>
+      <div class="result-actions"><button class="btn block" data-act="reset-hard">⚔️ A new champion rises</button></div>
     </div>`;
   }
 
@@ -670,6 +750,10 @@
       case "fame": html = screenFame(s); break;
       case "bracket": html = screenBracket(s); break;
       case "day-champion": html = screenDayChampion(s); break;
+      case "coronation": html = screenCoronation(s); break;
+      case "throne-fate": html = screenThroneFate(s); break;
+      case "memorial": html = screenMemorial(s); break;
+      case "exiled": html = screenExiled(s); break;
       case "battle": html = screenBattle(s); break;
       case "win": html = screenWin(s); break;
       case "loss": html = screenLoss(s); break;
@@ -702,6 +786,18 @@
       case "tab": game.go(arg); break;
       case "enter-arena": game.enterArena(); break;
       case "fight-bout": game.fightBout(); break;
+      case "challenge-lord": {
+        const uprising = game.state.player.role === "servant";
+        if (confirm(uprising ? "An uprising is a fight TO THE DEATH — lose and your story ends. Rise?" : "Challenge the Lord for the throne?")) game.challengeLord();
+        break;
+      }
+      case "fate": {
+        if (arg === "die" && !confirm("Meet the blade. This is PERMANENT — your save will be erased. Are you sure?")) break;
+        if (arg === "exile" && !confirm("Exile is one-way — your story ends here (for now). Walk out?")) break;
+        game.chooseFate(arg);
+        break;
+      }
+      case "reset-hard": game.resetGame(); break;
       case "battle-action": game.chooseAction(arg); break;
       case "alloc": game.allocate(parseInt(arg, 10)); break;
       case "fight-on": game.fightOn(); break;

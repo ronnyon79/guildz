@@ -275,6 +275,24 @@ cap (3) & per-bout replenish (50%)**, servant **upkeep/housing** cost, and **ser
   on win/loss screens (+comeback/nail-biter/rout callouts); ★ on bracket rows. 13 headless
   tests (`tools/test_spectacle.js`) + 68 regressions. Weights/thresholds = GUI-32 sim knobs.
 
+- **GUI-9 + GUI-10 The Lord, the throne & the fates — v0.6.0** ✅ The Rise arc is COMPLETE.
+  World-gen Lord (veteran ex-champion, 40–60 wins, seeded, reign backstory; old saves
+  migrate). Season's #1 = you → **challenge opens** (optional; entering the next day
+  declines). Throne duel with the decided kit: Lord fresh at full HP/MP, **dictates the
+  opening range** (engine: newBattle openRange param), **one perk by class** — caster →
+  treasury (1 HP + 1 MP potion), martial → armory (top enchanted armor + fire arrows);
+  crowd (+5/+5, engine toHit/toCritBonus) implemented for the player-as-Lord era. **Win →
+  CORONATION**: role = lord, +1 career win, deposed Lord stays as a resident (60%, seeded)
+  or rides out; Lord-mode handoff is a placeholder ("coming update"), exhibition days
+  continue. **Lose → die / serve / exile** (GUI-10): die = permadeath (save wiped at
+  choice, memorial); exile = one-way run-end stub (Exile mode later); serve = PLAYABLE —
+  fight on in his household, top the ladder again → **UPRISING, to the death** (loss =
+  instant permadeath). Interim scope recorded: single duel (gauntlet = GUI-16), player-only
+  challenges (NPC challengers = Defend phase). 31 headless tests (`tools/test_throne.js`) +
+  81 regressions. ⚠️ BALANCE FINDING for GUI-31: Lord difficulty swings wildly by his class
+  — a 60-win MAGE lord (poison bypasses armor + elemental + mana potion) burned down a
+  481-HP test titan, while martial lords are far tamer. Tune in the reign sim.
+
 ### Build order (when the user says go)
 1. **Champion summit** — NPC population + Popularity ladder + Lord boss fight (finish
    the Rise). Small, self-contained, reuses combat entirely.

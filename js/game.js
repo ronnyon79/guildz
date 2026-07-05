@@ -7,7 +7,7 @@
  */
 (function (root) {
   const G = (root.G = root.G || {});
-  const { CLASSES, ITEMS, ARROWS, ARMOR, ARMOR_MAXTIER, goldForWin, POINTS_PER_WIN, POPULARITY, SEASON } = G.data;
+  const { CLASSES, ITEMS, ARROWS, ARMOR, ARMOR_MAXTIER, goldForWin, POINTS_PER_WIN, POPULARITY, SEASON, LORD, FOE_NAMES, EPITHETS, totalGoldAt } = G.data;
 
   const SAVE_KEY = "guildz.save.v2";
   const listeners = new Set();
@@ -16,8 +16,12 @@
     screen: "title", // title | class-select | home | bracket | battle | win | loss | day-champion | shop | hero
     player: null,
     npcs: [],            // the Stronghold's resident champions (persisted)
+    lord: null,          // the reigning Lord (persisted; null once YOU reign)
     clock: { day: 1, season: 1 }, // the world clock (persisted)
     lastSeason: null,    // last season's final fame standings (persisted)
+    challengeOpen: false, // season's #1 = you → the throne may be challenged (persisted)
+    throneFight: false,  // transient: the current battle is the throne duel
+    lastThrone: null,    // outcome details for the coronation / fate screens
     streak: 0,           // bouts won today
     battle: null,
     foe: null,
@@ -52,7 +56,7 @@
 
   // ---- persistence ----
   function save() {
-    try { localStorage.setItem(SAVE_KEY, JSON.stringify({ player: state.player, npcs: state.npcs, clock: state.clock, lastSeason: state.lastSeason, seedCounter: state.seedCounter })); }
+    try { localStorage.setItem(SAVE_KEY, JSON.stringify({ player: state.player, npcs: state.npcs, lord: state.lord, clock: state.clock, lastSeason: state.lastSeason, challengeOpen: state.challengeOpen, seedCounter: state.seedCounter })); }
     catch (e) {}
   }
   function load() {
@@ -78,6 +82,11 @@
       for (const n of state.npcs) if (n.popularity == null) n.popularity = 0;
       state.clock = data.clock && data.clock.day ? data.clock : { day: 1, season: 1 };
       state.lastSeason = data.lastSeason || null;
+      // Migrate saves created before the Lord existed.
+      if (state.player.role == null) state.player.role = "champion";
+      state.lord = data.lord !== undefined ? data.lord
+        : generateLord((state.player.worldSeed || state.seedCounter * 97) + 1);
+      state.challengeOpen = !!data.challengeOpen;
       state.screen = "home";
       return true;
     } catch (e) { return false; }
@@ -106,11 +115,15 @@
       armor: null,   // equipped armor id
       armorDurability: 0,
       popularity: 0, // fame — the ladder to the Lord's throne
+      role: "champion", // champion | servant | lord
       worldSeed: seed, // seeds this world's population (deterministic world-gen)
     };
     state.npcs = G.roster.generateRoster(seed, state.player.name);
+    state.lord = generateLord(seed + 1);
     state.clock = { day: 1, season: 1 };
     state.lastSeason = null;
+    state.challengeOpen = false;
+    state.lastThrone = null;
     state.screen = "home";
     save(); emit();
   }
@@ -181,6 +194,7 @@
 
   function startDay() {
     state.streak = 0;
+    state.challengeOpen = false; // stepping onto the sand lets the moment pass
     const pc = playerCombatChar();
     pc.id = "player";
     const champs = [pc, ...state.npcs.map((n) => G.roster.combatChar(n))];
@@ -256,11 +270,16 @@
         season: state.clock.season,
         top: fameLadder().slice(0, 3).map((r) => ({ name: r.name, classId: r.classId, popularity: r.popularity, isPlayer: !!r.isPlayer })),
       };
+      // The season's #1 — if that's YOU — earns the right to challenge the
+      // Lord (optional). Standings are judged pre-decay.
+      state.challengeOpen = !!(state.lord && state.player.role !== "lord" &&
+        state.lastSeason.top[0] && state.lastSeason.top[0].isPlayer && state.lastSeason.top[0].popularity > 0);
       state.player.popularity = Math.round((state.player.popularity || 0) / 2);
       for (const n of state.npcs) n.popularity = Math.round((n.popularity || 0) / 2);
       state.clock.season += 1;
       state.clock.day = 1;
       state.lastDay.seasonEnd = state.lastSeason; // surfaced on the sunset screens
+      state.lastDay.mayChallenge = state.challengeOpen;
     }
 
     state.day = null; state.playerBracket = null; state.dayById = null; state.pendingBout = null;
@@ -307,6 +326,14 @@
     state.player.activeArrow = state.battle.you.activeArrow || "normal";
     state.player.armor = state.battle.you.armor; // may become null if it broke
     state.player.armorDurability = state.battle.you.armorDurability;
+    // The throne duel resolves outside the brackets.
+    if (state.throneFight && state.battle.phase !== "choose") {
+      state.lastSpec = G.spectacle.rate(state.battle, state.battle.phase === "won" ? "you" : "foe");
+      if (state.battle.phase === "won") coronation();
+      else throneLoss();
+      emit();
+      return;
+    }
     if (state.battle.phase === "won") {
       const m = state.pendingBout;
       state.lastSpec = G.spectacle.rate(state.battle, "you"); // the crowd's verdict
@@ -404,18 +431,152 @@
   }
   function returnHome() { state.streak = 0; go("home"); }
 
+  /* ---- the Lord & the throne (GUI-9 / GUI-10) ----
+   * The Lord is a career-statted ex-champion made at world-gen. At each
+   * season's end, if YOU top the fame ladder, the right to challenge is yours
+   * (optional — entering the next day's tournament lets the moment pass).
+   * Interim scope until Lord mode lands: a single duel (the servant gauntlet
+   * arrives with the household, GUI-16); only the player challenges (NPC
+   * challengers arrive with the Defend phase). */
+
+  function generateLord(seed) {
+    const rng = G.engine.makeRng(seed >>> 0);
+    const name = G.engine.pick(rng, FOE_NAMES) + " " + G.engine.pick(rng, EPITHETS);
+    return {
+      name,
+      classId: G.engine.pick(rng, Object.keys(CLASSES)),
+      wins: G.engine.randInt(rng, LORD.wins[0], LORD.wins[1]),
+      reignSeasons: G.engine.randInt(rng, 1, 4), // backstory: seasons already held
+    };
+  }
+
+  /* The Lord's throne-duel kit (decided): fresh at full HP/MP, dictates the
+   * opening range, plus ONE perk — the AI picks by class:
+   *   caster (mage/cleric) → treasury (1 HP + 1 MP potion — refuels the kit)
+   *   martial (fighter/thief) → armory (top-tier ENCHANTED armor + arrows)
+   * (Home-crowd +hit/+crit exists for the player-as-Lord era, GUI-43.) */
+  function lordCombatChar() {
+    const L = state.lord, c = CLASSES[L.classId];
+    const pools = G.ai.maxPools(L.classId, L.wins, 0.6);
+    const char = {
+      id: "lord", name: L.name, classId: L.classId, wins: L.wins,
+      maxHp: pools.maxHp, maxMp: pools.maxMp,
+      meleeWeapon: c.startEq.melee, missileWeapon: c.startEq.missile,
+      items: {}, arrows: [], activeArrow: "normal",
+      armor: null, armorDurability: 0, isPlayer: false,
+    };
+    if (c.caster) {
+      char.perk = "treasury";
+      char.items = { ...LORD.treasury };
+      const a = G.ai.bestAffordableArmor(L.classId, totalGoldAt(L.wins));
+      if (a) { char.armor = a; char.armorDurability = ARMOR[a].durability; }
+    } else {
+      char.perk = "armory";
+      // The vault: best enchanted piece his class can wear.
+      const best = Object.values(ARMOR)
+        .filter((a) => a.magical && a.tier <= (ARMOR_MAXTIER[L.classId] || 0))
+        .sort((a, b) => b.dr - a.dr)[0];
+      if (best) { char.armor = best.id; char.armorDurability = best.durability; }
+      if (L.classId === "thief") { char.arrows = ["fire"]; char.activeArrow = "fire"; }
+    }
+    return char;
+  }
+
+  // The throne duel. As a servant this is an UPRISING — lose and you die.
+  function challengeLord() {
+    if (!state.challengeOpen || !state.lord) return;
+    state.challengeOpen = false;
+    const lord = lordCombatChar();
+    // Home-arena advantage: the Lord dictates the opening range.
+    const openRange = CLASSES[lord.classId].caster ? "missile" : "melee";
+    state.foe = lord;
+    state.throneFight = true;
+    state.battle = G.combat.newBattle(playerCombatChar(), lord, nextSeed(), openRange);
+    state.allocPending = false;
+    state.screen = "battle";
+    save(); emit();
+  }
+
+  // Victory: the throne changes hands.
+  function coronation() {
+    const p = state.player, L = state.lord;
+    p.wins += 1; p.battlesWon += 1; // the duel is a career victory (the prize is the throne)
+    const uprising = p.role === "servant";
+    // The deposed Lord's fate (no personality system yet — seeded):
+    // most swallow their pride and stay to fight in your arena; some ride out.
+    const rng = G.engine.makeRng((p.worldSeed || 1) + state.clock.season * 131);
+    const stays = rng() < 0.6;
+    if (stays) {
+      state.npcs.push({ id: "x" + state.clock.season + "_" + state.npcs.length, name: L.name, classId: L.classId, wins: L.wins, popularity: 0 });
+    }
+    state.lastThrone = { won: true, uprising, lordName: L.name, lordStays: stays };
+    p.role = "lord";
+    state.lord = null; // the throne is YOURS
+    state.throneFight = false;
+    state.screen = "coronation";
+    save();
+  }
+
+  // Defeat: the fates. A failed UPRISING grants no mercy — death, immediately.
+  function throneLoss() {
+    state.throneFight = false;
+    if (state.player.role === "servant") { // failed uprising: fight to the death
+      state.lastThrone = { won: false, uprising: true, lordName: state.lord.name };
+      perish("uprising");
+      return;
+    }
+    state.lastThrone = { won: false, uprising: false, lordName: state.lord.name };
+    state.screen = "throne-fate";
+    save();
+  }
+
+  // Permadeath: the save is wiped NOW (no reload resurrection); the memorial
+  // screen lives on in-memory until "New Game".
+  function perish(kind) {
+    try { localStorage.removeItem(SAVE_KEY); } catch (e) {}
+    state.lastThrone = { ...(state.lastThrone || {}), fate: kind === "uprising" ? "uprising" : "die" };
+    state.screen = "memorial";
+    emit();
+  }
+
+  // The three fates (GUI-10) after losing to the Lord.
+  function chooseFate(fate) {
+    if (state.screen !== "throne-fate") return;
+    if (fate === "die") { perish("die"); return; }
+    if (fate === "exile") {
+      // One-way: you leave the Stronghold forever. (Exile mode — the wilds,
+      // founding your own hold — is a later build; the run ends here for now.)
+      try { localStorage.removeItem(SAVE_KEY); } catch (e) {}
+      state.lastThrone.fate = "exile";
+      state.screen = "exiled";
+      emit();
+      return;
+    }
+    if (fate === "serve") {
+      // Stay and rise from within: you keep fighting the daily brackets in his
+      // household. Top the fame ladder again to RISE AGAINST HIM — to the death.
+      state.player.role = "servant";
+      state.lastThrone.fate = "serve";
+      state.streak = 0;
+      save(); go("home");
+    }
+  }
+
   function resetGame() {
     try { localStorage.removeItem(SAVE_KEY); } catch (e) {}
-    state.player = null; state.npcs = []; state.streak = 0; state.battle = null; state.foe = null;
+    state.player = null; state.npcs = []; state.lord = null; state.streak = 0; state.battle = null; state.foe = null;
     state.day = null; state.playerBracket = null; state.dayById = null; state.pendingBout = null; state.lastDay = null;
+    state.clock = { day: 1, season: 1 }; state.lastSeason = null;
+    state.challengeOpen = false; state.throneFight = false; state.lastThrone = null;
     state.allocPending = false; state.screen = "title";
     emit();
   }
 
   G.game = {
     state, subscribe, load, save,
-    computeMax, champName, fameLadder,
+    computeMax, champName, fameLadder, lordCombatChar,
     createCharacter, go, enterArena, fightBout, chooseAction,
+    challengeLord, chooseFate,
     allocate, fightOn, retreat, returnHome, resetGame,
     openVendor, closeVendor, buyItem, buyArrow, loadArrow, buyArmor,
   };
