@@ -148,6 +148,7 @@
       ${lordBlock(s)}
       ${p.role === "lord"
         ? `${decreesBlock(s)}
+      ${buildingsBlock(s)}
       <button class="btn block lg gold" data-act="hold-games">👑 Hold the Day's Games</button>
       <p class="card-sub center" style="margin-top:12px"><b>Day ${s.clock.day} · Season ${s.clock.season}</b></p>
       <p class="card-sub center" style="margin-top:6px">Every band fights while you watch from the high seat. Champions earn fame in your arena — and one day, the boldest of them will come for your throne.</p>`
@@ -302,6 +303,23 @@
       ${row("taxRate", "🧾", "Sales tax", "%", "Heavy taxes leave champions poorly geared — and the fights duller.")}
       ${row("purse", "🏆", "Band purse", "g", "Fat purses draw crowds — and drain the coffers.")}
     </div>`;
+  }
+
+  // Stronghold buildings (GUI-15): level the arena, and it serves its Lord.
+  function buildingsBlock(s) {
+    const st = s.stronghold;
+    if (!st || !st.buildings) return "";
+    const rows = Object.entries(G.data.BUILDINGS).map(([id, def]) => {
+      const lvl = st.buildings[id] || 0;
+      const maxed = lvl >= def.max;
+      const cost = maxed ? null : def.costs[lvl];
+      const afford = cost != null && st.treasury >= cost;
+      return `<div class="card-row" style="margin-top:6px">
+        <div style="flex:1"><div class="card-title" style="font-size:14px">${def.emoji} ${def.name} <span class="pill">${"▮".repeat(lvl)}${"▯".repeat(def.max - lvl)}</span></div>
+        <div class="card-sub">${def.desc}</div></div>
+        ${maxed ? `<span class="pill on">MAX</span>` : `<button class="btn sm gold" data-act="build" data-arg="${id}" ${afford ? "" : "disabled"}>🏛️ ${cost}</button>`}</div>`;
+    }).join("");
+    return `<div class="card"><div class="card-title">🏗️ The Stronghold</div>${rows}</div>`;
   }
 
   // The Lord's view of a finished day: the games he presided over.
@@ -901,6 +919,7 @@
       case "hold-games": G.lord.holdGames(); break;
       case "decree": { const [k, d] = arg.split(":"); game.setDecree(k, parseInt(d, 10)); break; }
       case "view-bout": { const [di, bi] = arg.split(":"); game.openBout(parseInt(di, 10), parseInt(bi, 10)); break; }
+      case "build": toast(game.buyBuilding(arg) ? "Raised!" : "The treasury cannot bear it.") ; break;
       case "pick-class": ui.selectedClass = arg; render(game.state); break;
       case "create": {
         const name = (document.getElementById("hero-name") || {}).value || "";

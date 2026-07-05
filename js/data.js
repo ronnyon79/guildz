@@ -208,6 +208,19 @@
    * career stats; only the readable blow-by-blow ring-buffers). */
   const BOARD = { days: 3 };
 
+  /* Stronghold buildings (GUI-15): institutional power — the Lord levels the
+   * ARENA, and the arena defends its Lord. Treasury-funded, levels 0–3.
+   * seating/armory/yard act TODAY; infirmary/barracks power the throne
+   * DEFENCE (gauntlet, GUI-16) — regen for the defending Lord, servant slots. */
+  const BUILDINGS = {
+    seating:   { name: "Arena Seating", emoji: "🏟️", max: 3, costs: [300, 600, 1200], desc: "Bigger stands — +15 base crowd per level." },
+    armory:    { name: "Armory", emoji: "🛡️", max: 3, costs: [250, 500, 1000], desc: "Outfits the fighters — residents afford +5% gear per level, and it arms your throne defence." },
+    infirmary: { name: "Infirmary", emoji: "⛑️", max: 3, costs: [250, 500, 1000], desc: "Healers at your side — +2 HP per round per level when you defend the throne." },
+    barracks:  { name: "Barracks", emoji: "🏚️", max: 3, costs: [400, 800, 1600], desc: "Quarters for your household — one servant slot per level (the gauntlet)." },
+    yard:      { name: "Training Yard", emoji: "🎯", max: 3, costs: [200, 400, 800], desc: "Sparring drills — each day, one resident per level earns a win." },
+  };
+  const BUILDING_FX = { seatingCrowd: 15, armoryGear: 0.05, infirmaryRegen: 2 };
+
   const POPULARITY = {
     perBout: (band) => 5 + band,
     // Crowd Rating multiplier: 3★ (average) = ×1; a dull bout pays a third,
@@ -216,5 +229,5 @@
   };
   const SEASON = { days: 10 }; // days per season — first guess, tune via sim (GUI-30)
 
-  G.data = { CLASSES, WEAPONS, ARMOR, ARMOR_MAXTIER, VENDORS, ITEMS, ARROWS, GOLD_PER_WIN, goldForWin, totalGoldAt, POINTS_PER_WIN, CRIT_MULT, FOE_NAMES, EPITHETS, ROSTER, POPULARITY, SEASON, LORD, ECONOMY, BOARD };
+  G.data = { CLASSES, WEAPONS, ARMOR, ARMOR_MAXTIER, VENDORS, ITEMS, ARROWS, GOLD_PER_WIN, goldForWin, totalGoldAt, POINTS_PER_WIN, CRIT_MULT, FOE_NAMES, EPITHETS, ROSTER, POPULARITY, SEASON, LORD, ECONOMY, BOARD, BUILDINGS, BUILDING_FX };
 })(typeof window !== "undefined" ? window : globalThis);

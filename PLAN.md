@@ -331,6 +331,14 @@ cap (3) & per-bout replenish (50%)**, servant **upkeep/housing** cost, and **ser
   days recorded too. 13 headless tests (`tools/test_board.js`, incl. replay determinism:
   identical log twice, winner + length reproduced) + 156 regressions.
 
+- **GUI-15 Building upgrades — v0.10.0** ✅ Institutional power. data.BUILDINGS ×5, levels
+  0–3, treasury-funded (Lord-only, costs escalate, clamped): **Seating** (+15 base crowd/lvl
+  → gate, live) · **Armory** (+5% resident gear budgets/lvl — offsets the tax, live; also
+  arms the throne defence) · **Training Yard** (1 resident/lvl gains a sparring win per
+  presided day, live) · **Infirmary** (+2 HP/round/lvl for the DEFENDING Lord — lands with
+  the gauntlet) · **Barracks** (1 servant slot/lvl — the gauntlet's household cap, replacing
+  the flat 3). 🏗️ panel on the Lord's home. Migrations. 11 headless tests + 169 regressions.
+
 ### Build order (when the user says go)
 1. **Champion summit** — NPC population + Popularity ladder + Lord boss fight (finish
    the Rise). Small, self-contained, reuses combat entirely.
