@@ -35,11 +35,14 @@
   }
 
   /* Battle-ready char for an NPC record (same shape as game.playerCombatChar).
-   * Rebuilt per bout, so mid-day win gains carry into the NPC's next fight. */
-  function combatChar(npc) {
+   * Rebuilt per bout, so mid-day win gains carry into the NPC's next fight.
+   * `goldScale` models the Lord's sales tax: high taxes leave residents less
+   * to spend on gear (the economy's core tension). */
+  function combatChar(npc, goldScale) {
     const c = CLASSES[npc.classId];
     const pools = G.ai.maxPools(npc.classId, npc.wins, 0.6);
-    const armor = G.ai.bestAffordableArmor(npc.classId, totalGoldAt(npc.wins));
+    const budget = Math.round(totalGoldAt(npc.wins) * (goldScale == null ? 1 : goldScale));
+    const armor = G.ai.bestAffordableArmor(npc.classId, budget);
     const char = {
       id: npc.id, name: npc.name, classId: npc.classId, wins: npc.wins,
       maxHp: pools.maxHp, maxMp: pools.maxMp,
@@ -50,7 +53,7 @@
     };
     if (npc.classId === "thief") {
       // Veteran thieves spend leftover winnings on special arrows (as foes did).
-      const gold = totalGoldAt(npc.wins) - (armor ? ARMOR[armor].cost : 0);
+      const gold = budget - (armor ? ARMOR[armor].cost : 0);
       if (gold >= 1000) { char.arrows = ["fire"]; char.activeArrow = "fire"; }
       else if (gold >= 500) { char.arrows = ["ice"]; char.activeArrow = "ice"; }
     }

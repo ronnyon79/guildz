@@ -184,6 +184,25 @@
     treasury: { potion_healing: 1, potion_mana: 1 },
   };
 
+  /* The Stronghold economy (GUI-12/13) — every number here is a first guess for
+   * the economy sim (GUI-36) to tune. TENSION WIRING (v1): ticket price ↑ →
+   * demand ↓ · sales tax ↑ → residents afford less gear → weaker fields →
+   * duller fights → smaller gate · purse ↑ → prestige draws a bigger crowd
+   * (and drains the coffers). Guild rent joins these lines with the Guilds project. */
+  const ECONOMY = {
+    start: { treasury: 500, ticketPrice: 5, taxRate: 10, purse: 20 },
+    limits: { ticketPrice: [1, 20], taxRate: [0, 25], purse: [0, 100] },
+    crowdBase: 20,        // spectators who turn up regardless
+    crowdPerResident: 2,  // every resident champion draws fans
+    demand: (price) => Math.max(0.25, 1.5 - price * 0.1), // 5g → ×1.0
+    wagerStake: 2,        // gold wagered per spectator
+    wagerCut: 0.1,        // the Lord's cut of the book
+    licencePerVendor: 5,  // stall licence per open vendor per day
+    taxSpendPerBout: 40,  // modelled shop spend per bout (the tax base proxy)
+    upkeep: 25,           // the hold's daily cost
+    prestige: (purse) => 1 + purse / 200, // purse 20 → ×1.1 crowd
+  };
+
   const POPULARITY = {
     perBout: (band) => 5 + band,
     // Crowd Rating multiplier: 3★ (average) = ×1; a dull bout pays a third,
@@ -192,5 +211,5 @@
   };
   const SEASON = { days: 10 }; // days per season — first guess, tune via sim (GUI-30)
 
-  G.data = { CLASSES, WEAPONS, ARMOR, ARMOR_MAXTIER, VENDORS, ITEMS, ARROWS, GOLD_PER_WIN, goldForWin, totalGoldAt, POINTS_PER_WIN, CRIT_MULT, FOE_NAMES, EPITHETS, ROSTER, POPULARITY, SEASON, LORD };
+  G.data = { CLASSES, WEAPONS, ARMOR, ARMOR_MAXTIER, VENDORS, ITEMS, ARROWS, GOLD_PER_WIN, goldForWin, totalGoldAt, POINTS_PER_WIN, CRIT_MULT, FOE_NAMES, EPITHETS, ROSTER, POPULARITY, SEASON, LORD, ECONOMY };
 })(typeof window !== "undefined" ? window : globalThis);

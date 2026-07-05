@@ -10,11 +10,35 @@
 (function (root) {
   const G = (root.G = root.G || {});
 
+  /* The day's money (GUI-12): gate + the wager cut + stall licences + sales
+   * tax, less purses + upkeep. Attendance follows the SHOW: resident count ×
+   * how exciting the fights were (avg ★) × ticket-price demand × purse prestige. */
+  function ledgerFor(day, state) {
+    const E = G.data.ECONOMY, st = state.stronghold;
+    let bouts = 0, specSum = 0, rated = 0;
+    for (const br of day.brackets) for (const m of br.matches) {
+      if (!m.winner || m.forfeit) continue;
+      bouts += 1;
+      if (m.spec) { specSum += m.spec; rated += 1; }
+    }
+    const avgSpec = rated ? specSum / rated : 3;
+    const attendance = Math.round(
+      (E.crowdBase + E.crowdPerResident * state.npcs.length) *
+      (avgSpec / 3) * E.demand(st.ticketPrice) * E.prestige(st.purse));
+    const gate = attendance * st.ticketPrice;
+    const wagers = Math.round(attendance * E.wagerStake * E.wagerCut);
+    const licences = G.data.VENDORS.filter((v) => !v.soon).length * E.licencePerVendor;
+    const tax = Math.round(bouts * E.taxSpendPerBout * st.taxRate / 100);
+    const purses = day.brackets.length * st.purse;
+    const net = gate + wagers + licences + tax - purses - E.upkeep;
+    return { attendance, avgSpec: Math.round(avgSpec * 10) / 10, gate, wagers, licences, tax, purses, upkeep: E.upkeep, net };
+  }
+
   // Hold the day's games: every band fights, the Lord watches from the high seat.
   function holdGames() {
     const game = G.game, state = game.state;
     if (!state.player || state.player.role !== "lord") return;
-    const champs = state.npcs.map((n) => G.roster.combatChar(n));
+    const champs = state.npcs.map((n) => G.roster.combatChar(n, game.gearScale()));
     const byId = {};
     for (const c of champs) byId[c.id] = c;
     const day = G.tournament.runDay(champs, game.nextSeed(), (br, m, res, w) => {
@@ -22,10 +46,13 @@
       if (n) n.wins += 1; // every bout won is a career win — the residents grow
     });
     game.settleDay(day, byId, null); // fame, board, clock, season roll
+    const ledger = ledgerFor(day, state);
+    state.stronghold.treasury += ledger.net;
+    state.lastDay.ledger = ledger;
     state.screen = "lord-sunset";
     game.save();
     game.emit();
   }
 
-  G.lord = { holdGames };
+  G.lord = { holdGames, ledgerFor };
 })(typeof window !== "undefined" ? window : globalThis);
