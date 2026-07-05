@@ -221,6 +221,21 @@
   };
   const BUILDING_FX = { seatingCrowd: 15, armoryGear: 0.05, infirmaryRegen: 2 };
 
+  /* Aging (GUI-17): everyone ages +1 per season. Champions PEAK then DECLINE —
+   * past the peak, pools fade 3%/year (floor 50%) — so the challenger threat
+   * ROTATES instead of ratcheting. Old residents retire and a young hopeful
+   * arrives in their place (the first churn cycle); an undefeated Lord dies of
+   * old age on the throne, and the crown passes to the people's favourite. */
+  const AGE = {
+    start: 18,          // a new champion's age
+    peak: 35,           // decline begins past this
+    fadePerYear: 0.03,  // pool loss per year past peak
+    fadeFloor: 0.5,
+    retire: 52,         // + (0..11 by fate) — residents bow out
+    lifespan: 58,       // + (0..11 by fate) — a Lord's years on the throne
+    mult: (age) => Math.max(0.5, 1 - 0.03 * Math.max(0, (age || 30) - 35)),
+  };
+
   const POPULARITY = {
     perBout: (band) => 5 + band,
     // Crowd Rating multiplier: 3★ (average) = ×1; a dull bout pays a third,
@@ -229,5 +244,5 @@
   };
   const SEASON = { days: 10 }; // days per season — first guess, tune via sim (GUI-30)
 
-  G.data = { CLASSES, WEAPONS, ARMOR, ARMOR_MAXTIER, VENDORS, ITEMS, ARROWS, GOLD_PER_WIN, goldForWin, totalGoldAt, POINTS_PER_WIN, CRIT_MULT, FOE_NAMES, EPITHETS, ROSTER, POPULARITY, SEASON, LORD, ECONOMY, BOARD, BUILDINGS, BUILDING_FX };
+  G.data = { CLASSES, WEAPONS, ARMOR, ARMOR_MAXTIER, VENDORS, ITEMS, ARROWS, GOLD_PER_WIN, goldForWin, totalGoldAt, POINTS_PER_WIN, CRIT_MULT, FOE_NAMES, EPITHETS, ROSTER, POPULARITY, SEASON, LORD, ECONOMY, BOARD, BUILDINGS, BUILDING_FX, AGE };
 })(typeof window !== "undefined" ? window : globalThis);

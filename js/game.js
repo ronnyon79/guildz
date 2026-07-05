@@ -7,7 +7,7 @@
  */
 (function (root) {
   const G = (root.G = root.G || {});
-  const { CLASSES, ITEMS, ARROWS, ARMOR, ARMOR_MAXTIER, goldForWin, POINTS_PER_WIN, POPULARITY, SEASON, LORD, ECONOMY, BOARD, BUILDINGS, BUILDING_FX, FOE_NAMES, EPITHETS, totalGoldAt } = G.data;
+  const { CLASSES, ITEMS, ARROWS, ARMOR, ARMOR_MAXTIER, goldForWin, POINTS_PER_WIN, POPULARITY, SEASON, LORD, ECONOMY, BOARD, BUILDINGS, BUILDING_FX, AGE, FOE_NAMES, EPITHETS, totalGoldAt } = G.data;
 
   /* ---- worlds: each universe is a SEPARATE save game (decided design) ----
    * An index lists the universes; each world lives under its own key. Within a
@@ -57,8 +57,10 @@
 
   function playerCombatChar() {
     const p = state.player, m = computeMax(p);
+    const fade = AGE.mult(p.age); // you too, champion: peak, then decline
     return {
-      name: p.name, classId: p.classId, wins: p.wins, maxHp: m.maxHp, maxMp: m.maxMp,
+      name: p.name, classId: p.classId, wins: p.wins,
+      maxHp: Math.max(1, Math.round(m.maxHp * fade)), maxMp: Math.round(m.maxMp * fade),
       meleeWeapon: p.equipment.melee, missileWeapon: p.equipment.missile,
       items: { ...(p.inventory || {}) },
       arrows: (p.arrows || []).slice(), activeArrow: p.activeArrow || "normal",
@@ -155,8 +157,12 @@
       state.lastSeason = data.lastSeason || null;
       // Migrate saves created before the Lord existed.
       if (state.player.role == null) state.player.role = "champion";
+      // Migrate saves created before aging existed.
+      if (state.player.age == null) state.player.age = AGE.start + Math.round(state.player.wins / 3);
+      for (const n of state.npcs) if (n.age == null) n.age = AGE.start + Math.round(n.wins / 3);
       state.lord = data.lord !== undefined ? data.lord
         : generateLord((state.player.worldSeed || state.seedCounter * 97) + 1);
+      if (state.lord && state.lord.age == null) state.lord.age = AGE.start + Math.round(state.lord.wins / 3) + (state.lord.reignSeasons || 1) + 6;
       state.challengeOpen = !!data.challengeOpen;
       // Migrate saves created before the economy existed.
       state.stronghold = data.stronghold || { ...ECONOMY.start };
@@ -196,6 +202,7 @@
       armorDurability: 0,
       popularity: 0, // fame — the ladder to the Lord's throne
       role: "champion", // champion | servant | lord
+      age: AGE.start,
       worldSeed: seed, // seeds this world's population (deterministic world-gen)
     };
     state.npcs = G.roster.generateRoster(seed, state.player.name);
@@ -417,6 +424,48 @@
       state.clock.day = 1;
       state.lastDay.seasonEnd = state.lastSeason; // surfaced on the sunset screens
       state.lastDay.mayChallenge = state.challengeOpen;
+
+      // ---- the season's turn: everyone ages a year (GUI-17) ----
+      const hash = (s) => { let h = 0; for (const c of String(s)) h = (h * 31 + c.charCodeAt(0)) >>> 0; return h; };
+      state.player.age = (state.player.age || AGE.start) + 1;
+      for (const n of state.npcs) n.age = (n.age || AGE.start) + 1;
+      for (const h of state.household) h.age = (h.age || AGE.start) + 1;
+      if (state.lord) state.lord.age = (state.lord.age || 40) + 1;
+      // Old residents bow out; young hopefuls take their beds (churn's first cycle).
+      const retiring = state.npcs.filter((n) => n.age >= AGE.retire + (hash(n.id) % 12));
+      if (retiring.length) {
+        state.npcs = state.npcs.filter((n) => !retiring.includes(n));
+        const fresh = G.roster.generateRoster(((state.player.worldSeed || 1) ^ (state.clock.season * 2654435761)) >>> 0, state.player.name, retiring.length, "a" + state.clock.season + "_");
+        for (const f of fresh) { f.wins = Math.min(f.wins, 4); f.age = AGE.start + (hash(f.id) % 4); state.npcs.push(f); }
+        state.lastDay.retired = retiring.map((r) => r.name);
+      }
+      if (state.player.role === "lord") {
+        // An undefeated Lord dies ON the throne — the rarest of endings.
+        if (state.player.age >= AGE.lifespan + (hash(state.player.name) % 12)) {
+          state.lastThrone = { oldAge: true, reignSeasons: state.clock.season - (state.player.crownedSeason || 1) };
+          state.lastDay.runEnded = true;
+        }
+      } else if (state.lord && state.lord.age >= AGE.lifespan + (hash(state.lord.name) % 12)) {
+        // The old Lord dies; the crown passes to the people's favourite.
+        const dead = state.lord.name;
+        state.lastDay.lordDied = dead;
+        if (state.player.role === "servant") state.player.role = "champion"; // the household dissolves — you are free
+        state.defense = null; state.challengeOpen = false;
+        const ladder = fameLadder();
+        const heir = ladder.find((r) => r.popularity > 0) || ladder.find((r) => !r.isPlayer);
+        if (heir && heir.isPlayer) {
+          state.player.role = "lord";
+          state.player.crownedSeason = state.clock.season;
+          state.lord = null;
+          state.lastThrone = { won: true, oldAge: true, lordName: dead };
+          state.lastDay.crownedYou = true;
+        } else if (heir) {
+          const npc = npcById(heir.id);
+          state.lord = { name: npc.name, classId: npc.classId, wins: npc.wins, reignSeasons: 0, age: npc.age };
+          state.npcs = state.npcs.filter((x) => x.id !== npc.id);
+          state.lastDay.newLord = npc.name;
+        }
+      }
     }
     return state.lastDay;
   }
@@ -425,7 +474,9 @@
     const champion = state.playerBracket && state.playerBracket.winner === "player";
     settleDay(state.day, state.dayById, state.playerBracket);
     state.day = null; state.playerBracket = null; state.dayById = null; state.pendingBout = null;
-    if (champion) state.screen = "day-champion";
+    if (state.lastDay.runEnded) { perish("throne-age"); return; } // died on the throne
+    if (state.lastDay.crownedYou) state.screen = "coronation"; // the empty throne is yours
+    else if (champion) state.screen = "day-champion";
     else if (!keepScreen) state.screen = "loss"; // normally already there
     save(); emit();
   }
@@ -778,11 +829,14 @@
   function generateLord(seed) {
     const rng = G.engine.makeRng(seed >>> 0);
     const name = G.engine.pick(rng, FOE_NAMES) + " " + G.engine.pick(rng, EPITHETS);
+    const wins = G.engine.randInt(rng, LORD.wins[0], LORD.wins[1]);
+    const reignSeasons = G.engine.randInt(rng, 1, 4);
     return {
       name,
       classId: G.engine.pick(rng, Object.keys(CLASSES)),
-      wins: G.engine.randInt(rng, LORD.wins[0], LORD.wins[1]),
-      reignSeasons: G.engine.randInt(rng, 1, 4), // backstory: seasons already held
+      wins,
+      reignSeasons, // backstory: seasons already held
+      age: AGE.start + Math.round(wins / 3) + reignSeasons + G.engine.randInt(rng, 4, 10),
     };
   }
 
@@ -794,6 +848,9 @@
   function lordCombatChar() {
     const L = state.lord, c = CLASSES[L.classId];
     const pools = G.ai.maxPools(L.classId, L.wins, 0.6);
+    const fade = AGE.mult(L.age); // an old Lord is past his peak
+    pools.maxHp = Math.max(1, Math.round(pools.maxHp * fade));
+    pools.maxMp = Math.round(pools.maxMp * fade);
     const char = {
       id: "lord", name: L.name, classId: L.classId, wins: L.wins,
       maxHp: pools.maxHp, maxMp: pools.maxMp,
@@ -847,6 +904,7 @@
     }
     state.lastThrone = { won: true, uprising, lordName: L.name, lordStays: stays };
     p.role = "lord";
+    p.crownedSeason = state.clock.season;
     state.lord = null; // the throne is YOURS
     state.throneFight = false;
     state.screen = "coronation";
@@ -870,7 +928,7 @@
   // screen lives on in-memory until "New Game".
   function perish(kind) {
     deleteWorld(state.worldId);
-    state.lastThrone = { ...(state.lastThrone || {}), fate: kind === "uprising" ? "uprising" : kind === "defense" ? "defense" : "die" };
+    state.lastThrone = { ...(state.lastThrone || {}), fate: kind === "uprising" ? "uprising" : kind === "defense" ? "defense" : kind === "throne-age" ? "throne-age" : "die" };
     state.screen = "memorial";
     emit();
   }
@@ -920,6 +978,7 @@
     openVendor, closeVendor, buyItem, buyArrow, loadArrow, buyArmor,
     taxedCost, gearScale, setDecree, buyBuilding, recordBout, openBout,
     beginDefense, defensePerks, startDefenseDuel, removeServant,
+    reignEnds: () => perish("throne-age"),
     nextSeed, settleDay, emit, // the seam lord.js drives the shared day through
   };
 })(typeof window !== "undefined" ? window : globalThis);

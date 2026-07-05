@@ -12,8 +12,9 @@
 
   /* Seed a fresh Stronghold's population. Names are unique and never collide
    * with the player's (battle narration colours lines by fighter name). */
-  function generateRoster(seed, playerName, size) {
+  function generateRoster(seed, playerName, size, idPrefix) {
     size = size || ROSTER.size;
+    idPrefix = idPrefix || "n";
     const rng = makeRng(seed >>> 0);
     const used = new Set([String(playerName || "").trim().toLowerCase()]);
     const npcs = [];
@@ -29,7 +30,8 @@
         acc += w;
         if (r < acc) { wins = randInt(rng, lo, hi); break; }
       }
-      npcs.push({ id: "n" + (npcs.length + 1), name, classId: pick(rng, Object.keys(CLASSES)), wins, popularity: 0 });
+      // Veterans are older — age tracks the career behind the wins.
+      npcs.push({ id: idPrefix + (npcs.length + 1), name, classId: pick(rng, Object.keys(CLASSES)), wins, popularity: 0, age: G.data.AGE.start + Math.round(wins / 3) + randInt(rng, 0, 6) });
     }
     return npcs;
   }
@@ -41,6 +43,10 @@
   function combatChar(npc, goldScale) {
     const c = CLASSES[npc.classId];
     const pools = G.ai.maxPools(npc.classId, npc.wins, 0.6);
+    // Peak then decline: an old champion's pools fade (GUI-17).
+    const fade = G.data.AGE.mult(npc.age);
+    pools.maxHp = Math.max(1, Math.round(pools.maxHp * fade));
+    pools.maxMp = Math.round(pools.maxMp * fade);
     const budget = Math.round(totalGoldAt(npc.wins) * (goldScale == null ? 1 : goldScale));
     const armor = G.ai.bestAffordableArmor(npc.classId, budget);
     const char = {

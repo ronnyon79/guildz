@@ -55,6 +55,7 @@
       for (let i = 0; i < yard; i++) G.engine.pick(rng, state.npcs).wins += 1;
     }
     game.settleDay(day, byId, null); // fame, board, clock, season roll
+    if (state.lastDay.runEnded) { game.reignEnds(); return; } // died on the throne, undefeated
     const ledger = ledgerFor(day, state);
     state.stronghold.treasury += ledger.net;
     state.lastDay.ledger = ledger;

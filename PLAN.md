@@ -358,6 +358,19 @@ cap (3) & per-bout replenish (50%)**, servant **upkeep/housing** cost, and **ser
   tests (`tools/test_defense.js`) + 180 regressions. NOTE: reigns now END — the ≥5–6-season
   target is finally measurable (GUI-31).
 
+- **GUI-17 Aging — v0.12.0** ✅ LORD MODE PROJECT COMPLETE. Everyone ages +1/season
+  (player, residents, household, the Lord). **Peak → decline** (data.AGE): prime to 35,
+  then pools fade 3%/yr (floor 50%) — applied to residents, the player AND the Lord's kit
+  (throne test updated) — the challenger threat now ROTATES. **Retirement churn**: residents
+  past 52+(fate%12) bow out and a fresh novice takes the bed (population stable — churn's
+  first cycle, D2.2 seed). **Succession**: an NPC Lord past 58+(fate%12) dies on the throne
+  → the crown passes to the people's favourite — YOU if you top the fame ladder (bloodless
+  coronation; a serving player is freed first), else a resident (reign 0). **The rarest
+  ending**: a player-Lord who reaches the end undefeated **dies in the high seat** —
+  memorial records the reign length; the run ends in glory. Ages shown on cards (🍂 past
+  peak). Migrations derive age from wins. 20 headless tests (`tools/test_aging.js`) + 211
+  regressions. Curve/lifespans = GUI-35 sim knobs.
+
 ### Build order (when the user says go)
 1. **Champion summit** — NPC population + Popularity ladder + Lord boss fight (finish
    the Rise). Small, self-contained, reuses combat entirely.

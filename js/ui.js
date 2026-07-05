@@ -158,7 +158,7 @@
       <div class="card">
         <div class="card-row"><div class="avatar">${CLASSES[p.classId].emoji}</div>
           <div><div class="card-title">${esc(p.name)} <span class="pill">${CLASSES[p.classId].name}</span>${rolePill}</div>
-          <div class="card-sub">${pools} · ${p.wins} wins · best streak ${p.bestStreak} 🔥</div></div></div>
+          <div class="card-sub">${pools} · ${p.wins} wins · age ${p.age || 18}${(p.age || 18) > 35 ? " 🍂" : ""} · best streak ${p.bestStreak} 🔥</div></div></div>
         ${classStats(p.classId)}
       </div>
       ${lordBlock(s)}
@@ -417,12 +417,12 @@
     return `<div class="result win">
       <div class="result-emoji">👑</div>
       <div class="result-title">CORONATION</div>
-      <p class="muted">${t.uprising ? "The uprising succeeds — the household kneels to its new master." : "The crowd falls silent, then erupts —"} <b><span class="you">${esc(s.player.name)}</span>, Lord of the Stronghold!</b></p>
+      <p class="muted">${t.oldAge ? `Old Lord ${esc(t.lordName)} has died on the throne, undefeated to the last. The crowd calls one name —` : t.uprising ? "The uprising succeeds — the household kneels to its new master." : "The crowd falls silent, then erupts —"} <b><span class="you">${esc(s.player.name)}</span>, Lord of the Stronghold!</b></p>
       ${crowdBlock(s.lastSpec)}
-      <p class="muted">${esc(t.lordName)} ${t.lordStays
+      ${t.oldAge ? "" : `<p class="muted">${esc(t.lordName)} ${t.lordStays
         ? "swallows his pride and stays — the fallen Lord will fight in <b>your</b> arena."
-        : "rides out of the gates, never to return."}</p>
-      <p class="card-sub center">Ruling the Stronghold — rents, purses, taxes, your household — arrives with Lord mode in a coming update. Until then, the arena remains yours to fight in.</p>
+        : "rides out of the gates, never to return."}</p>`}
+      <p class="card-sub center">The high seat is yours: preside over the games, set the decrees, raise the Stronghold — and hold the throne against those who will come for it.</p>
       <div class="result-actions"><button class="btn block" data-act="return-home">To the high seat 👑</button></div>
     </div>`;
   }
@@ -449,11 +449,13 @@
     const t = s.lastThrone || {};
     return `<div class="result loss">
       <div class="result-emoji">🪦</div>
-      <div class="result-title">${t.fate === "uprising" ? "The uprising fails" : t.fate === "defense" ? "Fallen in defence" : "Here ends the tale"}</div>
+      <div class="result-title">${t.fate === "uprising" ? "The uprising fails" : t.fate === "defense" ? "Fallen in defence" : t.fate === "throne-age" ? "👑 Died on the throne — UNDEFEATED" : "Here ends the tale"}</div>
       <p class="muted">${t.fate === "uprising"
         ? `A servant who rises gets no second chance. Lord ${esc(t.lordName)} shows no mercy.`
         : t.fate === "defense"
         ? `Fielded for a throne not your own, ${esc((s.player || {}).name || "the servant")} fell to ${esc(t.lordName)} on the sand. A defender gets no choice.`
+        : t.fate === "throne-age"
+        ? `After <b>${t.reignSeasons || "?"}</b> season${t.reignSeasons === 1 ? "" : "s"} of rule, Lord ${esc((s.player || {}).name || "?")} passes in the high seat at a great age, crown untaken. The rarest of endings — the bards will sing of it for a hundred years.`
         : `${esc((s.player || {}).name || "The champion")} chose to meet the end unbowed.`}</p>
       <p class="card-sub center">The save is gone — as permanent as the grave. The Stronghold will remember.</p>
       <div class="result-actions"><button class="btn block" data-act="reset-hard">⚔️ A new champion rises</button></div>
