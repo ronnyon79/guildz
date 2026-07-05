@@ -45,8 +45,9 @@ ok(S.lord.name === lordName, "same worldSeed → same Lord");
 console.log("— the Lord's kit —");
 const lc = game.lordCombatChar();
 const cls = CLASSES[lc.classId];
-ok(lc.maxHp + lc.maxMp >= cls.startHp + cls.startMp + 2 * S.lord.wins - 1,
-  `full veteran pools (${lc.maxHp} HP / ${lc.maxMp} MP @ ${S.lord.wins} wins)`);
+const expectTotal = Math.round((cls.startHp + cls.startMp + 2 * S.lord.wins) * G.data.AGE.mult(S.lord.age));
+ok(Math.abs(lc.maxHp + lc.maxMp - expectTotal) <= 2,
+  `veteran pools, age-faded (${lc.maxHp} HP / ${lc.maxMp} MP @ ${S.lord.wins} wins, age ${S.lord.age})`);
 if (CLASSES[lc.classId].caster) {
   ok(lc.perk === "treasury" && lc.items.potion_healing === 1 && lc.items.potion_mana === 1, "caster lord picks the treasury (1 HP + 1 MP potion)");
 } else {
