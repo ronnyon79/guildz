@@ -156,6 +156,24 @@
     return day;
   }
 
+  /* Seed-replay (GUI-14/GUI-23): re-run a recorded bout deterministically and
+   * return the FULL final battle state — the Scribe re-renders the prose from
+   * this instead of ever storing it. Same loop as autoBout, same outcome. */
+  function replayBout(a, b, seed, openRange) {
+    let s = G.combat.newBattle((seed & 1) === 0 ? a : b, (seed & 1) === 0 ? b : a, seed, openRange);
+    let guard = 0;
+    while (s.phase === "choose" && guard++ < 160) {
+      const rY = makeRng((seed + s.round * 40503 + 7) >>> 0);
+      const rF = makeRng((seed + s.round * 97 + 91193) >>> 0);
+      s = G.combat.resolveRound(
+        s,
+        G.ai.chooseAction(s.you, s.foe, s.range, rY),
+        G.ai.chooseAction(s.foe, s.you, s.range, rF)
+      );
+    }
+    return s;
+  }
+
   // Sunset summary: band -> {winnerId, boutsWon} (popularity award inputs).
   function winners(day) {
     const out = {};
@@ -168,6 +186,6 @@
   G.tournament = {
     BAND_WIDTH, bandOf, bandLabel, bucket,
     newBracket, nextRound, pendingMatch, reportBout,
-    newDay, autoBout, runDay, winners,
+    newDay, autoBout, replayBout, runDay, winners,
   };
 })(typeof window !== "undefined" ? window : globalThis);

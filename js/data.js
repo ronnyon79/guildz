@@ -203,6 +203,11 @@
     prestige: (purse) => 1 + purse / 200, // purse 20 → ×1.1 crowd
   };
 
+  /* The Scribe's Bulletin Board (GUI-14): how many days of parchments stay
+   * pinned before the oldest are taken down (fight RESULTS live forever in
+   * career stats; only the readable blow-by-blow ring-buffers). */
+  const BOARD = { days: 3 };
+
   const POPULARITY = {
     perBout: (band) => 5 + band,
     // Crowd Rating multiplier: 3★ (average) = ×1; a dull bout pays a third,
@@ -211,5 +216,5 @@
   };
   const SEASON = { days: 10 }; // days per season — first guess, tune via sim (GUI-30)
 
-  G.data = { CLASSES, WEAPONS, ARMOR, ARMOR_MAXTIER, VENDORS, ITEMS, ARROWS, GOLD_PER_WIN, goldForWin, totalGoldAt, POINTS_PER_WIN, CRIT_MULT, FOE_NAMES, EPITHETS, ROSTER, POPULARITY, SEASON, LORD, ECONOMY };
+  G.data = { CLASSES, WEAPONS, ARMOR, ARMOR_MAXTIER, VENDORS, ITEMS, ARROWS, GOLD_PER_WIN, goldForWin, totalGoldAt, POINTS_PER_WIN, CRIT_MULT, FOE_NAMES, EPITHETS, ROSTER, POPULARITY, SEASON, LORD, ECONOMY, BOARD };
 })(typeof window !== "undefined" ? window : globalThis);
