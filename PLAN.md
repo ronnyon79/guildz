@@ -265,6 +265,16 @@ cap (3) & per-bout replenish (50%)**, servant **upkeep/housing** cost, and **ser
   per champion. Migrations for pre-fame saves. 16 headless tests (`tools/test_popularity.js`)
   + 52 regressions green. The season's #1 challenging the Lord = GUI-9.
 
+- **GUI-8 Spectacle / Crowd Rating — v0.5.0** ✅ `js/spectacle.js` (pure): grades every fight
+  from its log — crits +3, huge blows (≥25% max HP after soaks) +3, evades +2, fumbles +1,
+  casts/procs/shatters +1; finish bonuses comeback +5 / nail-biter +4 / rout +4; density
+  (score/rounds) → ★1–5, thresholds CALIBRATED over 2.4k sim bouts to a bell around 3★
+  (10/24/37/21/8%). Fame formula now COMPLETE (per-bout variant): champion earns
+  Σ perBout(band) × specMult(★) with specMult = ★/3 (3★ = ×1); forfeit walkovers rated 0 →
+  pay nothing. Wired into autoBout + player bouts (m.spec persisted per match); crowd verdict
+  on win/loss screens (+comeback/nail-biter/rout callouts); ★ on bracket rows. 13 headless
+  tests (`tools/test_spectacle.js`) + 68 regressions. Weights/thresholds = GUI-32 sim knobs.
+
 ### Build order (when the user says go)
 1. **Champion summit** — NPC population + Popularity ladder + Lord boss fight (finish
    the Rise). Small, self-contained, reuses combat entirely.

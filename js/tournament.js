@@ -125,7 +125,9 @@
       : s.phase === "lost" ? false
       : s.you.hp / s.you.maxHp >= s.foe.hp / s.foe.maxHp;
     const winner = youWon ? (aIsYou ? a : b) : (aIsYou ? b : a);
-    return { winnerId: winner.id, rounds: s.round, log: s.log };
+    // Crowd Rating (if the spectacle module is loaded).
+    const spec = G.spectacle ? G.spectacle.rate(s, youWon ? "you" : "foe").stars : null;
+    return { winnerId: winner.id, rounds: s.round, log: s.log, spec };
   }
 
   /* Sunset in one call: run every bracket to completion with autoBout.
@@ -145,6 +147,7 @@
         if (a.isPlayer || b.isPlayer) throw new Error("runDay is NPC-only; drive player bouts via pendingMatch/reportBout");
         const res = autoBout(a, b, m.seed);
         m.rounds = res.rounds;
+        m.spec = res.spec;
         reportBout(br, m, res.winnerId);
         if (onBout) onBout(br, m, res, byId[res.winnerId]);
       }

@@ -5,7 +5,7 @@ global.localStorage = {
   setItem: (k, v) => { store[k] = String(v); },
   removeItem: (k) => { delete store[k]; },
 };
-for (const f of ["engine", "data", "combat", "ai", "tournament", "roster", "game"])
+for (const f of ["engine", "data", "combat", "spectacle", "ai", "tournament", "roster", "game"])
   require("../js/" + f + ".js");
 
 const game = G.game, S = game.state, { POPULARITY, SEASON } = G.data;
@@ -44,8 +44,11 @@ const pre = snapshot();
 playDay();
 ok(S.clock.day === 2 && S.clock.season === 1, "sunset advances the clock");
 ok(S.lastDay.board.length >= 1, "board built");
-ok(S.lastDay.board.every((w) => w.popGain === w.boutsWon * POPULARITY.perBout(w.band)),
-  "every award = boutsWon × perBout(band)");
+ok(S.lastDay.board.every((w) =>
+    w.popGain >= 0 &&
+    w.popGain <= Math.round(w.boutsWon * POPULARITY.perBout(w.band) * POPULARITY.specMult(5)) &&
+    (w.boutsWon === 0 ? w.popGain === 0 : true)),
+  "every award within Σ perBout × specMult bounds (exact math unit-tested in test_spectacle)");
 // verify actual increments match the board
 const winnersById = {};
 for (const w of S.lastDay.board) {
