@@ -7,7 +7,7 @@
  */
 (function (root) {
   const G = (root.G = root.G || {});
-  const { CLASSES, ITEMS, ARROWS, ARMOR, ARMOR_MAXTIER, goldForWin, POINTS_PER_WIN, POPULARITY, SEASON, LORD, ECONOMY, FOE_NAMES, EPITHETS, totalGoldAt } = G.data;
+  const { CLASSES, ITEMS, ARROWS, ARMOR, ARMOR_MAXTIER, goldForWin, POINTS_PER_WIN, POPULARITY, SEASON, LORD, ECONOMY, BOARD, FOE_NAMES, EPITHETS, totalGoldAt } = G.data;
 
   /* ---- worlds: each universe is a SEPARATE save game (decided design) ----
    * An index lists the universes; each world lives under its own key. Within a
@@ -25,6 +25,8 @@
     npcs: [],            // the Stronghold's resident champions (persisted)
     lord: null,          // the reigning Lord (persisted; null once YOU reign)
     stronghold: null,    // treasury + the Lord's decrees (persisted)
+    board: [],           // the Scribe's parchments: recent days' bouts (persisted ring)
+    viewBout: null,      // which parchment is open {di, bi}
     clock: { day: 1, season: 1 }, // the world clock (persisted)
     lastSeason: null,    // last season's final fame standings (persisted)
     challengeOpen: false, // season's #1 = you → the throne may be challenged (persisted)
@@ -100,7 +102,7 @@
   function save() {
     if (!state.worldId) return;
     try {
-      const blob = { player: state.player, npcs: state.npcs, lord: state.lord, stronghold: state.stronghold, clock: state.clock, lastSeason: state.lastSeason, challengeOpen: state.challengeOpen, seedCounter: state.seedCounter };
+      const blob = { player: state.player, npcs: state.npcs, lord: state.lord, stronghold: state.stronghold, board: state.board, clock: state.clock, lastSeason: state.lastSeason, challengeOpen: state.challengeOpen, seedCounter: state.seedCounter };
       localStorage.setItem(worldKey(state.worldId), JSON.stringify(blob));
       const ix = readIndex();
       const i = ix.worlds.findIndex((w) => w.id === state.worldId);
@@ -155,6 +157,7 @@
       state.challengeOpen = !!data.challengeOpen;
       // Migrate saves created before the economy existed.
       state.stronghold = data.stronghold || { ...ECONOMY.start };
+      state.board = Array.isArray(data.board) ? data.board : [];
       state.screen = "home";
       return true;
     } catch (e) { return false; }
@@ -192,6 +195,7 @@
     state.npcs = G.roster.generateRoster(seed, state.player.name);
     state.lord = generateLord(seed + 1);
     state.stronghold = { ...ECONOMY.start };
+    state.board = [];
     state.clock = { day: 1, season: 1 };
     state.lastSeason = null;
     state.challengeOpen = false;
@@ -266,11 +270,26 @@
     if (state.dayById) state.dayById[n.id] = G.roster.combatChar(n, gearScale()); // mid-day growth
   }
 
+  /* The Scribe (GUI-14): pin a bout's parchment to the board. NPC bouts store
+   * the pre-fight snapshots + seed (prose re-rendered by replay, never stored);
+   * player bouts keep their log verbatim (human moves can't be replayed). */
+  function recordBout(rec) {
+    let today = state.board[state.board.length - 1];
+    if (!today || today.day !== state.clock.day || today.season !== state.clock.season) {
+      today = { day: state.clock.day, season: state.clock.season, bouts: [] };
+      state.board.push(today);
+      while (state.board.length > BOARD.days) state.board.shift(); // old parchments come down
+    }
+    today.bouts.push(rec);
+  }
+
   function autoResolveMatch(br, m) {
-    const res = G.tournament.autoBout(state.dayById[m.a], state.dayById[m.b], m.seed);
+    const a = state.dayById[m.a], b = state.dayById[m.b];
+    const res = G.tournament.autoBout(a, b, m.seed);
     m.rounds = res.rounds;
     m.spec = res.spec;
     G.tournament.reportBout(br, m, res.winnerId);
+    recordBout({ band: br.band, round: m.round, a, b, winner: (res.winnerId === a.id ? a : b).name, rounds: res.rounds, spec: res.spec, seed: m.seed });
     applyNpcBout(res.winnerId);
   }
 
@@ -418,6 +437,7 @@
     // The throne duel resolves outside the brackets.
     if (state.throneFight && state.battle.phase !== "choose") {
       state.lastSpec = G.spectacle.rate(state.battle, state.battle.phase === "won" ? "you" : "foe");
+      recordPlayerBout({ throne: true });
       if (state.battle.phase === "won") coronation();
       else throneLoss();
       emit();
@@ -430,6 +450,7 @@
         m.rounds = state.battle.round;
         m.spec = state.lastSpec.stars;
         G.tournament.reportBout(state.playerBracket, m, "player");
+        recordPlayerBout({ band: state.playerBracket.band, round: m.round });
         state.pendingBout = null;
       }
       onWin(); // win screen first; "Continue the day" resumes the bracket
@@ -441,6 +462,7 @@
         m.spec = state.lastSpec.stars;
         const foeId = m.a === "player" ? m.b : m.a;
         G.tournament.reportBout(state.playerBracket, m, foeId);
+        recordPlayerBout({ band: state.playerBracket.band, round: m.round });
         applyNpcBout(foeId); // beating you is a career win for them
         state.pendingBout = null;
       }
@@ -489,6 +511,27 @@
     state.player.bonusMp += POINTS_PER_WIN - hpPts;
     state.allocPending = false;
     save(); emit();
+  }
+
+  // A bout the human fought: the log is kept verbatim (their moves can't be
+  // re-derived from a seed), with slim fighter headers for the narrator.
+  function recordPlayerBout(extra) {
+    const b = state.battle;
+    const slim = (f) => ({ name: f.name, classId: f.classId, wins: f.wins, meleeWeapon: f.meleeWeapon, missileWeapon: f.missileWeapon });
+    recordBout(Object.assign({
+      a: slim(b.you), b: slim(b.foe), youIsA: true,
+      winner: b.phase === "won" ? b.you.name : b.foe.name,
+      rounds: b.round, spec: state.lastSpec ? state.lastSpec.stars : null,
+      log: b.log,
+    }, extra || {}));
+  }
+
+  // Open a parchment from the Bulletin Board.
+  function openBout(di, bi) {
+    if (!state.board[di] || !state.board[di].bouts[bi]) return;
+    state.viewBout = { di, bi };
+    state.screen = "parchment";
+    emit();
   }
 
   // The Lord's decrees (GUI-13): nudge a knob within its bounds.
@@ -678,7 +721,7 @@
     challengeLord, chooseFate,
     allocate, fightOn, retreat, returnHome, resetGame,
     openVendor, closeVendor, buyItem, buyArrow, loadArrow, buyArmor,
-    taxedCost, gearScale, setDecree,
+    taxedCost, gearScale, setDecree, recordBout, openBout,
     nextSeed, settleDay, emit, // the seam lord.js drives the shared day through
   };
 })(typeof window !== "undefined" ? window : globalThis);

@@ -67,7 +67,7 @@
     </div>`;
   }
   function tabbar(active) {
-    const tabs = [["home", "🏟️", "Arena"], ["fame", "⭐", "Fame"], ["shop", "🛒", "Shop"], ["hero", "🛡️", "Hero"]];
+    const tabs = [["home", "🏟️", "Arena"], ["fame", "⭐", "Fame"], ["board", "📜", "Board"], ["shop", "🛒", "Shop"], ["hero", "🛡️", "Hero"]];
     return `<nav class="tabbar">${tabs
       .map(([id, ic, label]) => `<button class="tab ${active === id ? "is-active" : ""}" data-act="tab" data-arg="${id}">${ic}<span>${label}</span></button>`)
       .join("")}</nav>`;
@@ -233,6 +233,58 @@
       ${d.popGain ? `<div class="reward-grid"><div class="reward"><b>+${d.popGain}</b><span>⭐ fame</span></div></div>` : ""}
       ${sunsetBoard(d)}
       <div class="result-actions"><button class="btn block" data-act="return-home">Return home 🌇</button></div>
+    </div>`;
+  }
+
+  /* ---------- the Scribe's Bulletin Board (GUI-14) ---------- */
+  function screenBoard(s) {
+    const days = s.board.slice().reverse(); // newest first
+    const body = days.length ? days.map((d, ri) => {
+      const di = s.board.length - 1 - ri;
+      const rows = d.bouts.map((bt, bi) => {
+        const you = (n) => (n === s.player.name ? `<span class="you">${esc(n)}</span>` : esc(n));
+        return `<div class="card class-card" data-act="view-bout" data-arg="${di}:${bi}">
+          <div class="card-row"><div class="avatar">${bt.throne ? "👑" : CLASSES[(bt.a || {}).classId] ? CLASSES[bt.a.classId].emoji : "⚔️"}</div>
+          <div><div class="card-title" style="font-size:14px">${you(bt.a.name)} <span class="sys">vs</span> ${you(bt.b.name)}${bt.throne ? ' <span class="pill on">THRONE DUEL</span>' : ""}</div>
+          <div class="card-sub">🏆 ${you(bt.winner)} · ${bt.rounds} rounds${bt.spec ? ` · ${starsOf(bt.spec)}` : ""}${bt.band != null ? ` · Band ${G.tournament.bandLabel(bt.band)}` : ""}</div></div>
+          <div class="spacer"></div><span class="pill">Read →</span></div></div>`;
+      }).join("");
+      return `<div class="screen-title">📜 Day ${d.day} · Season ${d.season}</div>${rows}`;
+    }).join("") : `<p class="card-sub center" style="margin-top:20px">The board is bare — no games have been fought yet. The Scribe waits, quill ready.</p>`;
+    return topbar(s.player) + `<div class="screen">
+      <div class="screen-title">The Bulletin Board</div>
+      <p class="card-sub center" style="margin-bottom:10px">The Scribe records every bout. Parchments stay pinned for ${G.data.BOARD.days} days.</p>
+      ${body}
+    </div>` + tabbar("board");
+  }
+
+  // A parchment: the full blow-by-blow, re-rendered deterministically from the
+  // seed (or the verbatim log for bouts the champion fought in person).
+  function screenParchment(s) {
+    const v = s.viewBout;
+    const rec = v && s.board[v.di] && s.board[v.di].bouts[v.bi];
+    if (!rec) return screenBoard(s);
+    let b, log;
+    if (rec.log) {
+      b = { you: rec.youIsA ? rec.a : rec.b, foe: rec.youIsA ? rec.b : rec.a };
+      log = rec.log;
+    } else {
+      b = G.tournament.replayBout(rec.a, rec.b, rec.seed, rec.range); // the Scribe re-reads the seed
+      log = b.log;
+    }
+    const ctx = battleCtx(b, s.player.name);
+    const intro = `<p class="line-intro shown">${fill(pickVar(INTRO, rec.seed || 7), {
+      A: `<span class="${b.you.name === s.player.name ? "you" : "foe"}">${esc(b.you.name)}</span>`,
+      B: `<span class="foe">${esc(b.foe.name)}</span>`,
+      bc: CLASSES[b.foe.classId] ? CLASSES[b.foe.classId].name : "",
+    })}</p>`;
+    const lines = log.map((ev, i) => narrate(ev, i, ctx, false)).join("");
+    return topbar(s.player) + `<div class="screen">
+      <button class="btn ghost sm" data-act="tab" data-arg="board" style="margin:4px 0 10px">← The board</button>
+      <div class="screen-title">${rec.throne ? "👑 The Throne Duel" : "⚔️ " + esc(rec.a.name) + " vs " + esc(rec.b.name)}</div>
+      <p class="card-sub center">🏆 ${esc(rec.winner)} · ${rec.rounds} rounds${rec.spec ? ` · ${starsOf(rec.spec)}` : ""}</p>
+      <div class="log" style="max-height:none">${intro}${lines}</div>
+      <p class="card-sub center" style="margin-top:8px">— faithfully recorded by the Scribe 🖋️</p>
     </div>`;
   }
 
@@ -808,6 +860,8 @@
       case "class-select": html = screenClassSelect(); break;
       case "home": html = screenHome(s); break;
       case "fame": html = screenFame(s); break;
+      case "board": html = screenBoard(s); break;
+      case "parchment": html = screenParchment(s); break;
       case "bracket": html = screenBracket(s); break;
       case "day-champion": html = screenDayChampion(s); break;
       case "lord-sunset": html = screenLordSunset(s); break;
@@ -846,6 +900,7 @@
       }
       case "hold-games": G.lord.holdGames(); break;
       case "decree": { const [k, d] = arg.split(":"); game.setDecree(k, parseInt(d, 10)); break; }
+      case "view-bout": { const [di, bi] = arg.split(":"); game.openBout(parseInt(di, 10), parseInt(bi, 10)); break; }
       case "pick-class": ui.selectedClass = arg; render(game.state); break;
       case "create": {
         const name = (document.getElementById("hero-name") || {}).value || "";

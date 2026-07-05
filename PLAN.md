@@ -320,6 +320,17 @@ cap (3) & per-bout replenish (50%)**, servant **upkeep/housing** cost, and **ser
   bankruptcy-deposition arrives with the Defend phase). Guild rent joins with Guilds. 21
   headless tests (`tools/test_economy.js`) + 135 regressions.
 
+- **GUI-14 Scribe + Bulletin Board — v0.9.0** ✅ Every fight readable. The Scribe records
+  every bout: **NPC bouts = pre-fight snapshots + seed only** (prose NEVER stored —
+  `tournament.replayBout` re-runs deterministically at read time: the GUI-23 seed-replay
+  principle, live); **player bouts + throne duels = verbatim log** (human moves can't be
+  re-derived). Board = persisted **ring buffer of BOARD.days=3 days** (results live forever
+  in careers; only readable prose ring-buffers). New **📜 Board tab**: days of bout cards
+  (winner, rounds, ★, band, 👑 THRONE DUEL badge) → **parchment screen** with the full
+  narrated blow-by-blow ("faithfully recorded by the Scribe 🖋️"). Presided (Lord-mode)
+  days recorded too. 13 headless tests (`tools/test_board.js`, incl. replay determinism:
+  identical log twice, winner + length reproduced) + 156 regressions.
+
 ### Build order (when the user says go)
 1. **Champion summit** — NPC population + Popularity ladder + Lord boss fight (finish
    the Rise). Small, self-contained, reuses combat entirely.
