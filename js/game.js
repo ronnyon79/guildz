@@ -174,6 +174,7 @@
   function autoResolveMatch(br, m) {
     const res = G.tournament.autoBout(state.dayById[m.a], state.dayById[m.b], m.seed);
     m.rounds = res.rounds;
+    m.spec = res.spec;
     G.tournament.reportBout(br, m, res.winnerId);
     applyNpcBout(res.winnerId);
   }
@@ -222,9 +223,10 @@
   // advance the world clock (season roll = −50% fame decay), clean up.
   function finishDay(keepScreen) {
     const champion = state.playerBracket && state.playerBracket.winner === "player";
-    // Popularity: boutsWon × perBout(band). (× Spectacle once GUI-8 lands.)
+    // Popularity: Σ perBout(band) × Crowd Rating over the champion's won bouts
+    // (the decided formula, per-bout variant; a forfeit walkover pays 0).
     const awardFame = (br) => {
-      const gain = (br.boutsWon[br.winner] || 0) * POPULARITY.perBout(br.band);
+      const gain = G.spectacle.fameFor(br.matches, br.winner, POPULARITY.perBout(br.band), POPULARITY.specMult);
       if (br.winner === "player") state.player.popularity = (state.player.popularity || 0) + gain;
       else { const n = npcById(br.winner); if (n) n.popularity = (n.popularity || 0) + gain; }
       return gain;
@@ -307,16 +309,20 @@
     state.player.armorDurability = state.battle.you.armorDurability;
     if (state.battle.phase === "won") {
       const m = state.pendingBout;
+      state.lastSpec = G.spectacle.rate(state.battle, "you"); // the crowd's verdict
       if (m && state.playerBracket) {
         m.rounds = state.battle.round;
+        m.spec = state.lastSpec.stars;
         G.tournament.reportBout(state.playerBracket, m, "player");
         state.pendingBout = null;
       }
       onWin(); // win screen first; "Continue the day" resumes the bracket
     } else if (state.battle.phase === "lost") {
       const m = state.pendingBout;
+      state.lastSpec = G.spectacle.rate(state.battle, "foe");
       if (m && state.playerBracket) {
         m.rounds = state.battle.round;
+        m.spec = state.lastSpec.stars;
         const foeId = m.a === "player" ? m.b : m.a;
         G.tournament.reportBout(state.playerBracket, m, foeId);
         applyNpcBout(foeId); // beating you is a career win for them
@@ -386,6 +392,7 @@
       while (!br.winner && (m = G.tournament.pendingMatch(br))) {
         if (m.a === "player" || m.b === "player") {
           m.forfeit = true;
+          m.spec = 0; // nobody fought — the crowd pays nothing for a walkover
           G.tournament.reportBout(br, m, m.a === "player" ? m.b : m.a); // walkover
         } else {
           autoResolveMatch(br, m);

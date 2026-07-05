@@ -28,6 +28,22 @@
     </div>`;
   }
 
+  // Crowd Rating: ★★★☆☆ + the crowd's verdict.
+  const starsOf = (n) => "★".repeat(n) + "☆".repeat(5 - n);
+  const CROWD_VERDICT = [
+    "", // 0 = walkover, never shown
+    "The crowd murmurs — a dull affair.",
+    "A scattering of polite applause.",
+    "A solid showing — the stands approve.",
+    "The crowd roars!",
+    "The crowd is ECSTATIC — they'll sing of this bout for seasons!",
+  ];
+  function crowdBlock(spec) {
+    if (!spec || !spec.stars) return "";
+    const beats = [spec.comeback ? "a legendary comeback" : "", spec.nailBiter ? "a nail-biter" : "", spec.rout ? "a ruthless rout" : ""].filter(Boolean);
+    return `<p class="muted">Crowd: <b>${starsOf(spec.stars)}</b> — ${CROWD_VERDICT[spec.stars]}${beats.length ? ` <span class="pill">${beats.join(" · ")}</span>` : ""}</p>`;
+  }
+
   let toastTimer = null;
   function toast(msg) {
     const t = document.getElementById("toast");
@@ -147,7 +163,7 @@
       if (!ms.length) continue;
       const lines = ms.map((x) => {
         const vs = `${tag(x.a)} <span class="sys">vs</span> ${tag(x.b)}`;
-        if (x.winner) return `<div class="card-sub">⚔️ ${vs} — <b>${x.winner === "player" ? `<span class="you">${esc(s.player.name)}</span>` : esc(name(x.winner))}</b> wins${x.forfeit ? " (walkover)" : ""}</div>`;
+        if (x.winner) return `<div class="card-sub">⚔️ ${vs} — <b>${x.winner === "player" ? `<span class="you">${esc(s.player.name)}</span>` : esc(name(x.winner))}</b> wins${x.forfeit ? " (walkover)" : x.spec ? ` <span class="roll">${starsOf(x.spec)}</span>` : ""}</div>`;
         if (x === m) return `<div class="card-sub">🔥 ${vs} — <b>your bout</b></div>`;
         return `<div class="card-sub">⏳ ${vs}</div>`;
       }).join("");
@@ -475,6 +491,7 @@
       <div class="result-title">Victory!</div>
       <p class="muted">${s.streak} bout${s.streak === 1 ? "" : "s"} won today</p>
       ${recapBlock(s.battle, p.name, true)}
+      ${crowdBlock(s.lastSpec)}
       <div class="reward-grid"><div class="reward"><b>+${r.gold}</b><span>🪙 gold</span></div></div>
       ${allocBlock}
     </div>`;
@@ -486,6 +503,7 @@
       <div class="result-emoji">💀</div>
       <div class="result-title">Defeated</div>
       ${recapBlock(s.battle, s.player.name, false)}
+      ${crowdBlock(s.lastSpec)}
       <p class="muted">You fell after <b>${r.streak}</b> bout${r.streak === 1 ? "" : "s"} won. Your day is over — but your gold and stat gains are yours to keep.</p>
       ${r.reachedBest && r.streak > 0 ? `<div class="levelup">🔥 New best day: ${r.streak} bouts!</div>` : ""}
       ${sunsetBoard(s.lastDay)}
