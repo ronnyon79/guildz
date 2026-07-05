@@ -242,6 +242,19 @@ cap (3) & per-bout replenish (50%)**, servant **upkeep/housing** cost, and **ser
   (`tools/test_tournament.js`): structure, byes, walkovers, full 23-champ day on real combat,
   determinism, serializability, player guard.
 
+- **GUI-6 NPC champion population — v0.3.0** ✅ The daily tournament is now THE playable
+  arena. `js/roster.js`: 40 resident NPCs (name+epithet, novice-weighted win tiers in
+  data.ROSTER), tiny persisted records {id,name,classId,wins} — pools/armor/arrows derived
+  from wins; `worldSeed` on the player → deterministic world-gen; old saves migrate.
+  `game.js` day loop: enterArena = sunrise (bucket player+NPCs, other bands auto-resolve at
+  dawn), bracket screen ↔ interactive bouts (bout win = career win via existing onWin),
+  loss finishes the bracket off-screen + sunset board on the loss screen, winning the final
+  → 👑 Day Champion screen; withdraw = forfeit (walkover, no career win granted); NPC bout
+  winners gain +1 win (mid-day growth, chars rebuilt). UI: bracket screen (rounds, byes,
+  your-bout highlight), sunset champions board, day-aware win/loss copy. Tests: 29 headless
+  day tests (`tools/test_day.js`) + smoke-rendered all new screens; AI-driven player won 1/9
+  days (knockouts are properly hard). Old streak-vs-generated-foe loop retired.
+
 ### Build order (when the user says go)
 1. **Champion summit** — NPC population + Popularity ladder + Lord boss fight (finish
    the Rise). Small, self-contained, reuses combat entirely.

@@ -150,6 +150,20 @@
     "Garruk", "Mira", "Thorne", "Vex", "Sable", "Korin", "Lyra", "Draven",
     "Nyx", "Ozric", "Fenn", "Isolde", "Brak", "Quill", "Roan", "Yara",
   ];
+  // Combined with FOE_NAMES for the resident champion roster (16×12 combos).
+  const EPITHETS = [
+    "the Grim", "the Swift", "Ironhand", "the Quiet", "Ashborn", "the Bold",
+    "Nightshade", "the Stray", "Oakenshield", "the Red", "Duskwalker", "of the Vale",
+  ];
 
-  G.data = { CLASSES, WEAPONS, ARMOR, ARMOR_MAXTIER, VENDORS, ITEMS, ARROWS, GOLD_PER_WIN, goldForWin, totalGoldAt, POINTS_PER_WIN, CRIT_MULT, FOE_NAMES };
+  /* The Stronghold's resident NPC champion population (GUI-6).
+   * `winTiers` = [lo, hi, weight]: a new NPC's career wins are drawn from these
+   * bands, weighted toward novices so a fresh player has a full band-0 bracket.
+   * Starting size is a first guess — tuned by sim (GUI-34). */
+  const ROSTER = {
+    size: 40,
+    winTiers: [[0, 4, 0.4], [5, 14, 0.3], [15, 29, 0.2], [30, 60, 0.1]],
+  };
+
+  G.data = { CLASSES, WEAPONS, ARMOR, ARMOR_MAXTIER, VENDORS, ITEMS, ARROWS, GOLD_PER_WIN, goldForWin, totalGoldAt, POINTS_PER_WIN, CRIT_MULT, FOE_NAMES, EPITHETS, ROSTER };
 })(typeof window !== "undefined" ? window : globalThis);
