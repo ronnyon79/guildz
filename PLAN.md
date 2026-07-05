@@ -95,10 +95,13 @@ Both modes run on the same tournament engine (competitor's view vs. organizer's 
 - **Two ladders, deliberately separate:**
   - **Wins** — skill/progression. Sets your category; drives HP/MP/gold (the existing
     career). **Every bout-win is a career win and is permanent** (across seasons too).
-  - **Popularity** — fame. Earned **only** by winning your category's day. Award =
-    **who you beat** (band × bracket depth) **× how excitingly** (the day's **Spectacle**
-    rating — see below), so *showmanship* earns fame, not just winning. Constants TBD.
-    Accumulates over a season; gates the Lord challenge.
+  - **Popularity** — fame. Earned **only** by winning your category's day.
+    **Award = `boutsWon × perBoutValue(band) × spectacle`** — *boutsWon* rewards bracket
+    depth (and byes don't inflate it); *perBoutValue(band)* rewards a higher win-band's
+    prestige (start **linear**: `5 + winFloor/5` → **5 / 10 / 15** per bout at bands
+    0 / 25 / 50); the day's **Spectacle** rating multiplies it for showmanship. (Per-bout
+    variant: sum `perBoutValue × spectacle` over each won bout.) Constants tuned via sim.
+    Accumulates over a season; decays −50% at its start; gates the Lord challenge.
 - **Re-bucketing** happens at each **sunrise** from your current win-count; your
   category is then **locked for that day**.
 - **Season:** many days. At **season end**, the **highest-Popularity** champion **may
@@ -127,8 +130,9 @@ Champion mode is otherwise done. To give it its ending we add:
 1. **Population of NPC champions** filling the categories (auto-resolve their bouts;
    the human plays their own, turn-based, as today).
 2. **The Popularity ladder** (Stronghold-wide fame board; you + NPCs).
-3. **The Lord boss fight** — proposed: the Lord is a **former champion** (high-win full
-   class kit) **+ home-arena advantage** (exact bonus TBD). Losable but daunting.
+3. **The Lord boss fight** — the Lord is a **former champion** (high-win full class kit)
+   **+ home-arena advantage** (full HP/MP + chooses range + picks 1 perk — see Throne
+   defensibility). Losable but daunting.
 
 ### Lord mode — the frame (mostly PROPOSED; confirm before building)
 You stop fighting and start **running the arena**: an economy/management layer whose
@@ -189,32 +193,61 @@ avoid is "**lose every season with no agency**." Levers that give the Lord agenc
    Caps + **rotates** the threat instead of ratcheting it upward.
 3. **One challenger/season = the Popularity #1 (fame/spectacle), not the raw-wins #1** —
    so the challenger is often a crowd-favorite, not necessarily the strongest fighter.
-4. **Servants defend (DECIDED).** A challenge is **optional for the challenger**, but the
-   **Lord MUST accept**. The Lord fields a defender — **himself** or a **servant** (if he
-   has any). The **loser of the duel** (the Lord personally *or* the servant) faces the
-   same **die / serve / exile** choice. If the defender loses, the **throne falls** to the
-   challenger, and the **deposed Lord** also faces die/serve/exile (a fallen Lord may even
-   *serve* the new one). On regime change, **all the old Lord's servants are freed** →
-   rejoin a **Guild**, **fight independently** (re-enter the arena as champions), or
-   **leave** the Stronghold (like exile). So a **new Lord starts with no servants** →
-   early reigns are the most fragile; the stable is (re)built by beating challengers who
-   "serve". This is the structural fix for the frozen-Lord problem: **defend by
-   recruiting, not leveling.**
-   OPEN (sim it): **one duel per challenge**, or a **gauntlet** (challenger must beat
-   several servants before reaching the Lord)? Gauntlet makes a large stable meaningfully
-   protective and helps hit the reign target.
+4. **Servants defend — a GAUNTLET (DECIDED).** A challenge is **optional for the
+   challenger** but the **Lord MUST accept**. The challenger must beat the Lord's **servants
+   in order, then the Lord** — the **throne falls only when the Lord is beaten**.
+   - **No full heal between bouts:** the challenger **replenishes 50% of max HP/MP** per bout
+     (value TBD — tune via sim); each defender fights fresh → servants are **attrition**.
+   - **Household cap = 3 servants**, all of whom defend. A **4th** joins only if the Lord
+     **removes** one — **release** (freed: guild / fight independently / leave), **exile**
+     (the wilds, one-way), or **kill** them.
+   - **Per-bout outcomes:** a defender the challenger **beats dies** — so even a *held* throne
+     can **erode** the stable (→ keep recruiting); a **challenger who loses** to any defender
+     faces **die / serve / exile** (serving → joins *this* household); beat everyone incl. the
+     **Lord** → throne falls, **deposed Lord** faces die / serve / exile (may *serve* the new
+     one). A **servant who WINS** his bout gains a **Win + HP/MP** (→ builds toward an
+     **uprising**; Serve mode).
+   - The Lord may **order** his servants (speed-bump-first vs. stopper-first) — strategic.
+   On regime change, the deposed Lord's **surviving** servants are **freed** (guild / fight
+   independently / leave). New Lords start empty → **defend by recruiting, not leveling.**
+   OPEN: does a servant's **uprising** run the other servants, or hit the Lord directly (a
+   coup)? — Serve-mode pass. Cap (3) + per-bout replenish (50%) tuned by the reign sim.
+
+**Lord's home-arena advantage (DECIDED).** In the throne duel the Lord fights as the
+institution:
+- **Always on:** enters at **full HP/MP** (fresh vs. a gauntlet-worn challenger) and **chooses
+  the opening range** (melee/missile, to suit his class).
+- **Picks 1 (from what he has UNLOCKED) before the duel — BUILDING-GATED:** **Home crowd**
+  (+To Hit / +To Crit) ← arena **prestige / seating** · **Armory** (best gear in the vault) ←
+  the **Armory** built · **Treasury stock** (**1 HP + 1 MP potion**) ← treasury can **afford**
+  them. Built nothing → **no pick** (defaults only); invest to unlock and upgrade each option.
+The pick is class-flavoured (a Mage Lord wants the MP potion; a Fighter the Armory). OPEN (sim):
+the three magnitudes (Treasury's potions look strongest — size as a real trade-off) and each
+gate's threshold. New Lords (empty household) lean on the defaults alone → **fragile by design.**
 
 **Plan:** combine all four levers, target an **average reign of ≥5–6 seasons** for skilled
 play (user's assumption — confirm via sim), and **prove it with a multi-season sim** — turn
-"will the Lord always lose?" into a tuned dial. Still open (mostly sim-tuned): **gauntlet
-vs single duel**, servant **upkeep/housing** cost, **servant aging**, and whether never
-fighting personally **costs legitimacy/crowd favor**.
+"will the Lord always lose?" into a tuned dial. Still open (mostly sim-tuned): the **gauntlet
+cap (3) & per-bout replenish (50%)**, servant **upkeep/housing** cost, and **servant aging**.
+
+### Build log — Champion Summit (BUILD GREENLIT 2026-07-05)
+- **GUI-5 Day/Season/Tournament backbone — v0.2.0** ✅ `js/tournament.js`: pure, seeded,
+  serializable. Bands of 5 (`bandOf/bucket`, sunrise re-bucket by locking ids at newDay),
+  single-elim brackets (`newBracket/reportBout`, entrants−1 bouts), **random byes** (shuffled
+  pool pops one), walkover = 0 boutsWon (popularity-safe), `autoBout` (real combat+AI both
+  sides, side-alternated, 160-round HP% cap), `runDay` (NPC-only; refuses players — the game
+  layer drives interactive bouts via `pendingMatch/reportBout`), `onBout` callback = the seam
+  where the caller applies career wins/gold (engine never mutates champions), `winners()` →
+  {band: winnerId, boutsWon} for the popularity award. 23 headless tests
+  (`tools/test_tournament.js`): structure, byes, walkovers, full 23-champ day on real combat,
+  determinism, serializability, player guard.
 
 ### Build order (when the user says go)
 1. **Champion summit** — NPC population + Popularity ladder + Lord boss fight (finish
    the Rise). Small, self-contained, reuses combat entirely.
-2. **Lord frame** — role-aware boot (**one continuous world**; you resume in whatever
-   role you currently hold — Champion/Lord/Exile — not separate save slots), `lord.js`
+2. **Lord frame** — role-aware boot with a **world-select** (multiple save-slot universes,
+   each a separate save game; within a world you resume in your current role —
+   Champion/Lord/Exile, roles change in place), `lord.js`
    store beside `game.js`, treasury + Renown + Scribe/Bulletin-Board + core day-organizer
    loop; coronation handoff from Champion mode.
 3. **Guilds** — the tithe→rent→lodging economy + guild AI (own planning pass first).
@@ -227,21 +260,49 @@ fighting personally **costs legitimacy/crowd favor**.
 7. **(far future) Stronghold warfare** — many Strongholds in one world battling on a
    battlefield (tactics, siege engines, cavalry). Own grand plan later.
 
+### Serve — mode (the household path) (STUB, plan separately)
+The third lose-the-throne fate (die / **serve** / exile), and a full **playable mode**: you
+join the victorious Lord's **household** as a servant. **DECIDED:**
+- **The Lord may field you to defend his throne** against challengers.
+  - **Win** → you gain a **Win + HP/MP** (normal career progression); keep building up.
+  - **Lose** → you **die** (a defending servant gets no die/serve/exile choice).
+- **Uprising (the way out):** when you judge yourself strong enough, you may **rise against
+  your own Lord** — a **Fight to the Death**: **win → you kill him and seize the throne**
+  (become Lord); **lose → you die**. No serve/exile mercy — an uprising is final.
+- A **deposed Lord** who chooses *serve* becomes the new Lord's servant, so the household can
+  hold **former Lords** (strong, high-win defenders).
+- If the Lord is toppled by someone else while you serve, you're **freed** (regime-change
+  rule: rejoin a Guild / fight independently / leave).
+The "**stay and rise from within**" counterpart to Exile's "leave and rebuild elsewhere".
+Own build pass (household duties/favor beyond defending; servant UI; how the Lord picks his
+defender — cf. Throne defensibility & servant system).
+
 ### Exile — mode #3 (STUB, plan separately)
 Losing the throne fight can send you to the **wilds** instead of death: a survival mode
 where you scrape by and, if you prosper, **found your own Stronghold** elsewhere —
-looping back into the Lord arc from a new seat. Own design pass (what survival looks
-like, resources, threats, the path to founding; whether it can loop back to Champion).
+looping back into the Lord arc from a new seat. **One-way: an exile cannot return to their
+home Stronghold** (vs. Adventure, which is round-trip) — but both **wander the same shared
+wilderness / outside world**. Own design pass (what survival looks like, resources, threats,
+the path to founding; whether it can loop back to Champion).
 Ties directly into the multi-Stronghold world below.
 
 ### Adventure — mode (STUB, plan separately)
-The *other* way new Strongholds get founded (besides Exile): a champion **sets out on
-adventure** — voluntarily leaving the Stronghold to seek fortune in the wilds and, if they
-prosper, **found their own Stronghold** (feeding world expansion). Overlaps heavily with
-Exile (both are "leave → survive → maybe found"); the open question is whether Adventure and
-Exile are **one shared wilderness system** with two entry reasons (chosen vs. forced) or two
-distinct modes. Also the NPC-departure flavor of D2.3 ("champions leave to find other
-adventures"). Own planning pass.
+The *other* way champions leave the Stronghold (besides Exile): a champion **voluntarily
+sets out on adventure** to seek fortune in the wilds, and may **found a new Stronghold**
+(feeding world expansion). **DECIDED — Adventure and Exile are two DISTINCT modes**, split
+by whether you can go home:
+- **Adventure = round-trip** — you **can return to your home Stronghold** and resume your
+  career there.
+- **Exile = one-way** — banished; you **cannot return** to your home Stronghold; the only
+  path forward is founding a new one.
+
+**Both modes share ONE wilderness / outside-world system** — the same map, survival
+mechanics, threats, resources and found-a-Stronghold path. They differ only in **entry**
+(forced vs. voluntary) and **return-home** (Exile no, Adventure yes). So the wilderness is
+built once and reused, like the combat engine across modes.
+
+Also the NPC-departure flavor of D2.3 ("champions leave to find other adventures"). Own
+planning pass (what a round-trip yields, its cost/risk, and the founding path).
 
 ### Stronghold / Region / Kingdom warfare — far future (STUB)
 Long-term vision: one persistent world with a **Kingdom → Region → Stronghold** hierarchy
@@ -251,27 +312,30 @@ territory — army tactics, siege engines ("heavy machines"), cavalry. A grand-s
 affordable; the data design there ensures we don't paint ourselves into a corner now.
 
 ### Open questions
-**Resolved so far:** Popularity −50%/season (soft reset) · award scaled by band × bracket
-depth × **Spectacle** · every fight gets a **Spectacle/Crowd rating** (feeds gate + fame)
+**Resolved so far:** Popularity −50%/season (soft reset) · award = **boutsWon × perBoutValue(band) × Spectacle**
+(formula decided; constants sim-tuned) · every fight gets a **Spectacle/Crowd rating** (feeds gate + fame)
 · lose-to-Lord = **die / serve / exile** · challenge **optional but Lord must accept** ·
 Lord fields **himself or a servant**; the **loser** (either) faces die/serve/exile · a
 **deposed Lord's servants are freed** (rejoin guild / fight independently / leave) so a new
 Lord starts empty · **defend-by-recruiting** (servants = beaten challengers who serve) ·
 arena bouts **auto-resolve + Scribe/Bulletin Board** · Lord income = rent + gate/wagers +
-stall licenses + **EQ sales tax**, all **Lord-decided** knobs · **byes = random** · **one
-continuous world** (role changes, not separate slots) · **world-gen** = pre-simulate
+stall licenses + **EQ sales tax**, all **Lord-decided** knobs · **byes = random** · **multiple
+worlds** = each universe a separate save game (roles change in place *within* a world) · **world-gen** = pre-simulate
 background seasons so you join a living Stronghold with a real, career-statted Lord · **no
 hard win** for the Lord (reign until deposed or die of old age → open succession) · target
-reign **≥5–6 seasons** (confirm via sim) · **Aging** is now a system.
+reign **≥5–6 seasons** (confirm via sim) · **Aging** is now a system · **Adventure vs Exile**
+= distinct modes over **one shared wilderness** (differ by entry + return-home: Adventure round-trip, Exile one-way) · **Serve** = playable household mode (defend the throne: win→Win+HP/MP, lose→die; uprising = fight-to-death for the throne) · **challenge = gauntlet** (≤3 servants then the Lord; +50% HP/MP per bout, no full heal; a 4th servant needs releasing/exiling/killing one — tune via sim).
 
 **Still open (user wants to think more on the ★ ones):**
-- ★ **Popularity scaling constants** — tune the band × depth × Spectacle formula.
-- ★ **Throne defensibility** — fork DECIDED (Lord chooses personal vs. servant defender,
-  servants recruited from beaten challengers who "serve"). Still open: **target reign
-  length** + **servant sub-Qs** (upkeep/housing cost, who defends & selection, single
-  duel vs gauntlet, servant aging, legitimacy cost of never fighting yourself). Sim it.
-- **Serve / household** — is "serve" a **playable mode** for the human (own pass, like
-  Exile), and how does the servant/household system work as a Lord-mode subsystem?
+- ★ **Popularity constants** — formula DECIDED (`boutsWon × perBoutValue(band) × spectacle`;
+  perBoutValue starts `5 + winFloor/5`); the sim only tunes the constants.
+- ★ **Throne defensibility** — DECIDED: **gauntlet** (≤3 servants then the Lord; +50% HP/MP
+  per bout) + the Lord's **home-arena advantage**. Still open (sim-tuned): **target reign
+  length** (assume ≥5–6), the **cap (3) & replenish (50%)**, servant **upkeep/housing**, and
+  **aging**.
+- **Serve / household** — DECIDED: a **playable mode** (household path). Defend the Lord's
+  throne (win = Win+HP/MP, lose = die), build up, then **uprising = fight-to-the-death** for
+  the throne. Own build pass (household duties/favor, servant UI). See "Serve — mode" above.
 - ★ **World-gen depth** — how many background seasons to pre-simulate so the Lord +
   populated bands feel real.
 - ★ **Spectacle weights/curve** — tune what thrills the crowd (via sim).
@@ -285,10 +349,13 @@ reign **≥5–6 seasons** (confirm via sim) · **Aging** is now a system.
 - **Byes** — DECIDED: **random** bye for odd-count brackets.
 - **Sales tax + stall licenses** — **Lord-decided** knobs (he sets the rates); coronation
   defaults + balance tuned via the economy sim.
-- **Lord abilities (D1)** — the Lord's **special combat kit** when he defends a challenge
-  personally; **own planning pass**.
-- **Multiple worlds** — one continuous world per playthrough (decided); optionally several
-  independent save-slots later. Not urgent.
+- **Lord abilities (D1)** — DECIDED: home-arena advantage = full HP/MP + choose opening range
+  (default) + **pick 1** of Home crowd / Armory / Treasury (1 HP + 1 MP potion), **building-gated**
+  (prestige / Armory / treasury). Magnitudes + gate thresholds tuned by sim.
+- **Multiple worlds** — DECIDED: **each universe is a separate save game** (multiple
+  save-slot worlds). Within a world your role changes in place (one continuous save per
+  world); a **world-select** at boot picks or creates a universe. NB: distinct from the
+  many-Strongholds-in-*one*-world hierarchy — these are sealed, independent universes.
 
 ---
 
@@ -323,7 +390,7 @@ Battles are **seeded** so a server can replay and verify any fight (anti-cheat).
 The world is a **6-level containment tree**, each level with a ruler:
 
 ```
-World (one save / universe)
+World (a universe = one separate save game; keep several)
 └─ Kingdom ×N          — ruled by a KING; kingdoms wage war
    └─ Region ×N        — ruled by a BARON; regions fight to conquer
       └─ Stronghold ×N — ruled by a LORD; hosts the arena (Champion/Lord modes)
@@ -454,6 +521,48 @@ storage-adapter + seam is the bolt-on point.
 - **NPC daily churn** (D2.2): mechanics for champions arriving/leaving the Stronghold daily.
 - **Guild roles** (D2.3): a **non-combat career path** — aging/retiring champions take guild
   offices and *manage* the guild instead of fighting (an off-ramp from the arena).
+
+---
+
+## Character personality (AI variety)  ← PLANNED
+
+Every AI-controlled character carries a **personality** — a small vector of traits **seeded at
+creation** (world-gen / recruitment) that **biases its decisions**. Because each character rolls
+its own personality, **every game's cast behaves differently**: the decision branches fire
+differently run-to-run, opponents become readable *characters*, and replayability jumps.
+
+**It weights the existing decision logic — it is NOT a new tree.** The AI already branches on
+thresholds (a Fighter charges ~80% of rounds; a Cleric heals under ~35% HP). Personality
+**shifts those thresholds**: an *aggressive* Fighter charges ~95% and presses on while hurt; a
+*cautious* one kites and retreats early. Same logic, personality-tuned weights → distinct,
+readable behaviour.
+
+**Trait starter set (tune via sim):**
+- **Aggression** — attack/close vs. defend/kite/heal.
+- **Bravery / risk** — fight-while-hurt, all-in plays, taking on stronger foes.
+- **Ambition** — how hard they chase wins/gold and the throne (*do they challenge the Lord?*).
+- **Cunning** — Hide, arrow swaps, positioning, spell choice, servant ordering.
+- **Discipline** — resource husbandry (when to spend potions/MP).
+- **Cruelty ↔ mercy** — as a Lord, **kill vs. exile vs. release** servants; finishing style.
+- **Loyalty ↔ treachery** — as a servant, how soon they **uprise**; as a guildmember, stay/leave.
+- **Greed ↔ generosity** — as a Lord, how high they set **rent / purse / sales-tax**.
+
+**Scope = every AI controller** (the controller seam again): champions (combat + shopping + when
+to challenge), Lords (economy knobs + servant management + fight-personally-or-not), servants
+(uprising timing), guilds (tithe / recruit / leave), Barons/Kings (war appetite). A **player**
+controller simply overrides personality with real choices.
+
+**Stored** as a compact trait vector on the character record (seeded → deterministic + replayable).
+**Flavour bonus:** the **Scribe** can colour narration by personality (a berserker's bout reads
+differently from a duelist's).
+
+**Balance guard:** personality adds **variance around the baseline, not power** — the balance sims
+must run across a *distribution* of personalities so class balance holds for every temperament,
+not just the average.
+
+**Open (tune via sim):** the final trait list, each trait's **effect strength**, and the generation
+model — uniform random vectors, or sampled **archetypes** ("Berserker / Tactician / Coward /
+Tyrant / Zealot") for readability?
 
 ---
 
