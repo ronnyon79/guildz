@@ -170,6 +170,20 @@
    * perBout = 5 + band — the decided `5 + winFloor/5` with 5-wide bands
    * (band 0 → 5/bout, 25 wins → 10, 50 wins → 15). Fame decays −50% at the
    * start of each season; the season's #1 may challenge the Lord (GUI-9). */
+  /* The Lord of the Stronghold (GUI-9). A career-statted ex-champion generated
+   * at world-gen. Home-arena advantage in the throne duel: full HP/MP + he
+   * picks the opening range (defaults), plus ONE perk (AI picks by class):
+   *   crowd    — the home roar: +5% To Hit / +5% To Crit (one d20 face each)
+   *   armory   — the vault's best: top-tier ENCHANTED armor (+ fire arrows for
+   *              a thief lord)
+   *   treasury — enters with 1 HP + 1 MP potion
+   * Magnitudes are sim-tunable (GUI-31/GUI-43). */
+  const LORD = {
+    wins: [40, 60],          // veteran career at world-gen
+    crowd: { toHit: 5, toCrit: 5 },
+    treasury: { potion_healing: 1, potion_mana: 1 },
+  };
+
   const POPULARITY = {
     perBout: (band) => 5 + band,
     // Crowd Rating multiplier: 3★ (average) = ×1; a dull bout pays a third,
@@ -178,5 +192,5 @@
   };
   const SEASON = { days: 10 }; // days per season — first guess, tune via sim (GUI-30)
 
-  G.data = { CLASSES, WEAPONS, ARMOR, ARMOR_MAXTIER, VENDORS, ITEMS, ARROWS, GOLD_PER_WIN, goldForWin, totalGoldAt, POINTS_PER_WIN, CRIT_MULT, FOE_NAMES, EPITHETS, ROSTER, POPULARITY, SEASON };
+  G.data = { CLASSES, WEAPONS, ARMOR, ARMOR_MAXTIER, VENDORS, ITEMS, ARROWS, GOLD_PER_WIN, goldForWin, totalGoldAt, POINTS_PER_WIN, CRIT_MULT, FOE_NAMES, EPITHETS, ROSTER, POPULARITY, SEASON, LORD };
 })(typeof window !== "undefined" ? window : globalThis);

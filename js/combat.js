@@ -102,6 +102,10 @@
       spellPower: char.spellPower || 0, // flat bonus added to spell damage
       dodge: c.dodge || 0,              // chance to evade an incoming melee/missile hit
     };
+    // Flat combat bonuses on the char (home-crowd roar, future buffs). Kept in
+    // multiples of 5 so they map cleanly onto the d20.
+    if (char.toHitBonus) f.toHit += char.toHitBonus;
+    if (char.toCritBonus) f.toCrit += char.toCritBonus;
     // Win-based class perks (extra attacks, improved crit). Later entries win ties.
     for (const perk of c.perks || []) {
       if (f.wins >= perk.at) {
@@ -119,12 +123,14 @@
     return f;
   }
 
-  function newBattle(playerChar, foeChar, seed) {
+  // `openRange` (default missile) — the Lord's home-arena advantage lets him
+  // dictate where the throne duel begins.
+  function newBattle(playerChar, foeChar, seed, openRange) {
     return {
       seed,
       round: 1,
       phase: "choose", // choose | won | lost
-      range: "missile", // fight opens at missile range
+      range: openRange === "melee" ? "melee" : "missile",
       you: makeFighter({ ...playerChar, isPlayer: true }),
       foe: makeFighter(foeChar),
       log: [],
