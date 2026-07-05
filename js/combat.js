@@ -67,8 +67,10 @@
       classId: char.classId,
       wins: char.wins || 0,
       isPlayer: !!char.isPlayer,
-      maxHp: char.maxHp, hp: char.maxHp,
-      maxMp: char.maxMp, mp: char.maxMp,
+      // startHp/startMp: a fighter can enter WORN (the gauntlet's carry-over).
+      maxHp: char.maxHp, hp: char.startHp != null ? Math.min(char.startHp, char.maxHp) : char.maxHp,
+      maxMp: char.maxMp, mp: char.startMp != null ? Math.min(char.startMp, char.maxMp) : char.maxMp,
+      regen: char.regen || 0,            // HP healed at each round's end (Infirmary)
       toHit: c.toHit, toCrit: c.toCrit, toCast: c.toCast,
       evadeOn: c.evade || 0,             // 1d20 >= this evades an incoming attack (0 = none)
       attacks: 1,                        // independent To-Hit rolls per action (multi-attack)
@@ -282,10 +284,16 @@
       if (checkEnd(next, log)) return next;
     }
 
-    // Curse and Slow count down at the end of the round.
+    // Curse and Slow count down at the end of the round; Infirmary healers
+    // tend a regenerating fighter.
     for (const key of ["you", "foe"]) {
       if (sides[key].cursed > 0) sides[key].cursed -= 1;
       if (sides[key].slowed > 0) sides[key].slowed -= 1;
+      const f = sides[key];
+      if (f.regen > 0 && f.hp > 0 && f.hp < f.maxHp) {
+        f.hp = clamp(f.hp + f.regen, 0, f.maxHp);
+        log.push({ t: "regen", who: f.name, amt: f.regen });
+      }
     }
 
     // Timed summons (Spiritual Weapon) count down and expire.

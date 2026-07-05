@@ -339,6 +339,25 @@ cap (3) & per-bout replenish (50%)**, servant **upkeep/housing** cost, and **ser
   the gauntlet) · **Barracks** (1 servant slot/lvl — the gauntlet's household cap, replacing
   the flat 3). 🏗️ panel on the Lord's home. Migrations. 11 headless tests + 169 regressions.
 
+- **GUI-16 + GUI-41 + GUI-43 The Defend loop — v0.11.0** ✅ The arc CLOSES: Rise → Rule →
+  **Defend**. **NPC challengers**: the season's #1 resident (fame > 0) comes for the crown —
+  yours if you reign, your Lord's (with YOU fielded) if you serve; the challenge cannot be
+  refused. **The GAUNTLET (as decided)**: challenger fights the household in order (strongest
+  first) then the Lord; defenders fresh; challenger **replenishes 50% of max HP/MP** per bout
+  (capped — a dominant challenger can arrive topped; GUI-31 tunes); **beaten servants DIE**;
+  beaten challenger → seeded die/serve/exile (**serve → kneels into your household** if a
+  Barracks slot is free; exile/die → leaves the world = first real churn-out). Engine:
+  `startHp/startMp` (worn entry) + `regen` (Infirmary heals the defender each round, narrated).
+  **GUI-43 live for the player-Lord**: defense-prep screen — choose the opening range + ONE
+  building-gated boon (crowd ← Seating, armory ← Armory, treasury potions ← 🏛️200) — full
+  HP/MP + infirmary regen default. **Deposed**: usurper crowned (reign 0), household freed
+  (emergent: by gauntlet order it's always empty — they fought first), YOU get die/serve/exile
+  (a fallen Lord may serve the new one). **GUI-41 fielded defense**: the Lord fields his
+  servant — win = +1 win + growth; fall = DEATH, no choice. Household management (decided):
+  release 🕊️ / exile 🚪 / kill 💀 buttons. Gauntlet bouts recorded on the Board. 31+1 headless
+  tests (`tools/test_defense.js`) + 180 regressions. NOTE: reigns now END — the ≥5–6-season
+  target is finally measurable (GUI-31).
+
 ### Build order (when the user says go)
 1. **Champion summit** — NPC population + Popularity ladder + Lord boss fight (finish
    the Rise). Small, self-contained, reuses combat entirely.
