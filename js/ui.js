@@ -114,13 +114,29 @@
   function lordBlock(s) {
     const p = s.player;
     if (p.role === "lord") {
+      const slots = ((s.stronghold || {}).buildings || {}).barracks || 0;
+      const servants = s.household.length
+        ? s.household.map((h) => `<div class="card-sub" style="margin-top:4px">${CLASSES[h.classId].emoji} ${esc(h.name)} (${h.wins}w)
+            <button class="btn sm ghost" data-act="servant" data-arg="${h.id}:release" title="Release">🕊️</button>
+            <button class="btn sm ghost" data-act="servant" data-arg="${h.id}:exile" title="Exile">🚪</button>
+            <button class="btn sm ghost" data-act="servant" data-arg="${h.id}:kill" title="Kill">💀</button></div>`).join("")
+        : slots ? "empty — beaten challengers may kneel" : "build the Barracks to house defenders";
+      const challenge = s.defense && !s.defense.fielded ? `<div class="card" style="border-color:#c0392b">
+        <div class="card-title">⚔️ A CHALLENGER COMES</div>
+        <div class="card-sub"><b>${esc(s.defense.name)}</b> ended the season as the people's favourite and demands your throne. The challenge cannot be refused — your household fights first, then it is you.</div>
+        <button class="btn block lg" style="margin-top:10px" data-act="begin-defense">🛡️ Answer the challenge</button></div>` : "";
       return `<div class="card"><div class="card-row"><div class="avatar">👑</div>
         <div><div class="card-title"><span class="you">${esc(p.name)}</span> <span class="pill on">Lord of the Stronghold</span></div>
-        <div class="card-sub">${s.npcs.length} champions fight under your banner. Preside over the games — treasury, rents and taxes arrive with the coming updates.</div></div></div></div>`;
+        <div class="card-sub">${s.npcs.length} champions fight under your banner.</div>
+        <div class="card-sub">🏚️ Household (${s.household.length}/${slots}): ${servants}</div></div></div></div>` + challenge;
     }
     const L = s.lord;
     if (!L) return "";
-    const lordCard = `<div class="card"><div class="card-row"><div class="avatar">👑</div>
+    const fielded = p.role === "servant" && s.defense && s.defense.fielded ? `<div class="card" style="border-color:#c0392b">
+      <div class="card-title">🛡️ YOUR LORD FIELDS YOU</div>
+      <div class="card-sub"><b>${esc(s.defense.name)}</b> has come for Lord ${esc(L.name)}'s throne — and you are the household. Win, and you grow. Fall, and you die. There is no refusing.</div>
+      <button class="btn block lg" style="margin-top:10px" data-act="begin-defense">⚔️ Stand and fight</button></div>` : "";
+    const lordCard = fielded + `<div class="card"><div class="card-row"><div class="avatar">👑</div>
       <div><div class="card-title">Lord ${esc(L.name)} <span class="pill">${CLASSES[L.classId].name}</span></div>
       <div class="card-sub">${L.wins}-win champion of old · reigning ${L.reignSeasons} season${L.reignSeasons === 1 ? "" : "s"}${p.role === "servant" ? " · <b>you serve his household</b>" : ""}</div></div></div></div>`;
     if (!s.challengeOpen) return lordCard;
@@ -345,6 +361,56 @@
     </div>`;
   }
 
+  /* ---------- the throne DEFENCE (GUI-16/41/43) ---------- */
+  function screenDefensePrep(s) {
+    const run = s.defenseRun, d = s.defense;
+    if (!run || !d) return screenHome(s);
+    const npc = s.npcs.find((n) => n.id === d.challengerId) || { name: d.name };
+    const bouts = run.bouts.map((b) => `<div class="card-sub">${b.result === "fell"
+      ? `☠️ ${esc(b.servant)} fell to ${esc(b.challenger)}`
+      : `🛡️ ${esc(b.servant)} stopped ${esc(b.challenger)}`}${b.spec ? ` ${starsOf(b.spec)}` : ""}</div>`).join("");
+    const ch = G.roster.combatChar(npc, game.gearScale());
+    const wornPct = Math.round((run.chHp / ch.maxHp) * 100);
+    ui.defPerk = ui.defPerk || "none";
+    ui.defRange = ui.defRange || "missile";
+    const perks = game.defensePerks().map((pk) => `<div class="card class-card ${ui.defPerk === pk.id ? "sel" : ""}" data-act="def-perk" data-arg="${pk.id}" style="${pk.ok ? "" : "opacity:.45"}">
+      <div class="card-row"><div class="avatar">${pk.emoji}</div>
+      <div><div class="card-title" style="font-size:14px">${pk.name} ${pk.ok ? "" : `<span class="pill">${pk.why}</span>`}</div>
+      <div class="card-sub">${pk.desc}</div></div></div></div>`).join("");
+    return topbar(s.player) + `<div class="screen">
+      <div class="screen-title">⚔️ The challenger stands before you</div>
+      ${bouts ? `<div class="card"><div class="card-title">The gauntlet</div>${bouts}</div>` : `<p class="card-sub center">You have no household — ${esc(npc.name)} comes to you untouched.</p>`}
+      <div class="card"><div class="card-row"><div class="avatar">${CLASSES[ch.classId].emoji}</div>
+        <div><div class="card-title">${esc(npc.name)} <span class="pill">${CLASSES[ch.classId].name} · ${ch.wins}w</span></div>
+        <div class="card-sub">Worn to <b>${wornPct}%</b> — the gauntlet takes its toll. You fight FRESH, on your own sand.</div></div></div></div>
+      <div class="screen-title">Choose the ground</div>
+      <div class="alloc-row">
+        <button class="btn sm ${ui.defRange === "missile" ? "" : "ghost"}" data-act="def-range" data-arg="missile">🏹 Open at missile</button>
+        <button class="btn sm ${ui.defRange === "melee" ? "" : "ghost"}" data-act="def-range" data-arg="melee">⚔️ Open at melee</button>
+      </div>
+      <div class="screen-title">One boon of the Stronghold</div>
+      <div class="card class-card ${ui.defPerk === "none" ? "sel" : ""}" data-act="def-perk" data-arg="none"><div class="card-row"><div class="avatar">✊</div>
+        <div><div class="card-title" style="font-size:14px">No boon</div><div class="card-sub">Steel alone.</div></div></div></div>
+      ${perks}
+      <button class="btn block lg gold" style="margin-top:10px" data-act="start-defense">🛡️ Defend the throne</button>
+    </div>`;
+  }
+
+  function screenDefended(s) {
+    const d = s.lastDefense || {};
+    const fate = d.fate === "serve" ? `${esc(d.challenger)} <b>kneels</b> — they join your household.`
+      : d.fate === "exile" ? `${esc(d.challenger)} limps out of the gates, never to return.`
+      : `${esc(d.challenger)} dies on the sand.`;
+    return `<div class="result win">
+      <div class="result-emoji">🛡️</div>
+      <div class="result-title">The throne holds</div>
+      ${d.byServant ? `<p class="muted"><b>${esc(d.byServant)}</b> of your household stopped the challenger — you never had to rise.</p>` : d.fielded ? `<p class="muted">You held your Lord's throne — and grew for it (+1 win).</p>` : `<p class="muted">You met ${esc(d.challenger)} yourself and put them down (+1 win).</p>`}
+      ${crowdBlock(s.lastSpec)}
+      <p class="muted">${d.fielded ? `${esc(d.challenger)} is dragged from the sand.` : fate}</p>
+      <div class="result-actions"><button class="btn block" data-act="return-home">${d.fielded ? "Back to the household" : "To the high seat 👑"}</button></div>
+    </div>`;
+  }
+
   // ---------- the throne (GUI-9 / GUI-10) ----------
   function screenCoronation(s) {
     const t = s.lastThrone || {};
@@ -365,9 +431,11 @@
     const t = s.lastThrone || {};
     return `<div class="result loss">
       <div class="result-emoji">⚖️</div>
-      <div class="result-title">The Lord stands over you</div>
+      <div class="result-title">${t.deposed ? "Your throne is taken" : "The Lord stands over you"}</div>
       ${crowdBlock(s.lastSpec)}
-      <p class="muted">Lord ${esc(t.lordName)} lowers his blade and offers you a choice. Choose your fate:</p>
+      <p class="muted">${t.deposed
+        ? `${esc(t.lordName)} takes the high seat that was yours, frees your household — and offers the fallen Lord the same mercy you once received. Choose your fate:`
+        : `Lord ${esc(t.lordName)} lowers his blade and offers you a choice. Choose your fate:`}</p>
       <div class="card class-card" data-act="fate" data-arg="serve"><div class="card-row"><div class="avatar">🙇</div>
         <div><div class="card-title">Serve</div><div class="card-sub">Join his household. Keep fighting the daily brackets in his service — top the fame ladder again and you may <b>rise against him, to the death</b>.</div></div></div></div>
       <div class="card class-card" data-act="fate" data-arg="exile"><div class="card-row"><div class="avatar">🚪</div>
@@ -381,9 +449,11 @@
     const t = s.lastThrone || {};
     return `<div class="result loss">
       <div class="result-emoji">🪦</div>
-      <div class="result-title">${t.fate === "uprising" ? "The uprising fails" : "Here ends the tale"}</div>
+      <div class="result-title">${t.fate === "uprising" ? "The uprising fails" : t.fate === "defense" ? "Fallen in defence" : "Here ends the tale"}</div>
       <p class="muted">${t.fate === "uprising"
         ? `A servant who rises gets no second chance. Lord ${esc(t.lordName)} shows no mercy.`
+        : t.fate === "defense"
+        ? `Fielded for a throne not your own, ${esc((s.player || {}).name || "the servant")} fell to ${esc(t.lordName)} on the sand. A defender gets no choice.`
         : `${esc((s.player || {}).name || "The champion")} chose to meet the end unbowed.`}</p>
       <p class="card-sub center">The save is gone — as permanent as the grave. The Stronghold will remember.</p>
       <div class="result-actions"><button class="btn block" data-act="reset-hard">⚔️ A new champion rises</button></div>
@@ -591,6 +661,7 @@
       case "petDown": out = fill(V(PETDOWN), { A: span(ev.who, "sys") }); break;
       case "petExpire": out = fill(V(PETEXPIRE), { A: span(ev.who, "sys") }); break;
       case "petMove": out = fill(V(PETMOVE), { A: span(ev.who, ev.owner === pName ? "you" : "foe") }); break;
+      case "regen": out = `${span(ev.who)}'s wounds close under the healers' hands <span class="heal-tag">✚${ev.amt}</span>`; break;
       case "end": return "";
       default: return "";
     }
@@ -883,6 +954,8 @@
       case "bracket": html = screenBracket(s); break;
       case "day-champion": html = screenDayChampion(s); break;
       case "lord-sunset": html = screenLordSunset(s); break;
+      case "defense-prep": html = screenDefensePrep(s); break;
+      case "defended": html = screenDefended(s); break;
       case "coronation": html = screenCoronation(s); break;
       case "throne-fate": html = screenThroneFate(s); break;
       case "memorial": html = screenMemorial(s); break;
@@ -920,6 +993,26 @@
       case "decree": { const [k, d] = arg.split(":"); game.setDecree(k, parseInt(d, 10)); break; }
       case "view-bout": { const [di, bi] = arg.split(":"); game.openBout(parseInt(di, 10), parseInt(bi, 10)); break; }
       case "build": toast(game.buyBuilding(arg) ? "Raised!" : "The treasury cannot bear it.") ; break;
+      case "begin-defense": game.beginDefense(); break;
+      case "servant": {
+        const [sid, how] = arg.split(":");
+        const verb = how === "release" ? "Release" : how === "exile" ? "Exile (one-way)" : "KILL";
+        if (confirm(verb + " this servant?")) game.removeServant(sid, how);
+        break;
+      }
+      case "def-range": ui.defRange = arg; render(game.state); break;
+      case "def-perk": {
+        const pk = game.defensePerks().find((x) => x.id === arg);
+        if (arg === "none" || (pk && pk.ok)) { ui.defPerk = arg; render(game.state); }
+        else toast(pk ? pk.why : "Unavailable.");
+        break;
+      }
+      case "start-defense": {
+        const perk = ui.defPerk === "none" ? null : ui.defPerk;
+        ui.defPerk = null; ui.defRange = ui.defRange || "missile";
+        game.startDefenseDuel(perk, ui.defRange);
+        break;
+      }
       case "pick-class": ui.selectedClass = arg; render(game.state); break;
       case "create": {
         const name = (document.getElementById("hero-name") || {}).value || "";

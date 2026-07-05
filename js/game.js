@@ -25,6 +25,9 @@
     npcs: [],            // the Stronghold's resident champions (persisted)
     lord: null,          // the reigning Lord (persisted; null once YOU reign)
     stronghold: null,    // treasury + the Lord's decrees (persisted)
+    household: [],       // the Lord's servants — throne defenders (persisted)
+    defense: null,       // a pending challenge {challengerId, name, season, fielded} (persisted)
+    defenseRun: null,    // transient gauntlet progress {bouts, chHp, chMp}
     board: [],           // the Scribe's parchments: recent days' bouts (persisted ring)
     viewBout: null,      // which parchment is open {di, bi}
     clock: { day: 1, season: 1 }, // the world clock (persisted)
@@ -102,7 +105,7 @@
   function save() {
     if (!state.worldId) return;
     try {
-      const blob = { player: state.player, npcs: state.npcs, lord: state.lord, stronghold: state.stronghold, board: state.board, clock: state.clock, lastSeason: state.lastSeason, challengeOpen: state.challengeOpen, seedCounter: state.seedCounter };
+      const blob = { player: state.player, npcs: state.npcs, lord: state.lord, stronghold: state.stronghold, household: state.household, defense: state.defense, board: state.board, clock: state.clock, lastSeason: state.lastSeason, challengeOpen: state.challengeOpen, seedCounter: state.seedCounter };
       localStorage.setItem(worldKey(state.worldId), JSON.stringify(blob));
       const ix = readIndex();
       const i = ix.worlds.findIndex((w) => w.id === state.worldId);
@@ -158,6 +161,8 @@
       // Migrate saves created before the economy existed.
       state.stronghold = data.stronghold || { ...ECONOMY.start };
       if (!state.stronghold.buildings) state.stronghold.buildings = { seating: 0, armory: 0, infirmary: 0, barracks: 0, yard: 0 };
+      state.household = Array.isArray(data.household) ? data.household : [];
+      state.defense = data.defense || null;
       state.board = Array.isArray(data.board) ? data.board : [];
       state.screen = "home";
       return true;
@@ -196,6 +201,8 @@
     state.npcs = G.roster.generateRoster(seed, state.player.name);
     state.lord = generateLord(seed + 1);
     state.stronghold = { ...ECONOMY.start, buildings: { seating: 0, armory: 0, infirmary: 0, barracks: 0, yard: 0 } };
+    state.household = [];
+    state.defense = null;
     state.board = [];
     state.clock = { day: 1, season: 1 };
     state.lastSeason = null;
@@ -394,6 +401,16 @@
       // Lord (optional). Standings are judged pre-decay.
       state.challengeOpen = !!(state.lord && state.player.role !== "lord" &&
         state.lastSeason.top[0] && state.lastSeason.top[0].isPlayer && state.lastSeason.top[0].popularity > 0);
+      // …and if a RESIDENT is #1, they come for the throne (the Defend loop):
+      // for YOUR crown if you reign, or for your Lord's — with YOU fielded —
+      // if you serve. A challenge must be answered (the Lord cannot refuse).
+      if (!state.defense && (state.player.role === "lord" || state.player.role === "servant")) {
+        const topNpc = fameLadder().find((r) => !r.isPlayer && r.popularity > 0);
+        if (topNpc && !(state.lastSeason.top[0] && state.lastSeason.top[0].isPlayer)) {
+          state.defense = { challengerId: topNpc.id, name: topNpc.name, season: state.clock.season, fielded: state.player.role === "servant" };
+          state.lastDay.defenseComing = topNpc.name;
+        }
+      }
       state.player.popularity = Math.round((state.player.popularity || 0) / 2);
       for (const n of state.npcs) n.popularity = Math.round((n.popularity || 0) / 2);
       state.clock.season += 1;
@@ -451,6 +468,13 @@
     state.player.activeArrow = state.battle.you.activeArrow || "normal";
     state.player.armor = state.battle.you.armor; // may become null if it broke
     state.player.armorDurability = state.battle.you.armorDurability;
+    // A throne DEFENCE resolves outside the brackets.
+    if (state.throneDefense && state.battle.phase !== "choose") {
+      state.lastSpec = G.spectacle.rate(state.battle, state.battle.phase === "won" ? "you" : "foe");
+      resolveDefense(state.battle.phase === "won");
+      emit();
+      return;
+    }
     // The throne duel resolves outside the brackets.
     if (state.throneFight && state.battle.phase !== "choose") {
       state.lastSpec = G.spectacle.rate(state.battle, state.battle.phase === "won" ? "you" : "foe");
@@ -549,6 +573,160 @@
     state.viewBout = { di, bi };
     state.screen = "parchment";
     emit();
+  }
+
+  /* ---- the throne DEFENCE: the servant gauntlet (GUI-16/41/43) ----
+   * A challenger must beat the Lord's servants IN ORDER, then the Lord.
+   * Defenders fight fresh; the challenger replenishes only 50% of max HP/MP
+   * between bouts. A beaten servant DIES. A beaten challenger faces
+   * die / serve / exile. The throne falls only when the LORD falls. */
+
+  const barracksSlots = () => ((state.stronghold || {}).buildings || {}).barracks || 0;
+
+  // A beaten challenger's fate (seeded; personality arrives with GUI-42).
+  function challengerFate(npc, seed) {
+    const r = G.engine.makeRng((seed >>> 0) + 17)();
+    state.npcs = state.npcs.filter((x) => x.id !== npc.id); // leaves the roster either way
+    if (r < 0.5 && state.player.role === "lord" && state.household.length < barracksSlots()) {
+      state.household.push({ id: npc.id, name: npc.name, classId: npc.classId, wins: npc.wins });
+      return "serve"; // kneels — your wall grows
+    }
+    return r < 0.85 ? "exile" : "die"; // rides out, or bleeds out on the sand
+  }
+
+  // Answer the challenge. Lord: the household fights first. Servant: YOU are
+  // the household — your Lord fields you, to the death.
+  function beginDefense() {
+    const d = state.defense;
+    if (!d) return;
+    const npc = npcById(d.challengerId);
+    if (!npc) { state.defense = null; save(); emit(); return; } // challenger gone (edge)
+    const ch = G.roster.combatChar(npc, gearScale());
+    state.defenseRun = { bouts: [], chHp: ch.maxHp, chMp: ch.maxMp, fielded: !!d.fielded };
+    if (d.fielded) { startDefenseDuel(null, "missile"); return; } // servants get no perks
+    // The gauntlet: strongest servant first (ordering decree can come later).
+    const order = state.household.slice().sort((a, b) => b.wins - a.wins);
+    for (const servant of order) {
+      const sChar = G.roster.combatChar(servant, 1); // the armory keeps its own fed
+      const worn = { ...ch, startHp: state.defenseRun.chHp, startMp: state.defenseRun.chMp };
+      const seed = nextSeed();
+      const res = G.tournament.autoBout(worn, sChar, seed);
+      recordBout({ a: worn, b: sChar, winner: res.winnerId === worn.id ? worn.name : sChar.name, rounds: res.rounds, spec: res.spec, seed, gauntlet: true });
+      const boutNote = { servant: servant.name, challenger: npc.name, spec: res.spec };
+      if (res.winnerId === sChar.id) {
+        // The wall holds. The challenger faces their fate; the servant grows.
+        servant.wins += 1;
+        boutNote.result = "held";
+        state.defenseRun.bouts.push(boutNote);
+        state.lastDefense = { won: true, byServant: servant.name, challenger: npc.name, fate: challengerFate(npc, seed), bouts: state.defenseRun.bouts };
+        state.defense = null; state.defenseRun = null;
+        state.screen = "defended";
+        save(); emit();
+        return;
+      }
+      // The servant falls — permanently.
+      boutNote.result = "fell";
+      state.defenseRun.bouts.push(boutNote);
+      state.household = state.household.filter((s) => s.id !== servant.id);
+      // Replay the wear on the challenger, then patch half their wounds.
+      const after = G.tournament.replayBout(worn, sChar, seed);
+      const chSide = after.you.name === npc.name ? after.you : after.foe;
+      state.defenseRun.chHp = Math.min(ch.maxHp, Math.round(chSide.hp + ch.maxHp * 0.5));
+      state.defenseRun.chMp = Math.min(ch.maxMp, Math.round(chSide.mp + ch.maxMp * 0.5));
+    }
+    // The challenger stands before YOU, worn from the gauntlet.
+    state.screen = "defense-prep";
+    save(); emit();
+  }
+
+  /* Household management (decided): to make room — or on a whim — the Lord may
+   * RELEASE a servant (freed: rejoins the arena), EXILE them (the wilds,
+   * one-way), or KILL them. */
+  function removeServant(id, how) {
+    if (!state.player || state.player.role !== "lord") return;
+    const s = state.household.find((x) => x.id === id);
+    if (!s) return;
+    state.household = state.household.filter((x) => x.id !== id);
+    if (how === "release") state.npcs.push({ id: s.id, name: s.name, classId: s.classId, wins: s.wins, popularity: 0 });
+    // exile / kill: gone from the world (churn arrivals come with D2.2)
+    save(); emit();
+  }
+
+  // The Lord's building-gated boons for the final duel (GUI-43).
+  function defensePerks() {
+    const b = (state.stronghold || {}).buildings || {};
+    return [
+      { id: "crowd", name: "Home crowd", emoji: "📣", ok: (b.seating || 0) >= 1, why: "needs Arena Seating", desc: "The roar of your stands: +5% To Hit, +5% To Crit." },
+      { id: "armory", name: "The armory", emoji: "🛡️", ok: (b.armory || 0) >= 1, why: "needs the Armory", desc: "The vault's finest: top enchanted armor (fire arrows for a thief)." },
+      { id: "treasury", name: "Treasury stock", emoji: "🧪", ok: (state.stronghold || {}).treasury >= 200, why: "needs 🏛️200", desc: "Enter with 1 HP + 1 MP potion (costs 🏛️200)." },
+    ];
+  }
+
+  // The final duel: you, fresh, on your own sand (or fielded as a servant).
+  function startDefenseDuel(perk, openRange) {
+    const d = state.defense, run = state.defenseRun;
+    if (!d || !run) return;
+    const npc = npcById(d.challengerId);
+    const me = playerCombatChar();
+    if (!run.fielded) {
+      me.regen = (((state.stronghold || {}).buildings || {}).infirmary || 0) * BUILDING_FX.infirmaryRegen;
+      if (perk === "crowd") { me.toHitBonus = LORD.crowd.toHit; me.toCritBonus = LORD.crowd.toCrit; }
+      if (perk === "armory") {
+        const best = Object.values(ARMOR).filter((a) => a.magical && a.tier <= (ARMOR_MAXTIER[state.player.classId] || 0)).sort((a, b) => b.dr - a.dr)[0];
+        if (best) { me.armor = best.id; me.armorDurability = best.durability; }
+        if (state.player.classId === "thief") { me.arrows = ["fire"]; me.activeArrow = "fire"; }
+      }
+      if (perk === "treasury" && state.stronghold.treasury >= 200) {
+        state.stronghold.treasury -= 200;
+        me.items = { ...me.items, potion_healing: (me.items.potion_healing || 0) + 1, potion_mana: (me.items.potion_mana || 0) + 1 };
+      }
+    }
+    const ch = G.roster.combatChar(npc, gearScale());
+    ch.startHp = run.chHp; ch.startMp = run.chMp;
+    state.foe = ch;
+    state.throneDefense = true;
+    state.battle = G.combat.newBattle(me, ch, nextSeed(), openRange);
+    state.allocPending = false;
+    state.screen = "battle";
+    save(); emit();
+  }
+
+  // The defence resolves: hold the throne, or lose everything to the upstart.
+  function resolveDefense(won) {
+    const d = state.defense, npc = npcById(d.challengerId);
+    recordPlayerBout({ throne: true, gauntlet: !!(state.defenseRun && !state.defenseRun.fielded) });
+    if (won) {
+      const p = state.player;
+      p.wins += 1; p.battlesWon += 1; // a defence is a career victory
+      if (state.defenseRun && state.defenseRun.fielded) {
+        // A fielded servant is rewarded with growth (the Serve loop's engine).
+        if (CLASSES[p.classId].caster) { p.bonusHp += 1; p.bonusMp += 1; } else { p.bonusHp += POINTS_PER_WIN; }
+        state.lastDefense = { won: true, fielded: true, challenger: npc.name, fate: (state.npcs = state.npcs.filter((x) => x.id !== npc.id), "exile"), bouts: [] };
+      } else {
+        state.lastDefense = { won: true, challenger: npc.name, fate: challengerFate(npc, state.battle.seed), bouts: state.defenseRun.bouts };
+      }
+      state.defense = null; state.defenseRun = null; state.throneDefense = false;
+      state.screen = "defended";
+      save();
+      return;
+    }
+    // The throne falls (or the fielded servant dies with no mercy).
+    if (state.defenseRun && state.defenseRun.fielded) {
+      state.lastThrone = { won: false, uprising: false, lordName: npc.name, defending: true };
+      state.defense = null; state.defenseRun = null; state.throneDefense = false;
+      perish("defense");
+      return;
+    }
+    // Regime change: the upstart is crowned; your surviving servants are freed.
+    state.lord = { name: npc.name, classId: npc.classId, wins: npc.wins, reignSeasons: 0 };
+    state.npcs = state.npcs.filter((x) => x.id !== npc.id);
+    for (const s of state.household) state.npcs.push({ id: s.id, name: s.name, classId: s.classId, wins: s.wins, popularity: 0 });
+    state.household = [];
+    state.player.role = "champion"; // dethroned — your fate is chosen next
+    state.lastThrone = { won: false, uprising: false, deposed: true, lordName: npc.name };
+    state.defense = null; state.defenseRun = null; state.throneDefense = false;
+    state.screen = "throne-fate";
+    save();
   }
 
   // The Lord's decrees (GUI-13): nudge a knob within its bounds.
@@ -692,7 +870,7 @@
   // screen lives on in-memory until "New Game".
   function perish(kind) {
     deleteWorld(state.worldId);
-    state.lastThrone = { ...(state.lastThrone || {}), fate: kind === "uprising" ? "uprising" : "die" };
+    state.lastThrone = { ...(state.lastThrone || {}), fate: kind === "uprising" ? "uprising" : kind === "defense" ? "defense" : "die" };
     state.screen = "memorial";
     emit();
   }
@@ -727,6 +905,8 @@
     state.day = null; state.playerBracket = null; state.dayById = null; state.pendingBout = null; state.lastDay = null;
     state.clock = { day: 1, season: 1 }; state.lastSeason = null;
     state.challengeOpen = false; state.throneFight = false; state.lastThrone = null;
+    state.stronghold = null; state.household = []; state.defense = null; state.defenseRun = null;
+    state.throneDefense = false; state.board = []; state.lastDefense = null; state.viewBout = null;
     state.allocPending = false; state.screen = "title";
     emit();
   }
@@ -739,6 +919,7 @@
     allocate, fightOn, retreat, returnHome, resetGame,
     openVendor, closeVendor, buyItem, buyArrow, loadArrow, buyArmor,
     taxedCost, gearScale, setDecree, buyBuilding, recordBout, openBout,
+    beginDefense, defensePerks, startDefenseDuel, removeServant,
     nextSeed, settleDay, emit, // the seam lord.js drives the shared day through
   };
 })(typeof window !== "undefined" ? window : globalThis);
