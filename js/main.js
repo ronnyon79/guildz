@@ -11,3 +11,10 @@
     G.ui.render(G.game.state);
   });
 })(typeof window !== "undefined" ? window : globalThis);
+
+// Installable app (GUI-55): register the offline shell, cache keyed to VERSION.
+if (typeof navigator !== "undefined" && "serviceWorker" in navigator && location.protocol !== "file:") {
+  fetch("VERSION").then((r) => r.text()).catch(() => "dev").then((v) => {
+    navigator.serviceWorker.register("sw.js?v=" + (v || "dev").trim()).catch(() => {});
+  });
+}
