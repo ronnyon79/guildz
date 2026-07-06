@@ -545,6 +545,12 @@ cap (3) & per-bout replenish (50%)**, servant **upkeep/housing** cost, and **ser
   inside its own box — auto-following new bubbles via the existing scrollTop sync — while
   the action buttons stay pinned. No page scrolling during play. 283 regressions green.
 
+- **GUI-69 BUGFIX: battle still scrolled the page — v0.25.1** (user report). Flexbox again:
+  .battle kept base flex:1 (basis 0, grow-with-content) inside #app whose height is auto —
+  in flex layout that silently BEATS height:100dvh, so the box grew with the bubbles and
+  the page scrolled. flex:none makes the viewport lock real; the log (min-height:0,
+  overflow-y:auto) now scrolls in its own box and the scrollTop auto-follow finally bites.
+
 ### Build order (when the user says go)
 1. **Champion summit** — NPC population + Popularity ladder + Lord boss fight (finish
    the Rise). Small, self-contained, reuses combat entirely.
