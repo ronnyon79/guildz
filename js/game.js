@@ -1073,7 +1073,7 @@
 
   G.game = {
     state, subscribe, boot, load, save, listWorlds, deleteWorld,
-    computeMax, champName, fameLadder, lordCombatChar, careerOf, headToHead,
+    computeMax, champName, fameLadder, lordCombatChar, careerOf, headToHead, playerCombatChar,
     createCharacter, go, enterArena, fightBout, chooseAction,
     challengeLord, chooseFate,
     allocate, fightOn, retreat, returnHome, resetGame,

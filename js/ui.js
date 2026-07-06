@@ -210,6 +210,72 @@
     return { rec: null, status: "" };
   }
 
+  // The champion's battle kit — the SAME builders the arena uses (GUI-70).
+  function champKit(s, name) {
+    try {
+      if (name === s.player.name) return game.playerCombatChar();
+      if (s.lord && s.lord.name === name) return game.lordCombatChar();
+      const n = s.npcs.find((x) => x.name === name) || (s.household || []).find((x) => x.name === name)
+        || (s.departed || []).find((x) => x.name === name);
+      if (n) return G.roster.combatChar({ age: 30, id: "kit", ...n }, game.gearScale());
+    } catch (e) {}
+    return null;
+  }
+
+  function arsenalLine(s, name) {
+    const k = champKit(s, name);
+    if (!k) return "";
+    const dual = (CLASSES[k.classId].perks || []).some((p) => p.weapons > 1 && (k.wins || 0) >= p.at);
+    const mw = WEAPONS[k.meleeWeapon], xw = WEAPONS[k.missileWeapon];
+    const bits = [`❤️ ${k.maxHp} HP`];
+    if (k.maxMp > 0) bits.push(`🔷 ${k.maxMp} MP`);
+    if (mw) bits.push(`${mw.emoji} ${mw.name}${dual ? " ×2" : ""}`);
+    if (xw) bits.push(`${xw.emoji} ${xw.name}${k.arrows && k.arrows.length ? ` (${k.arrows.join("/")} arrows)` : ""}`);
+    bits.push(k.armor ? `${ARMOR[k.armor].emoji} ${ARMOR[k.armor].name} (DR${ARMOR[k.armor].dr})` : "no armor");
+    return `<div class="card-sub">${bits.join(" · ")}</div>`;
+  }
+
+  // What they ACTUALLY do in the arena: mined from recent parchments —
+  // verbatim logs when we have them, seed-replays otherwise (GUI-70).
+  function styleStats(s, name) {
+    const counts = {};
+    let bouts = 0;
+    outer:
+    for (let di = s.board.length - 1; di >= 0; di--) {
+      for (const rec of s.board[di].bouts) {
+        if (rec.a.name !== name && rec.b.name !== name) continue;
+        let log = rec.log;
+        if (!log) { try { log = G.tournament.replayBout(rec.a, rec.b, rec.seed, rec.range).log; } catch (e) { continue; } }
+        bouts++;
+        for (const ev of log) {
+          if (ev.who !== name) continue;
+          let k = null;
+          switch (ev.t) {
+            case "hit": case "miss": k = ev.kind === "melee" ? "⚔️ melee strikes" : "🏹 shots"; break;
+            case "spell": case "fizzle": k = "🔮 " + (ev.skill || "spellcraft"); break;
+            case "applyDot": k = "☠️ " + (ev.skill || "Poison Cloud"); break;
+            case "applyCurse": k = "🕸️ " + (ev.skill || "Curse"); break;
+            case "heal": k = "💚 " + (ev.skill || "healing"); break;
+            case "hide": k = "🌑 hides in shadows"; break;
+            case "item": k = "🧪 potions"; break;
+            case "shield": k = "🛡️ Shield of Faith"; break;
+            case "summon": k = "🌪️ summons"; break;
+            case "summonWeapon": k = "🗡️ Spiritual Weapon"; break;
+          }
+          if (k) counts[k] = (counts[k] || 0) + 1;
+        }
+        if (bouts >= 12) break outer;
+      }
+    }
+    return { bouts, top: Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 4) };
+  }
+
+  function styleLine(s, name) {
+    const st = styleStats(s, name);
+    if (!st.bouts || !st.top.length) return "";
+    return `<div class="card-sub">📊 style, from ${st.bouts} parchment${st.bouts === 1 ? "" : "s"}: ${st.top.map(([k, n]) => `${k} ×${n}`).join(" · ")}</div>`;
+  }
+
   function profileOverlay(s) {
     const name = ui.profileName;
     const { rec, status } = resolvePerson(s, name);
@@ -238,7 +304,7 @@
           <div><div class="card-title">${esc(name)} ${status}</div>${lines.join("")}</div>
           <div class="spacer"></div><button class="btn sm ghost" data-act="profile-close">✕</button>
         </div>
-        ${career}${h2h}${unknown}
+        ${career}${arsenalLine(s, name)}${styleLine(s, name)}${h2h}${unknown}
       </div>
     </div>`;
   }
@@ -288,6 +354,7 @@
       <div><div class="card-title" style="font-size:14px">🔍 The Scout’s word on ${plink(s, n)}</div>
       <div class="card-sub">${cls ? cls.name : "?"}${rec && rec.wins != null ? ` · <b>${rec.wins}</b> wins` : ""}${rec && rec.age != null ? ` · age ${rec.age}${fade < 1 ? " 🍂" : ""}` : ""}${temper ? ` · <b>${temper}</b>` : ""}</div>
       ${c ? `<div class="card-sub">record: ${c.wins}/${c.bouts} bouts (${c.bouts ? Math.round((c.wins / c.bouts) * 100) : 0}%)${c.wins ? ` · crowds rate them ${(c.stars / c.wins).toFixed(1)}★` : ""}</div>` : ""}
+      ${arsenalLine(s, n)}${styleLine(s, n)}
       <div class="card-sub">${h2h}</div></div></div>
     </div>`;
   }
