@@ -29,7 +29,9 @@
     const gate = attendance * st.ticketPrice;
     const wagers = Math.round(attendance * E.wagerStake * E.wagerCut);
     const licences = G.data.VENDORS.filter((v) => !v.soon).length * E.licencePerVendor;
-    const tax = Math.round(bouts * E.taxSpendPerBout * st.taxRate / 100);
+    // Poor champions spend less: the tax base shrinks with the very poverty a
+    // heavy tax causes (GUI-36 found greedy rates were a degenerate optimum).
+    const tax = Math.round(bouts * E.taxSpendPerBout * G.game.gearScale() * st.taxRate / 100);
     const purses = day.brackets.length * st.purse;
     const net = gate + wagers + licences + tax - purses - E.upkeep;
     return { attendance, avgSpec: Math.round(avgSpec * 10) / 10, gate, wagers, licences, tax, purses, upkeep: E.upkeep, net };
