@@ -283,3 +283,11 @@ button { font-family: inherit; }
 /* ---------- the live battle speaks chat too (GUI-66) ---------- */
 .log.chatlog { padding: 8px 10px; }
 .chat-row.anim, .chat-div.anim { opacity: 0; animation: fadein .25s forwards; }
+
+/* ---------- the live battle locks to one screen (GUI-68) ---------- */
+.battle { height: 100vh; height: 100dvh; overflow: hidden; }
+.battle .log { min-height: 0; }
+.duel-head.live .duel-tags { display: flex; gap: 5px; flex-wrap: wrap; font-size: 10.5px; margin-top: 3px; }
+.duel-head.live .duel-side.right .duel-tags { justify-content: flex-end; }
+.duel-head.live .duel-name .roll { font-size: 10px; }
+.range-banner { flex: none; }

@@ -1024,6 +1024,30 @@
     return "";
   }
 
+  // Condensed status tags for the live duel header (GUI-68).
+  function duelTags(f) {
+    const t = [];
+    if (f.poison && f.poison.turns > 0) t.push(`<span class="poison-tag">${f.poison.type === "burn" ? "🔥" : "☠️"}${f.poison.turns}</span>`);
+    if (f.cursed > 0) t.push(`<span class="curse-tag">🕸️${f.cursed}</span>`);
+    if (f.shield > 0) t.push(`<span class="shield-tag">🛡️${f.shield}</span>`);
+    if (f.autoCritNext) t.push(`<span class="hidden-tag">🌑</span>`);
+    if (f.slowed > 0) t.push(`<span class="slow-tag">❄️${f.slowed}</span>`);
+    if (f.armor && f.armorDurability > 0) t.push(`<span class="armor-tag">${ARMOR[f.armor].emoji}DR${f.armorDR}·${f.armorDurability}</span>`);
+    if (f.pet && f.pet.hp !== undefined && f.pet.hp > 0) t.push(`<span class="pill">${f.pet.emoji}${f.pet.hp}/${f.pet.maxHp}</span>`);
+    else if (f.pet && f.pet.hp === undefined) t.push(`<span class="pill">${f.pet.emoji}${f.pet.turns != null ? f.pet.turns + "r" : ""}${f.pet.strikes > 1 ? "×" + f.pet.strikes : ""}</span>`);
+    return t.length ? `<div class="duel-tags">${t.join("")}</div>` : "";
+  }
+
+  // The live duel header — same shape as the parchment (foe LEFT, you RIGHT,
+  // matching the chat sides), fed by the living fighters (GUI-68).
+  function battleDuelHead(b) {
+    const side = (f, cls) => `<div class="duel-side ${cls}">
+      <div class="duel-name">${f.emoji} ${esc(f.name)} <span class="roll">·${f.wins}w</span></div>
+      ${bar("hp", f.hp, f.maxHp)}${f.maxMp > 0 ? bar("mp", f.mp, f.maxMp) : ""}${duelTags(f)}
+    </div>`;
+    return `<div class="duel-head live">${side(b.foe, "left")}<div class="duel-vs">⚔</div>${side(b.you, "right")}</div>`;
+  }
+
   function screenBattle(s) {
     const b = s.battle, pName = s.player.name;
     const ctx = battleCtx(b, pName);
@@ -1050,9 +1074,8 @@
 
     return `<div class="battle">
       <div class="battle-head"><span class="round">Round ${b.round}</span><span class="streak-pill">${s.streak} bout${s.streak === 1 ? "" : "s"} won 🔥</span></div>
-      ${fighterPanel(b.foe, "foe")}
+      ${battleDuelHead(b)}
       ${rangeBanner(b.range)}
-      ${fighterPanel(b.you, "you")}
       <div class="log chatlog" id="battle-log">${lines || '<p class="sys shown">The arena bell rings — you face off at missile range. Choose your move…</p>'}</div>
       ${stunned}
       <div class="actions">${actionHTML}</div>
