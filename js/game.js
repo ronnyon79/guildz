@@ -854,8 +854,9 @@
     const ch = G.roster.combatChar(npc, gearScale());
     state.defenseRun = { bouts: [], chHp: ch.maxHp, chMp: ch.maxMp, fielded: !!d.fielded };
     if (d.fielded) { startDefenseDuel(null, "missile"); return; } // servants get no perks
-    // The gauntlet: strongest servant first (ordering decree can come later).
-    const order = state.household.slice().sort((a, b) => b.wins - a.wins);
+    // The gauntlet in the LORD'S chosen order (GUI-51): household[0] fights
+    // first. Speed-bumps-first or stopper-first is his decree to make.
+    const order = state.household.slice();
     for (const servant of order) {
       const sChar = G.roster.combatChar(servant, 1); // the armory keeps its own fed
       const worn = { ...ch, startHp: state.defenseRun.chHp, startMp: state.defenseRun.chMp };
@@ -892,6 +893,16 @@
   /* Household management (decided): to make room — or on a whim — the Lord may
    * RELEASE a servant (freed: rejoins the arena), EXILE them (the wilds,
    * one-way), or KILL them. */
+  // Promote/demote a servant in the gauntlet order (GUI-51).
+  function moveServant(id, dir) {
+    if (!state.player || state.player.role !== "lord") return;
+    const i = state.household.findIndex((x) => x.id === id);
+    const j = i + (dir < 0 ? -1 : 1);
+    if (i < 0 || j < 0 || j >= state.household.length) return;
+    const t = state.household[i]; state.household[i] = state.household[j]; state.household[j] = t;
+    save(); emit();
+  }
+
   function removeServant(id, how) {
     if (!state.player || state.player.role !== "lord") return;
     const s = state.household.find((x) => x.id === id);
@@ -1178,7 +1189,7 @@
     allocate, fightOn, retreat, returnHome, resetGame,
     openVendor, closeVendor, buyItem, buyArrow, loadArrow, buyArmor,
     taxedCost, gearScale, setDecree, buyBuilding, recordBout, openBout,
-    beginDefense, defensePerks, startDefenseDuel, removeServant,
+    beginDefense, defensePerks, startDefenseDuel, removeServant, moveServant,
     reignEnds: () => perish("throne-age"),
     nextSeed, settleDay, emit, // the seam lord.js drives the shared day through
   };
