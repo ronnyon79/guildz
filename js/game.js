@@ -72,12 +72,12 @@
   // ---- persistence (multi-world) ----
   function readIndex() {
     try {
-      const ix = JSON.parse(localStorage.getItem(INDEX_KEY));
+      const ix = JSON.parse(G.store.get(INDEX_KEY));
       if (ix && Array.isArray(ix.worlds)) return ix;
     } catch (e) {}
     return { nextId: 1, worlds: [] };
   }
-  function writeIndex(ix) { try { localStorage.setItem(INDEX_KEY, JSON.stringify(ix)); } catch (e) {} }
+  function writeIndex(ix) { try { G.store.set(INDEX_KEY, JSON.stringify(ix)); } catch (e) {} }
   function worldMeta(id, d) {
     return {
       id, name: d.player.name, classId: d.player.classId,
@@ -88,17 +88,17 @@
   // One-time: the pre-worlds single save becomes a world slot.
   function migrateLegacy() {
     try {
-      const raw = localStorage.getItem(LEGACY_KEY);
+      const raw = G.store.get(LEGACY_KEY);
       if (!raw) return;
       const d = JSON.parse(raw);
       if (d && d.player) {
         const ix = readIndex();
         const id = "w" + ix.nextId++;
-        localStorage.setItem(worldKey(id), raw);
+        G.store.set(worldKey(id), raw);
         ix.worlds.push(worldMeta(id, d));
         writeIndex(ix);
       }
-      localStorage.removeItem(LEGACY_KEY);
+      G.store.remove(LEGACY_KEY);
     } catch (e) {}
   }
   function listWorlds() { migrateLegacy(); return readIndex().worlds; }
@@ -108,7 +108,7 @@
     if (!state.worldId) return;
     try {
       const blob = { player: state.player, npcs: state.npcs, lord: state.lord, stronghold: state.stronghold, household: state.household, defense: state.defense, board: state.board, clock: state.clock, lastSeason: state.lastSeason, challengeOpen: state.challengeOpen, seedCounter: state.seedCounter };
-      localStorage.setItem(worldKey(state.worldId), JSON.stringify(blob));
+      G.store.set(worldKey(state.worldId), JSON.stringify(blob));
       const ix = readIndex();
       const i = ix.worlds.findIndex((w) => w.id === state.worldId);
       const meta = worldMeta(state.worldId, blob);
@@ -120,7 +120,7 @@
   // untouched so memorial screens can still render.
   function deleteWorld(id) {
     if (!id) return;
-    try { localStorage.removeItem(worldKey(id)); } catch (e) {}
+    try { G.store.remove(worldKey(id)); G.store.remove("guildz.facts." + id); G.store.remove("guildz.rollup." + id); } catch (e) {}
     const ix = readIndex();
     ix.worlds = ix.worlds.filter((w) => w.id !== id);
     writeIndex(ix);
@@ -133,7 +133,7 @@
         if (!ws.length) return false;
         worldId = ws[0].id;
       }
-      const raw = localStorage.getItem(worldKey(worldId));
+      const raw = G.store.get(worldKey(worldId));
       if (!raw) return false;
       const data = JSON.parse(raw);
       if (!data.player) return false;
@@ -208,6 +208,7 @@
       popularity: 0, // fame — the ladder to the Lord's throne
       role: "champion", // champion | servant | lord
       age: AGE.start,
+      controller: "player", // the governance seam (GUI-26): ai | a player id
       worldSeed: seed, // seeds this world's population (deterministic world-gen)
     };
     state.npcs = G.roster.generateRoster(seed, state.player.name);
@@ -321,6 +322,29 @@
       while (state.board.length > BOARD.days) state.board.shift(); // old parchments come down
     }
     today.bouts.push(rec);
+    // The FACT lives forever even after the parchment comes down (GUI-22):
+    // a compact row per bout, plus an incrementally-updated career rollup
+    // (GUI-24) — the cheap aggregate a decision AI reads instead of raw rows.
+    try {
+      const fk = "guildz.facts." + state.worldId, rk = "guildz.rollup." + state.worldId;
+      const facts = JSON.parse(G.store.get(fk) || "[]");
+      facts.push([state.clock.season, state.clock.day, rec.band != null ? rec.band : -1, rec.a.name, rec.b.name, rec.winner, rec.rounds || 0, rec.spec || 0]);
+      while (facts.length > 4000) facts.shift(); // localStorage-era cap; unbounded on a row-store backend
+      G.store.set(fk, JSON.stringify(facts));
+      const roll = JSON.parse(G.store.get(rk) || "{}");
+      for (const f of [rec.a, rec.b]) {
+        const r = (roll[f.name] = roll[f.name] || { bouts: 0, wins: 0, stars: 0 });
+        r.bouts += 1;
+        if (f.name === rec.winner) { r.wins += 1; r.stars += rec.spec || 0; }
+      }
+      G.store.set(rk, JSON.stringify(roll));
+    } catch (e) {}
+  }
+
+  // The rollup, read back (GUI-24): a champion's recorded career in O(1).
+  function careerOf(name) {
+    try { return JSON.parse(G.store.get("guildz.rollup." + state.worldId) || "{}")[name] || null; }
+    catch (e) { return null; }
   }
 
   function autoResolveMatch(br, m) {
@@ -994,7 +1018,7 @@
 
   G.game = {
     state, subscribe, boot, load, save, listWorlds, deleteWorld,
-    computeMax, champName, fameLadder, lordCombatChar,
+    computeMax, champName, fameLadder, lordCombatChar, careerOf,
     createCharacter, go, enterArena, fightBout, chooseAction,
     challengeLord, chooseFate,
     allocate, fightOn, retreat, returnHome, resetGame,

@@ -5,7 +5,7 @@
  */
 const store = {};
 global.localStorage = { getItem: () => null, setItem: () => {}, removeItem: () => {} };
-for (const f of ["engine", "data", "combat", "spectacle", "ai", "tournament", "roster", "worldgen"])
+for (const f of ["engine", "store", "data", "combat", "spectacle", "ai", "tournament", "roster", "worldgen"])
   require("../js/" + f + ".js");
 
 const { POPULARITY, SEASON, AGE, CLASSES, ARMOR } = G.data;

@@ -1,5 +1,5 @@
 /* Headless tests for js/tournament.js (GUI-5). Run: node tools/test_tournament.js */
-for (const f of ["engine", "data", "combat", "ai", "tournament"])
+for (const f of ["engine", "store", "data", "combat", "ai", "tournament"])
   require("../js/" + f + ".js");
 
 const T = G.tournament, ai = G.ai, CLASSES = G.data.CLASSES;

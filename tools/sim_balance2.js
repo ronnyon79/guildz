@@ -3,7 +3,7 @@
  * engine's spellPower hook to compare. Run: node tools/sim_balance2.js [buff]
  */
 global.localStorage = { getItem: () => null, setItem: () => {}, removeItem: () => {} };
-for (const f of ["engine", "data", "combat", "spectacle", "ai", "tournament", "roster"])
+for (const f of ["engine", "store", "data", "combat", "spectacle", "ai", "tournament", "roster"])
   require("../js/" + f + ".js");
 
 const { CLASSES, AGE } = G.data;

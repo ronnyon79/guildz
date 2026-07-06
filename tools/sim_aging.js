@@ -1,7 +1,7 @@
 /* GUI-35: the aging curve in practice — does decline keep veterans beatable
  * and rotate the threat? Run: node tools/sim_aging.js */
 global.localStorage = { getItem: () => null, setItem: () => {}, removeItem: () => {} };
-for (const f of ["engine", "data", "combat", "spectacle", "ai", "tournament", "roster"])
+for (const f of ["engine", "store", "data", "combat", "spectacle", "ai", "tournament", "roster"])
   require("../js/" + f + ".js");
 const { AGE } = G.data;
 
