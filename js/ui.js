@@ -294,7 +294,7 @@
    * in a side panel next to the calendar; on phones they flow beneath. */
   function screenBoard(s) {
     if (!s.board.length) {
-      return topbar(s.player) + `<div class="screen">
+      return topbar(s.player) + `<div class="screen board-screen">
         <div class="screen-title">The Bulletin Board</div>
         <p class="card-sub center" style="margin-top:20px">The board is bare — no games have been fought yet. The Scribe waits, quill ready.</p>
       </div>` + tabbar("board");
@@ -339,7 +339,7 @@
       reports = `<div class="screen-title">${bandKeyLabel(ui.boardBand)} — Day ${d.day} · ${items.length} bout${items.length === 1 ? "" : "s"}</div>`
         + items.map(([bt, bi]) => boutRow(s, di, bi, bt)).join("");
     }
-    return topbar(s.player) + `<div class="screen">
+    return topbar(s.player) + `<div class="screen board-screen">
       <div class="screen-title">The Bulletin Board</div>
       <div class="board-cols">
         <div>
@@ -1288,8 +1288,6 @@
       case "hero": html = screenHero(s); break;
       default: html = screenTitle();
     }
-    // The Board earns extra width on big screens (two-column reading, GUI-62).
-    app.className = s.screen === "board" ? "wide" : "";
     app.innerHTML = html;
     // The replay theater's clockwork runs only while a parchment plays (GUI-64).
     if (s.screen === "parchment") replayTick();
