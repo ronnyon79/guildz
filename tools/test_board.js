@@ -8,7 +8,8 @@ global.localStorage = {
 for (const f of ["engine", "store", "data", "combat", "spectacle", "ai", "tournament", "roster", "worldgen", "game", "lord"])
   require("../js/" + f + ".js");
 
-G.data.WORLDGEN.seasons = 0; // pristine world — history behaviour is covered by test_worldgen
+G.data.WORLDGEN.seasons = 0;
+G.data.BOARD.days = 3; // exercise the ring logic itself, not the retention number // pristine world — history behaviour is covered by test_worldgen
 const game = G.game, S = game.state, T = G.tournament;
 let pass = 0, fail = 0;
 function ok(cond, name) {

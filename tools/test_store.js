@@ -10,6 +10,7 @@ global.localStorage = {
 for (const f of ["engine", "store", "data", "combat", "spectacle", "ai", "tournament", "roster", "worldgen", "game", "lord"])
   require("../js/" + f + ".js");
 G.data.WORLDGEN.seasons = 0;
+G.data.BOARD.days = 3; // pin the ring small so "facts outlive it" is exercised
 const game = G.game, S = game.state;
 let pass = 0, fail = 0;
 function ok(cond, name) {
