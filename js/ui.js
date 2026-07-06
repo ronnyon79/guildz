@@ -225,6 +225,11 @@
     const career = c
       ? `<div class="card-sub" style="margin-top:8px">📜 The Scribe records <b>${c.bouts}</b> bout${c.bouts === 1 ? "" : "s"}: <b>${c.wins}</b> won (${c.bouts ? Math.round((c.wins / c.bouts) * 100) : 0}%)${c.wins ? ` · crowds rated their wins ${(c.stars / c.wins).toFixed(1)}★` : ""}</div>`
       : `<div class="card-sub" style="margin-top:8px">📜 No bouts in the Scribe records yet.</div>`;
+    let h2h = "";
+    if (name !== s.player.name) {
+      const h = game.headToHead(name, s.player.name);
+      if (h.meetings) h2h = `<div class="card-sub">⚔ against you: <b>you ${h.yWins} – ${h.xWins} them</b> across ${h.meetings} meeting${h.meetings === 1 ? "" : "s"}</div>`;
+    }
     const unknown = !rec && !c ? `<div class="card-sub">The Scribe leafs through the archive… this name appears in no ledger.</div>` : "";
     return `<div class="overlay" data-act="profile-close">
       <div class="card profile-card" data-act="profile-noop">
@@ -233,7 +238,7 @@
           <div><div class="card-title">${esc(name)} ${status}</div>${lines.join("")}</div>
           <div class="spacer"></div><button class="btn sm ghost" data-act="profile-close">✕</button>
         </div>
-        ${career}${unknown}
+        ${career}${h2h}${unknown}
       </div>
     </div>`;
   }
@@ -267,6 +272,26 @@
     </div>` + tabbar("fame");
   }
 
+  // The Scout leans in before your bout (GUI-47): who you are about to face.
+  function scoutCard(s, n) {
+    const { rec } = resolvePerson(s, n);
+    const c = game.careerOf(n);
+    const cls = rec && CLASSES[rec.classId];
+    const temper = rec && rec.personality ? G.data.PERSONALITY.label(rec.personality) : "";
+    const fade = rec && rec.age != null ? G.data.AGE.mult(rec.age) : 1;
+    const h = game.headToHead(n, s.player.name);
+    const h2h = h.meetings
+      ? `⚔ against you: <b>you ${h.yWins} – ${h.xWins} them</b> (${h.meetings} meeting${h.meetings === 1 ? "" : "s"})`
+      : "⚔ you have never crossed steel — first meeting";
+    return `<div class="card scout-card">
+      <div class="card-row"><div class="avatar">${cls ? cls.emoji : "❓"}</div>
+      <div><div class="card-title" style="font-size:14px">🔍 The Scout’s word on ${plink(s, n)}</div>
+      <div class="card-sub">${cls ? cls.name : "?"}${rec && rec.wins != null ? ` · <b>${rec.wins}</b> wins` : ""}${rec && rec.age != null ? ` · age ${rec.age}${fade < 1 ? " 🍂" : ""}` : ""}${temper ? ` · <b>${temper}</b>` : ""}</div>
+      ${c ? `<div class="card-sub">record: ${c.wins}/${c.bouts} bouts (${c.bouts ? Math.round((c.wins / c.bouts) * 100) : 0}%)${c.wins ? ` · crowds rate them ${(c.stars / c.wins).toFixed(1)}★` : ""}</div>` : ""}
+      <div class="card-sub">${h2h}</div></div></div>
+    </div>`;
+  }
+
   function screenBracket(s) {
     const br = s.playerBracket, m = s.pendingBout;
     if (!br) return screenHome(s);
@@ -289,6 +314,7 @@
     return topbar(s.player) + `<div class="screen">
       <div class="screen-title">🏟️ Band ${G.tournament.bandLabel(br.band)} — ${br.entrants.length} fighters</div>
       ${rounds.join("")}
+      ${m ? scoutCard(s, m.a === "player" ? name(m.b) : name(m.a)) : ""}
       <button class="btn block lg gold" data-act="fight-bout">⚔️ Fight your bout</button>
       <button class="btn ghost block sm" style="margin-top:8px" data-act="retreat">Withdraw (forfeit the day)</button>
       <p class="card-sub center" style="margin-top:10px">${alive} still standing. The other bands fought at dawn — all champions are honoured at sunset.</p>

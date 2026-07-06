@@ -559,6 +559,13 @@ cap (3) & per-bout replenish (50%)**, servant **upkeep/housing** cost, and **ser
   departed founders ledger / unknown names ("appears in no ledger"). New plink() helper +
   .overlay/.profile-card CSS. NEW SUITE tools/test_profile.js (14) → 297 total green.
 
+- **GUI-47 Scout your opponent — v0.27.0.** Before your bout, the bracket now carries the
+  SCOUT CARD for your pending opponent: class, wins, age (🍂), temperament, career record
+  with crowd rating, and **head-to-head vs you** ("you 2 – 1 them across 3 meetings" /
+  "you have never crossed steel — first meeting") — powered by new game.headToHead(x,y)
+  scanning the immortal fact rows. The same h2h line joins every profile card (GUI-46 pair
+  complete: scout → fight → read → tap the name). test_profile grew to 20 → 303 total.
+
 ### Build order (when the user says go)
 1. **Champion summit** — NPC population + Popularity ladder + Lord boss fight (finish
    the Rise). Small, self-contained, reuses combat entirely.

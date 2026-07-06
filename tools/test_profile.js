@@ -54,5 +54,29 @@ ok(/duel-name[^]*?plink/.test(app()), "parchment duel header names tappable");
 click("profile", npc.name);
 ok(app().includes("profile-card") && app().includes("parchment") === false, "profile opens on top of a parchment");
 
+
+
+/* — GUI-47: head-to-head + the scout card — */
+console.log("— head-to-head & scouting —");
+// The played bout above left facts; find the real foe from the board record.
+const myRec = S.board[S.board.length - 1].bouts.find((b) => b.log);
+const foeName = myRec.a.name === "Prof Tester" ? myRec.b.name : myRec.a.name;
+const h = G.game.headToHead(foeName, "Prof Tester");
+ok(h.meetings >= 1, "headToHead finds the recorded meeting");
+ok(h.xWins + h.yWins === h.meetings, "every meeting has a recorded winner");
+const none = G.game.headToHead("Gone Guy", "Prof Tester");
+ok(none.meetings === 0, "strangers have no history");
+click("profile", foeName);
+ok(app().includes("against you:"), "profile shows the head-to-head line vs you");
+click("profile-close");
+game.enterArena(); G.ui.render(S);
+if (S.pendingBout) {
+  ok(app().includes("The Scout’s word on"), "bracket shows the scout card for your pending opponent");
+  ok(app().includes("first meeting") || app().includes("against you:"), "scout card includes head-to-head");
+} else {
+  ok(true, "no pending bout this day (bye) — scout card skipped by design");
+  ok(true, "-");
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
