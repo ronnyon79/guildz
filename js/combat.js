@@ -324,18 +324,21 @@
 
   // One weapon strike: to-hit, fumble, dodge, crit, damage (shield/pet-soak aware).
   // `forceCrit` (from Hide in Shadows) makes this strike a guaranteed critical.
-  function doOneAttack(actor, target, dice, kind, rng, log, forceCrit, arrow, weapons) {
+  // `flurry` = {strike, strikes} when this is one blow of a multi-attack — the
+  // Scribe labels the strikes so a flurry reads as ONE action (GUI-57).
+  function doOneAttack(actor, target, dice, kind, rng, log, forceCrit, arrow, weapons, flurry) {
+    const fl = flurry && flurry.strikes > 1 ? { strike: flurry.strike, strikes: flurry.strikes } : {};
     let { roll, outcome } = d20Resolve(rng, actor.toHit, actor.toCrit, false);
     if (forceCrit) outcome = "crit"; // guaranteed critical from the shadows
-    if (outcome === "critmiss") { actor.skipNext = true; log.push({ t: "critmiss", who: actor.name, roll, kind }); return; }
-    if (outcome === "miss") { log.push({ t: "miss", who: actor.name, target: target.name, kind, roll }); return; }
+    if (outcome === "critmiss") { actor.skipNext = true; log.push({ t: "critmiss", who: actor.name, roll, kind, ...fl }); return; }
+    if (outcome === "miss") { log.push({ t: "miss", who: actor.name, target: target.name, kind, roll, ...fl }); return; }
     // A summoned elemental (soakable) soaks ~half of incoming physical attacks.
     const tgt = target.pet && target.pet.soakable && target.pet.hp > 0 && rng() < 0.5 ? target.pet : target;
-    if (tgt.dodge > 0 && randInt(rng, 1, 100) <= tgt.dodge * 100) { log.push({ t: "dodge", who: tgt.name, by: actor.name, kind, roll }); return; }
+    if (tgt.dodge > 0 && randInt(rng, 1, 100) <= tgt.dodge * 100) { log.push({ t: "dodge", who: tgt.name, by: actor.name, kind, roll, ...fl }); return; }
     // Thief evasion: roll 1d20 to slip the attack entirely.
     if (tgt.evadeOn > 0) {
       const er = randInt(rng, 1, 20);
-      if (er >= tgt.evadeOn) { log.push({ t: "evade", who: tgt.name, by: actor.name, kind, roll: er }); return; }
+      if (er >= tgt.evadeOn) { log.push({ t: "evade", who: tgt.name, by: actor.name, kind, roll: er, ...fl }); return; }
     }
     const crit = outcome === "crit";
     // Dual wield: one To-Hit, damage from `weapons` dice on the hit — but the
@@ -348,7 +351,7 @@
       dmg += wd * (crit ? CRIT_MULT : 1);
     }
     const res = dealDamage(tgt, dmg, true); // weapon/arrow base damage is physical
-    log.push({ t: "hit", who: actor.name, target: tgt.name, dmg, crit, kind, roll, cursed: actor.cursed > 0, absorbed: res.absorbed, broke: res.broke, mitigated: res.mitigated, armorBroke: res.armorBroke, arrow: arrow ? arrow.id : undefined, dual: w > 1 || undefined });
+    log.push({ t: "hit", who: actor.name, target: tgt.name, dmg, crit, kind, roll, cursed: actor.cursed > 0, absorbed: res.absorbed, broke: res.broke, mitigated: res.mitigated, armorBroke: res.armorBroke, arrow: arrow ? arrow.id : undefined, dual: w > 1 || undefined, ...fl });
     if (tgt !== target && tgt.hp <= 0) { target.pet = null; log.push({ t: "petDown", who: tgt.name }); }
     // Special-arrow on-hit effect (only against the main target, not a soaking pet).
     if (arrow && tgt === target) {
@@ -386,7 +389,7 @@
       const n = actor.attacks || 1;
       for (let i = 0; i < n; i++) {
         if (target.hp <= 0) break;
-        doOneAttack(actor, target, dice, kind, rng, log, actor.autoCritNext && i === 0, arrow, weapons);
+        doOneAttack(actor, target, dice, kind, rng, log, actor.autoCritNext && i === 0, arrow, weapons, { strike: i + 1, strikes: n });
         if (actor.skipNext) break; // fumbled — remaining strikes are lost
       }
       actor.autoCritNext = false; // consumed by attacking (first strike)

@@ -696,6 +696,12 @@
       }
       default: return "";
     }
+    // Strikes of a flurry are labelled so a multi-attack reads as ONE action:
+    // "1st strike: …grazes for 1" / "2nd strike: …turned aside" (GUI-57).
+    if (ev.strikes > 1 && ev.strike) {
+      const ord = ["", "1st", "2nd", "3rd", "4th"][ev.strike] || ev.strike + "th";
+      out = `<span class="sys">${ord} strike:</span> ` + out;
+    }
     // The final strike gets its due (set by the parchment reader).
     if (killing) out = `<span class="crit">☠️ THE KILLING BLOW</span> — ` + out;
     // Visual emphasis for the dramatic beats.

@@ -44,5 +44,25 @@ const f = G.combat.makeFighter(thief);
 const meleeBtn = G.combat.actionsFor(f, "melee").find((a) => a.id === "attack");
 const missileBtn = G.combat.actionsFor(f, "missile").find((a) => a.id === "attack");
 ok(/⚔️×2/.test(meleeBtn.desc) && !/⚔️×2/.test(missileBtn.desc), "the ⚔️×2 tag shows on Strike, not on Shoot");
-console.log(`\n${pass} passed, ${fail} failed`);
+
+/* GUI-57: flurry strikes are tagged and labelled. */
+{
+  const f25 = { id: "f", name: "F", classId: "fighter", wins: 25, maxHp: 200, maxMp: 0, meleeWeapon: "two_handed_sword", missileWeapon: "short_bow", items: {}, arrows: [], activeArrow: "normal", armor: null, armorDurability: 0 };
+  const wall = { id: "w", name: "W", classId: "cleric", wins: 60, maxHp: 500, maxMp: 0, meleeWeapon: "mace", missileWeapon: "sling", items: {}, arrows: [], activeArrow: "normal", armor: null, armorDurability: 0 };
+  ok(G.combat.makeFighter(f25).attacks === 2, "a 25-win fighter swings twice");
+  let b = G.combat.newBattle(f25, wall, 6767, "melee");
+  let tagged = [], guard = 0;
+  while (guard++ < 40 && tagged.length < 6) {
+    b = G.combat.resolveRound(b, "attack", "move");
+    tagged = b.log.filter((e) => ["hit", "miss", "critmiss", "evade", "dodge"].includes(e.t) && e.who === "F" || (e.t === "evade" && e.by === "F"));
+  }
+  const flurried = b.log.filter((e) => e.strikes === 2);
+  ok(flurried.length >= 4, `flurry events carry strike tags (${flurried.length})`);
+  ok(flurried.some((e) => e.strike === 1) && flurried.some((e) => e.strike === 2), "…numbered 1st and 2nd");
+  const solo = { ...f25, wins: 5 }; // no perk: single strikes stay untagged
+  let b2 = G.combat.newBattle(solo, wall, 6868, "melee");
+  b2 = G.combat.resolveRound(b2, "attack", "move");
+  ok(b2.log.filter((e) => e.t === "hit" || e.t === "miss").every((e) => !e.strikes), "single attacks carry no strike label");
+}
+console.log(`(with GUI-57) ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
