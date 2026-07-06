@@ -4,7 +4,10 @@
   const G = root.G;
   // Re-render on every state change.
   G.game.subscribe((state) => G.ui.render(state));
-  // Boot to the world-select (migrating any pre-worlds save into slot 1).
-  G.game.boot();
-  G.ui.render(G.game.state);
+  // Storage first (IndexedDB in browsers, localStorage fallback), then boot
+  // to the world-select (migrating any pre-worlds save into slot 1).
+  G.store.init().then(() => {
+    G.game.boot();
+    G.ui.render(G.game.state);
+  });
 })(typeof window !== "undefined" ? window : globalThis);

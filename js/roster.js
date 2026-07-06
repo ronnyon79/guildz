@@ -35,6 +35,7 @@
         id: idPrefix + (npcs.length + 1), name, classId: pick(rng, Object.keys(CLASSES)), wins,
         popularity: 0, age: G.data.AGE.start + Math.round(wins / 3) + randInt(rng, 0, 6),
         personality: rollPersonality(rng),
+        controller: "ai", // the governance seam (GUI-26): a real player can take this seat
       });
     }
     return npcs;

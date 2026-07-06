@@ -418,6 +418,23 @@ cap (3) & per-bout replenish (50%)**, servant **upkeep/housing** cost, and **ser
   (and GUI-31 hits target WITH it); softer 2%/yr noted as the fallback knob. Tools:
   sim_reign / sim_balance2 / sim_economy / sim_aging. 251 regressions green.
 
+- **GUI-21/22/23/24/26 World & Data tranche — v0.16.0** ✅ **Storage adapter (GUI-21)**:
+  js/store.js — game logic only calls G.store; backends swap beneath (the persistence twin
+  of the combat/AI seam). **IndexedDB backend (GUI-22)**: browsers open the design-v5 "big
+  DB" (kv store, async init + in-memory mirror, sync reads, write-through; pre-IDB
+  localStorage saves migrate on first boot); headless/tests keep the pure pass-through.
+  **Facts live forever**: every bout writes a compact fact row [season,day,band,a,b,winner,
+  rounds,★] that OUTLIVES the 3-day parchment ring (cap 4000 in the localStorage era;
+  unbounded on a row store) — the "keep all stats" requirement, honoured. **Rollups
+  (GUI-24)**: per-champion career aggregates updated incrementally per bout; careerOf() =
+  O(1) vs O(rows), verified equal to a full fact scan. **GUI-23 (seed-replay)**: CLOSED —
+  implemented in v0.9.0 (replayBout + snapshot+seed records, prose never stored) and
+  formalized here. **GUI-26 (controller seam)**: every seat carries controller: "player"|
+  "ai" — the governance field multiplayer swaps; server authority itself remains Phase 4.
+  **GUI-25 & GUI-27 stay OPEN** (commented in Linear): world GROWTH needs the parked
+  Exile/Adventure + warfare modes; a Web Worker earns its keep only at multi-stronghold
+  scale (days cost 35ms today). 14 headless tests (tools/test_store.js) + 241 regressions.
+
 ### Build order (when the user says go)
 1. **Champion summit** — NPC population + Popularity ladder + Lord boss fight (finish
    the Rise). Small, self-contained, reuses combat entirely.
