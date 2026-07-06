@@ -31,9 +31,20 @@
         if (r < acc) { wins = randInt(rng, lo, hi); break; }
       }
       // Veterans are older — age tracks the career behind the wins.
-      npcs.push({ id: idPrefix + (npcs.length + 1), name, classId: pick(rng, Object.keys(CLASSES)), wins, popularity: 0, age: G.data.AGE.start + Math.round(wins / 3) + randInt(rng, 0, 6) });
+      npcs.push({
+        id: idPrefix + (npcs.length + 1), name, classId: pick(rng, Object.keys(CLASSES)), wins,
+        popularity: 0, age: G.data.AGE.start + Math.round(wins / 3) + randInt(rng, 0, 6),
+        personality: rollPersonality(rng),
+      });
     }
     return npcs;
+  }
+
+  // A seeded temperament (GUI-42). Every game's cast rolls differently.
+  function rollPersonality(rng) {
+    const p = {};
+    for (const t of G.data.PERSONALITY.traits) p[t] = Math.round(rng() * 100) / 100;
+    return p;
   }
 
   /* Battle-ready char for an NPC record (same shape as game.playerCombatChar).
@@ -55,6 +66,7 @@
       meleeWeapon: c.startEq.melee, missileWeapon: c.startEq.missile,
       items: {}, arrows: [], activeArrow: "normal",
       armor, armorDurability: armor ? ARMOR[armor].durability : 0,
+      personality: npc.personality || null, // temperament rides into battle
       isPlayer: false,
     };
     if (npc.classId === "thief") {
@@ -66,5 +78,5 @@
     return char;
   }
 
-  G.roster = { generateRoster, combatChar };
+  G.roster = { generateRoster, combatChar, rollPersonality };
 })(typeof window !== "undefined" ? window : globalThis);

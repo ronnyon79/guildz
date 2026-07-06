@@ -88,6 +88,7 @@
       activeArrow: char.activeArrow || "normal",       // arrow loaded for missile shots
       initBonus: 0,   // added to the 1d20 initiative roll (Thief perks)
       slowed: 0,      // rounds slowed (Ice Arrow) — while > 0, loses initiative
+      personality: char.personality || null, // temperament (GUI-42) — read by the AI seam
       // Armor: flat DR vs physical hits; wears down; heavy armor slows initiative.
       armor: char.armor || null,
       armorDR: ARMOR[char.armor] ? ARMOR[char.armor].dr : 0,

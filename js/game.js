@@ -160,6 +160,11 @@
       // Migrate saves created before aging existed.
       if (state.player.age == null) state.player.age = AGE.start + Math.round(state.player.wins / 3);
       for (const n of state.npcs) if (n.age == null) n.age = AGE.start + Math.round(n.wins / 3);
+      // Migrate saves created before personality existed (seeded per id).
+      const pseed = (id) => { let h = state.player.worldSeed || 7; for (const c of String(id)) h = (h * 31 + c.charCodeAt(0)) >>> 0; return h; };
+      for (const n of state.npcs) if (!n.personality) n.personality = G.roster.rollPersonality(G.engine.makeRng(pseed(n.id)));
+      if (state.lord && !state.lord.personality) state.lord.personality = G.roster.rollPersonality(G.engine.makeRng(pseed(state.lord.name)));
+      for (const h of state.household) if (!h.personality) h.personality = G.roster.rollPersonality(G.engine.makeRng(pseed(h.id)));
       state.lord = data.lord !== undefined ? data.lord
         : generateLord((state.player.worldSeed || state.seedCounter * 97) + 1);
       if (state.lord && state.lord.age == null) state.lord.age = AGE.start + Math.round(state.lord.wins / 3) + (state.lord.reignSeasons || 1) + 6;
@@ -412,10 +417,13 @@
       // for YOUR crown if you reign, or for your Lord's — with YOU fielded —
       // if you serve. A challenge must be answered (the Lord cannot refuse).
       if (!state.defense && (state.player.role === "lord" || state.player.role === "servant")) {
-        const topNpc = fameLadder().find((r) => !r.isPlayer && r.popularity > 0);
-        if (topNpc && !(state.lastSeason.top[0] && state.lastSeason.top[0].isPlayer)) {
-          state.defense = { challengerId: topNpc.id, name: topNpc.name, season: state.clock.season, fielded: state.player.role === "servant" };
-          state.lastDay.defenseComing = topNpc.name;
+        // AMBITION (GUI-42) gates who dares: the most famous AMBITIOUS resident
+        // among the fame top-3 comes for the crown; the meek stand aside.
+        const famous = fameLadder().filter((r) => !r.isPlayer && r.popularity > 0).slice(0, 3);
+        const bold = famous.find((r) => { const n = npcById(r.id); return n && (!n.personality || n.personality.amb >= 0.3); });
+        if (bold && !(state.lastSeason.top[0] && state.lastSeason.top[0].isPlayer)) {
+          state.defense = { challengerId: bold.id, name: bold.name, season: state.clock.season, fielded: state.player.role === "servant" };
+          state.lastDay.defenseComing = bold.name;
         }
       }
       state.player.popularity = Math.round((state.player.popularity || 0) / 2);
@@ -436,7 +444,13 @@
       if (retiring.length) {
         state.npcs = state.npcs.filter((n) => !retiring.includes(n));
         const fresh = G.roster.generateRoster(((state.player.worldSeed || 1) ^ (state.clock.season * 2654435761)) >>> 0, state.player.name, retiring.length, "a" + state.clock.season + "_");
-        for (const f of fresh) { f.wins = Math.min(f.wins, 4); f.age = AGE.start + (hash(f.id) % 4); state.npcs.push(f); }
+        const taken = new Set(state.npcs.map((n) => n.name).concat(state.household.map((h) => h.name), state.lord ? [state.lord.name] : []));
+        for (const f of fresh) {
+          f.wins = Math.min(f.wins, 4); f.age = AGE.start + (hash(f.id) % 4);
+          while (taken.has(f.name)) f.name += " II"; // no two champions share a name (narration keys on it)
+          taken.add(f.name);
+          state.npcs.push(f);
+        }
         state.lastDay.retired = retiring.map((r) => r.name);
       }
       if (state.player.role === "lord") {
@@ -634,15 +648,18 @@
 
   const barracksSlots = () => ((state.stronghold || {}).buildings || {}).barracks || 0;
 
-  // A beaten challenger's fate (seeded; personality arrives with GUI-42).
+  // A beaten challenger's fate — their PERSONALITY chooses (GUI-42):
+  // the loyal and level-headed kneel; the proud ride out; the fearless die.
   function challengerFate(npc, seed) {
     const r = G.engine.makeRng((seed >>> 0) + 17)();
+    const P = npc.personality || {};
     state.npcs = state.npcs.filter((x) => x.id !== npc.id); // leaves the roster either way
-    if (r < 0.5 && state.player.role === "lord" && state.household.length < barracksSlots()) {
-      state.household.push({ id: npc.id, name: npc.name, classId: npc.classId, wins: npc.wins });
+    const kneel = 0.2 + 0.6 * (P.loy != null ? P.loy : 0.5); // loyalty bends the knee
+    if (r < kneel && state.player.role === "lord" && state.household.length < barracksSlots()) {
+      state.household.push({ id: npc.id, name: npc.name, classId: npc.classId, wins: npc.wins, age: npc.age, personality: npc.personality });
       return "serve"; // kneels — your wall grows
     }
-    return r < 0.85 ? "exile" : "die"; // rides out, or bleeds out on the sand
+    return r < 1 - 0.3 * (P.brv != null ? P.brv : 0.5) ? "exile" : "die";
   }
 
   // Answer the challenge. Lord: the household fights first. Servant: YOU are
@@ -837,6 +854,7 @@
       wins,
       reignSeasons, // backstory: seasons already held
       age: AGE.start + Math.round(wins / 3) + reignSeasons + G.engine.randInt(rng, 4, 10),
+      personality: G.roster.rollPersonality(rng),
     };
   }
 
@@ -857,6 +875,7 @@
       meleeWeapon: c.startEq.melee, missileWeapon: c.startEq.missile,
       items: {}, arrows: [], activeArrow: "normal",
       armor: null, armorDurability: 0, isPlayer: false,
+      personality: L.personality || null,
     };
     if (c.caster) {
       char.perk = "treasury";
@@ -895,12 +914,12 @@
     const p = state.player, L = state.lord;
     p.wins += 1; p.battlesWon += 1; // the duel is a career victory (the prize is the throne)
     const uprising = p.role === "servant";
-    // The deposed Lord's fate (no personality system yet — seeded):
-    // most swallow their pride and stay to fight in your arena; some ride out.
+    // The deposed Lord's fate: a STEADFAST lord swallows his pride and stays
+    // to fight in your arena; the proud ride out (GUI-42).
     const rng = G.engine.makeRng((p.worldSeed || 1) + state.clock.season * 131);
-    const stays = rng() < 0.6;
+    const stays = rng() < 0.25 + 0.7 * ((L.personality || {}).loy != null ? L.personality.loy : 0.5);
     if (stays) {
-      state.npcs.push({ id: "x" + state.clock.season + "_" + state.npcs.length, name: L.name, classId: L.classId, wins: L.wins, popularity: 0 });
+      state.npcs.push({ id: "x" + state.clock.season + "_" + state.npcs.length, name: L.name, classId: L.classId, wins: L.wins, popularity: 0, age: L.age, personality: L.personality });
     }
     state.lastThrone = { won: true, uprising, lordName: L.name, lordStays: stays };
     p.role = "lord";

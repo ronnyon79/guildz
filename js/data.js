@@ -236,6 +236,24 @@
     mult: (age) => Math.max(0.5, 1 - 0.03 * Math.max(0, (age || 30) - 35)),
   };
 
+  /* Personality (GUI-42): a seeded trait vector on every AI character that
+   * RE-WEIGHTS the existing decision logic (never a new tree, never raw power).
+   * 0..1 each — 0.5 is the old baseline behaviour:
+   *   agg aggression · brv bravery · amb ambition (challenge the throne?) ·
+   *   cun cunning · dis discipline · cru cruelty · loy loyalty · grd greed
+   * (cru/grd hook into household & guild behaviour as those systems grow.) */
+  const PERSONALITY = {
+    traits: ["agg", "brv", "amb", "cun", "dis", "cru", "loy", "grd"],
+    // The loudest trait names the temperament (flavour only).
+    label(p) {
+      if (!p) return "";
+      const names = { agg: "Ferocious", brv: "Fearless", amb: "Ambitious", cun: "Cunning", dis: "Disciplined", cru: "Cruel", loy: "Steadfast", grd: "Grasping" };
+      let top = "agg";
+      for (const t of this.traits) if ((p[t] || 0) > (p[top] || 0)) top = t;
+      return (p[top] || 0) >= 0.7 ? names[top] : "";
+    },
+  };
+
   const POPULARITY = {
     perBout: (band) => 5 + band,
     // Crowd Rating multiplier: 3★ (average) = ×1; a dull bout pays a third,
@@ -244,5 +262,5 @@
   };
   const SEASON = { days: 10 }; // days per season — first guess, tune via sim (GUI-30)
 
-  G.data = { CLASSES, WEAPONS, ARMOR, ARMOR_MAXTIER, VENDORS, ITEMS, ARROWS, GOLD_PER_WIN, goldForWin, totalGoldAt, POINTS_PER_WIN, CRIT_MULT, FOE_NAMES, EPITHETS, ROSTER, POPULARITY, SEASON, LORD, ECONOMY, BOARD, BUILDINGS, BUILDING_FX, AGE };
+  G.data = { CLASSES, WEAPONS, ARMOR, ARMOR_MAXTIER, VENDORS, ITEMS, ARROWS, GOLD_PER_WIN, goldForWin, totalGoldAt, POINTS_PER_WIN, CRIT_MULT, FOE_NAMES, EPITHETS, ROSTER, POPULARITY, SEASON, LORD, ECONOMY, BOARD, BUILDINGS, BUILDING_FX, AGE, PERSONALITY };
 })(typeof window !== "undefined" ? window : globalThis);

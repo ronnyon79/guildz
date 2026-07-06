@@ -371,6 +371,19 @@ cap (3) & per-bout replenish (50%)**, servant **upkeep/housing** cost, and **ser
   peak). Migrations derive age from wins. 20 headless tests (`tools/test_aging.js`) + 211
   regressions. Curve/lifespans = GUI-35 sim knobs.
 
+- **GUI-42 Personality — v0.13.0** ✅ Every AI character rolls a seeded 8-trait vector
+  (agg/brv/amb/cun/dis/cru/loy/grd, data.PERSONALITY) that RE-WEIGHTS existing decisions —
+  0.5 on every trait reproduces the old baseline EXACTLY (variance, not power). Wired:
+  combat AI (charge/kite/hide/summon/heal thresholds — verified: ferocious fighter charges
+  100% vs timid 29%), ambition gates the throne challenge (the meek #1 stands aside; the
+  ambitious #2 rises), loyalty bends the knee (beaten challengers: loyal 50/60 kneel vs
+  proud 15/60), deposed-lord stays by loyalty, discipline times the potions. cru/grd
+  reserved for household/guild hooks. Temperament pills on the fame ladder (Ferocious,
+  Cunning…, >=0.7 only). Deterministic per worldSeed; migrations seeded per id. BUGFIX
+  found by tests: retirement arrivals could duplicate a resident name -> II suffix
+  (narration keys on names). 14 headless tests + 238 regressions. Guilds (GUI-18/19/20),
+  Exile/Adventure (GUI-28/29) & warfare (GUI-38/39) remain PARKED per user.
+
 ### Build order (when the user says go)
 1. **Champion summit** — NPC population + Popularity ladder + Lord boss fight (finish
    the Rise). Small, self-contained, reuses combat entirely.

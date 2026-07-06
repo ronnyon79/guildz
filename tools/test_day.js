@@ -125,9 +125,13 @@ if (S.screen === "bracket") {
   const oppId = S.pendingBout.a === "player" ? S.pendingBout.b : S.pendingBout.a;
   const opp = S.npcs.find((n) => n.id === oppId);
   const oppWins = opp.wins;
+  const boutsBefore = S.board[S.board.length - 1].bouts.length; // parchments pinned so far today
   game.retreat();
   ok(S.screen === "home" && S.day === null, "withdrawing forfeits and returns home");
-  ok(opp.wins === oppWins, "walkover grants the opponent NO career win");
+  // The walkover itself pays nothing — any win delta must come from REAL bouts
+  // the opponent went on to win (recorded by the Scribe; walkovers are not).
+  const realWins = S.board[S.board.length - 1].bouts.slice(boutsBefore).filter((b) => (b.winner === b.a.name ? b.a.id : b.b.id) === opp.id).length;
+  ok(opp.wins === oppWins + realWins, `walkover grants NO career win (delta ${opp.wins - oppWins} = ${realWins} real bouts won)`);
   ok(S.lastDay && !S.lastDay.champion, "forfeited day never crowns the player");
   ok(S.npcs.reduce((s, n) => s + n.wins, 0) >= totalBefore, "other bouts still resolved");
 } else { game.returnHome(); ok(true, "(walkover day — forfeit path skipped)"); }
