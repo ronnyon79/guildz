@@ -443,6 +443,15 @@ cap (3) & per-bout replenish (50%)**, servant **upkeep/housing** cost, and **ser
   spread the game has had (~6 pts). 5-test regression lock (tools/test_dualwield.js) +
   255 regressions green.
 
+- **GUI-45 Battle reports: round headers + death theatre — v0.17.0** (user request from
+  reading parchments). Engine now logs a **round snapshot** at every round start (pure
+  data, replay-safe) → the narrator renders **“— Round N — A 34/40 · 12MP ⚔ B 20/40 —”**
+  dividers in parchments AND the live battle log (round 1 skipped — the intro sets that
+  scene; old verbatim logs degrade gracefully; replayed bouts get dividers retroactively).
+  The parchment reader marks the last damaging strike **☠️ THE KILLING BLOW —** and the
+  end event now closes with seeded **death theatre** (6 variants: “…the sand rushes up to
+  meet them. A heartbeat of silence — then the arena ERUPTS.”). 272 regressions green.
+
 ### Build order (when the user says go)
 1. **Champion summit** — NPC population + Popularity ladder + Lord boss fight (finish
    the Rise). Small, self-contained, reuses combat entirely.

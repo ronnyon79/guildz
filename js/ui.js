@@ -297,7 +297,13 @@
       B: `<span class="foe">${esc(b.foe.name)}</span>`,
       bc: CLASSES[b.foe.classId] ? CLASSES[b.foe.classId].name : "",
     })}</p>`;
-    const lines = log.map((ev, i) => narrate(ev, i, ctx, false)).join("");
+    // The last damaging strike before the end is THE KILLING BLOW.
+    const endIdx = log.findIndex((e) => e.t === "end");
+    let killIdx = -1;
+    for (let i = (endIdx < 0 ? log.length : endIdx) - 1; i >= 0; i--) {
+      if (["hit", "spell", "petHit", "poison"].includes(log[i].t) && (log[i].dmg || 0) > 0) { killIdx = i; break; }
+    }
+    const lines = log.map((ev, i) => narrate(ev, i, ctx, false, i === killIdx)).join("");
     return topbar(s.player) + `<div class="screen">
       <button class="btn ghost sm" data-act="tab" data-arg="board" style="margin:4px 0 10px">← The board</button>
       <div class="screen-title">${rec.throne ? "👑 The Throne Duel" : "⚔️ " + esc(rec.a.name) + " vs " + esc(rec.b.name)}</div>
@@ -578,6 +584,15 @@
   ];
   const KO_WIN = ["{L} is cut down — {W} stands triumphant!", "{L} falls! Victory to {W}!", "{L} drops to the sand. {W} wins the bout!"];
   const KO_LOSS = ["{L} is struck down — {W} claims the win.", "{L} falls in the dust. {W} stands over them.", "{L} can fight no more. {W} takes the victory."];
+  // The fall of a fighter, as the Scribe records it (GUI-45) — pure theatre.
+  const DEATH_THEATRE = [
+    "{L} sways… totters… and the sand rushes up to meet them. A heartbeat of silence — then the arena ERUPTS. {W} stands alone beneath the roar.",
+    "A hush falls over the stands. {L}'s weapon slips from nerveless fingers and rings against the stone. {W} raises both arms as the crowd screams its delight.",
+    "{L} drops to one knee, then to the sand — and does not rise. Somewhere the bell tolls. The bout, the day, the glory: all of it belongs to {W}.",
+    "{L} crashes down like a felled oak, dust blooming around them. In the stands, fortunes change hands and children climb the railings to see {W} triumphant.",
+    "The dust settles slowly. {L} lies where they fell, staring at a sky they no longer see clearly. {W} turns to the crowd, chest heaving, and the Stronghold thunders their name.",
+    "{L}'s guard drops at last — the long dance is over. They fold onto the sand almost gently, and the roar that greets {W} shakes birds from the battlements.",
+  ];
 
   const fill = (tpl, map) => tpl.replace(/\{(\w+)\}/g, (_, k) => (map[k] != null ? map[k] : ""));
   const dmgTier = (d) => (d <= 3 ? 0 : d <= 7 ? 1 : d <= 13 ? 2 : 3);
@@ -597,7 +612,7 @@
     return s;
   }
 
-  function narrate(ev, i, ctx, animate) {
+  function narrate(ev, i, ctx, animate, killing) {
     const a = animate ? "" : "shown";
     const pName = ctx.pName;
     const sideCls = (n) => (n === pName ? "you" : "foe");
@@ -666,12 +681,27 @@
       case "petExpire": out = fill(V(PETEXPIRE), { A: span(ev.who, "sys") }); break;
       case "petMove": out = fill(V(PETMOVE), { A: span(ev.who, ev.owner === pName ? "you" : "foe") }); break;
       case "regen": out = `${span(ev.who)}'s wounds close under the healers' hands <span class="heal-tag">✚${ev.amt}</span>`; break;
-      case "end": return "";
+      // The round opens: the Scribe notes both fighters' condition (GUI-45).
+      case "round": {
+        if (ev.n === 1) return ""; // the intro already sets the first scene
+        const st = (name, hp, maxHp, mp, maxMp) =>
+          `${span(name)} <b>${hp}</b>/${maxHp}${maxMp > 0 ? ` · ${mp}MP` : ""}`;
+        return `<p class="${a} line-init"><span class="sys">— Round ${ev.n} — ${st(ctx.youName, ev.youHp, ev.youMaxHp, ev.youMp, ev.youMaxMp)} ⚔ ${st(ctx.foeName, ev.foeHp, ev.foeMaxHp, ev.foeMp, ev.foeMaxMp)}</span></p>`;
+      }
+      // A fighter falls: pure theatre for the parchment (GUI-45).
+      case "end": {
+        const W = span(ev.result === "won" ? ctx.youName : ctx.foeName);
+        const L = span(ev.result === "won" ? ctx.foeName : ctx.youName);
+        return `<p class="${a} line-ko">💀 ${fill(V(DEATH_THEATRE), { W, L })}</p>`;
+      }
       default: return "";
     }
+    // The final strike gets its due (set by the parchment reader).
+    if (killing) out = `<span class="crit">☠️ THE KILLING BLOW</span> — ` + out;
     // Visual emphasis for the dramatic beats.
     let extra = "";
-    if ((ev.t === "hit" || ev.t === "spell") && ev.crit) extra = "line-crit";
+    if (killing) extra = "line-ko";
+    else if ((ev.t === "hit" || ev.t === "spell") && ev.crit) extra = "line-crit";
     else if (ev.t === "critmiss") extra = "line-fumble";
     else if (ev.t === "summon" || ev.t === "summonWeapon" || ev.t === "shield") extra = "line-summon";
     else if (ev.t === "heal" || ev.t === "item") extra = "line-heal";

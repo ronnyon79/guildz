@@ -213,6 +213,13 @@
     const sides = { you: next.you, foe: next.foe };
     const actionIds = { you: youActionId, foe: foeActionId };
 
+    // The Scribe notes the state of both fighters as the round opens (GUI-45).
+    log.push({
+      t: "round", n: next.round,
+      youHp: next.you.hp, youMaxHp: next.you.maxHp, youMp: next.you.mp, youMaxMp: next.you.maxMp,
+      foeHp: next.foe.hp, foeMaxHp: next.foe.maxHp, foeMp: next.foe.mp, foeMaxMp: next.foe.maxMp,
+    });
+
     // Damage-over-time (Poison Cloud) ticks at the top of the round, before actions.
     for (const key of ["you", "foe"]) {
       const f = sides[key];
