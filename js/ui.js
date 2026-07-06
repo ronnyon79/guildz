@@ -196,10 +196,12 @@
     if (myRank > 10) shown.push(ladder[myRank - 1]);
     const rows = shown.map((r) => {
       const rank = ladder.indexOf(r) + 1;
+      const npc = r.isPlayer ? null : s.npcs.find((n) => n.id === r.id);
+      const temper = npc && npc.personality ? G.data.PERSONALITY.label(npc.personality) : "";
       return `<div class="card"><div class="card-row">
         <div class="avatar">${rank === 1 ? "👑" : CLASSES[r.classId].emoji}</div>
-        <div><div class="card-title">#${rank} ${r.isPlayer ? `<span class="you">${esc(r.name)}</span> <span class="pill on">you</span>` : esc(r.name)}</div>
-        <div class="card-sub">${CLASSES[r.classId].name} · ${r.wins} wins</div></div>
+        <div><div class="card-title">#${rank} ${r.isPlayer ? `<span class="you">${esc(r.name)}</span> <span class="pill on">you</span>` : esc(r.name)}${temper ? ` <span class="pill">${temper}</span>` : ""}</div>
+        <div class="card-sub">${CLASSES[r.classId].name} · ${r.wins} wins${npc ? ` · age ${npc.age}` : ""}</div></div>
         <div class="spacer"></div><span class="pill">⭐ ${r.popularity}</span></div></div>`;
     }).join("");
     const last = s.lastSeason && s.lastSeason.top[0]
