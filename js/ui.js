@@ -177,6 +177,23 @@
     return `<div class="card"><div class="card-title" style="font-size:14px">📯 The town crier</div>${rows}</div>`;
   }
 
+  // 📒 The clerk's book (GUI-52): the last 7 presided days of treasury flow —
+  // so a decree change visibly moves the needle within a week.
+  function clerkBlock(s) {
+    const log = s.ledgerLog || [];
+    if (s.player.role !== "lord" || !log.length) return "";
+    const max = Math.max(...log.map((r) => Math.abs(r.net)), 1);
+    const rows = log.slice().reverse().map((r) => {
+      const w = Math.max(4, Math.round((Math.abs(r.net) / max) * 100));
+      return `<div class="card-sub ledger-row"><span class="sys">D${r.d}·S${r.s}</span>
+        <span class="ledger-bar ${r.net >= 0 ? "up" : "down"}" style="width:${w}px"></span>
+        <b class="${r.net >= 0 ? "up" : "down"}">${r.net >= 0 ? "+" : ""}${r.net}g</b>
+        <span class="sys">→ ${r.after}g</span></div>`;
+    }).join("");
+    const total = log.reduce((a, r) => a + r.net, 0);
+    return `<div class="card"><div class="card-title" style="font-size:14px">📒 The clerk's book <span class="pill">${total >= 0 ? "+" : ""}${total}g over ${log.length} day${log.length === 1 ? "" : "s"}</span></div>${rows}</div>`;
+  }
+
   function screenHome(s) {
     const p = s.player, m = game.computeMax(p);
     const pools = CLASSES[p.classId].caster ? `${m.maxHp} HP · ${m.maxMp} MP` : `${m.maxHp} HP`;
@@ -192,7 +209,8 @@
       ${fieldBlock(s)}
       ${crierBlock(s)}
       ${p.role === "lord"
-        ? `${decreesBlock(s)}
+        ? `${clerkBlock(s)}
+      ${decreesBlock(s)}
       ${buildingsBlock(s)}
       <button class="btn block lg gold" data-act="hold-games">👑 Hold the Day's Games</button>
       <p class="card-sub center" style="margin-top:12px"><b>Day ${s.clock.day} · Season ${s.clock.season}</b></p>
