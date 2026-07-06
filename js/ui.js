@@ -150,6 +150,14 @@
     </div>`;
   }
 
+  // 📯 The town crier (GUI-53): the world's recent news, newest first.
+  function crierBlock(s) {
+    if (!s.news || !s.news.length) return "";
+    const rows = s.news.slice(-6).reverse().map((n) =>
+      `<div class="card-sub crier-row">${n.icon} <span class="sys">D${n.d}·S${n.s}</span> ${n.text}</div>`).join("");
+    return `<div class="card"><div class="card-title" style="font-size:14px">📯 The town crier</div>${rows}</div>`;
+  }
+
   function screenHome(s) {
     const p = s.player, m = game.computeMax(p);
     const pools = CLASSES[p.classId].caster ? `${m.maxHp} HP · ${m.maxMp} MP` : `${m.maxHp} HP`;
@@ -162,6 +170,7 @@
         ${classStats(p.classId)}
       </div>
       ${lordBlock(s)}
+      ${crierBlock(s)}
       ${p.role === "lord"
         ? `${decreesBlock(s)}
       ${buildingsBlock(s)}

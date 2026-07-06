@@ -622,6 +622,12 @@ cap (3) & per-bout replenish (50%)**, servant **upkeep/housing** cost, and **ser
   bouts stay unadorned. Old recs (no hl) still get the derived angles. test_voices → 17;
   343 green / 19 suites.
 
+- **GUI-53 The town crier — v0.33.0.** A persistent news ring (state.news, cap 20, in the
+  save blob) harvested at every settle: throne rebellions (👑 fell / 🛡️ held), founders
+  riding out 🐎, adventurers 🌄, retirements 🍂, old-age succession ⚱️, incoming challenges
+  ⚠️, your earned challenge right, and season fame leaders ⭐. Surfaced as the 📯 town crier
+  card on home (last 6, newest first, date-stamped D·S). NEW SUITE test_crier (7) → 350.
+
 ### Build order (when the user says go)
 1. **Champion summit** — NPC population + Popularity ladder + Lord boss fight (finish
    the Rise). Small, self-contained, reuses combat entirely.
