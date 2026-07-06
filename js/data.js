@@ -242,6 +242,12 @@
    *   agg aggression · brv bravery · amb ambition (challenge the throne?) ·
    *   cun cunning · dis discipline · cru cruelty · loy loyalty · grd greed
    * (cru/grd hook into household & guild behaviour as those systems grow.) */
+  /* World-gen depth (GUI-33): background seasons pre-simulated at creation, so
+   * a fresh world is already ALIVE — fame earned, reigns fought over, the last
+   * day's parchments on the board. 3 seasons ≈ a thousand background bouts:
+   * lived-in without noticeable generation time (measured; see PLAN). */
+  const WORLDGEN = { seasons: 3 };
+
   const PERSONALITY = {
     traits: ["agg", "brv", "amb", "cun", "dis", "cru", "loy", "grd"],
     // The loudest trait names the temperament (flavour only).
@@ -262,5 +268,5 @@
   };
   const SEASON = { days: 10 }; // days per season — first guess, tune via sim (GUI-30)
 
-  G.data = { CLASSES, WEAPONS, ARMOR, ARMOR_MAXTIER, VENDORS, ITEMS, ARROWS, GOLD_PER_WIN, goldForWin, totalGoldAt, POINTS_PER_WIN, CRIT_MULT, FOE_NAMES, EPITHETS, ROSTER, POPULARITY, SEASON, LORD, ECONOMY, BOARD, BUILDINGS, BUILDING_FX, AGE, PERSONALITY };
+  G.data = { CLASSES, WEAPONS, ARMOR, ARMOR_MAXTIER, VENDORS, ITEMS, ARROWS, GOLD_PER_WIN, goldForWin, totalGoldAt, POINTS_PER_WIN, CRIT_MULT, FOE_NAMES, EPITHETS, ROSTER, POPULARITY, SEASON, LORD, ECONOMY, BOARD, BUILDINGS, BUILDING_FX, AGE, PERSONALITY, WORLDGEN };
 })(typeof window !== "undefined" ? window : globalThis);

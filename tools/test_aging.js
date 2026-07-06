@@ -5,9 +5,10 @@ global.localStorage = {
   setItem: (k, v) => { store[k] = String(v); },
   removeItem: (k) => { delete store[k]; },
 };
-for (const f of ["engine", "data", "combat", "spectacle", "ai", "tournament", "roster", "game", "lord"])
+for (const f of ["engine", "data", "combat", "spectacle", "ai", "tournament", "roster", "worldgen", "game", "lord"])
   require("../js/" + f + ".js");
 
+G.data.WORLDGEN.seasons = 0; // pristine world — history behaviour is covered by test_worldgen
 const game = G.game, S = game.state, AGE = G.data.AGE;
 let pass = 0, fail = 0;
 function ok(cond, name) {
