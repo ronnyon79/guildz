@@ -473,6 +473,18 @@ cap (3) & per-bout replenish (50%)**, servant **upkeep/housing** cost, and **ser
   merge sparse adjacent bands for the day so lone veterans still fight (would amend the
   bands-of-5 rule — awaiting their call).
 
+- **GUI-60 Idle veterans depart — v0.19.0** (USER DESIGN: solves the lone-veteran lockout
+  without touching bands-of-5 or the fame-gated challenge). A veteran (25+ wins) who fought
+  NO bouts all season decides at the turn by temperament: **ambitious (amb ≥.5) → rides out
+  to FOUND their own hold** — written to the persisted **founders ledger** (state.departed,
+  last 12), the literal seed of GUI-25 world expansion; **restless (brv ≥.4) → leaves for
+  adventure**; the steadfast linger. Fresh hopefuls take the beds (population stable; shared
+  arriveHopefuls with retirement churn). Idleness measured from the FACTS store (fought =
+  named in any fact row of the closing season — gauntlet counts). Departures announced with
+  the season banner ("🐎 …rides out to raise a banner of their own"). Player never
+  auto-departs. 10 headless tests (tools/test_departures.js) + 280 regressions (two suites
+  updated: departing champions legitimately take their wins/fame with them).
+
 ### Build order (when the user says go)
 1. **Champion summit** — NPC population + Popularity ladder + Lord boss fight (finish
    the Rise). Small, self-contained, reuses combat entirely.
