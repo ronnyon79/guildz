@@ -533,6 +533,10 @@ cap (3) & per-bout replenish (50%)**, servant **upkeep/housing** cost, and **ser
   grid untouched (they ARE the live duel header). Old third-person narrate() retained only
   for the win/loss recap lines. 283 regressions green.
 
+- **GUI-67 BUGFIX: right bubbles rendered left — v0.24.1** (user screenshot). Flexbox trap:
+  row-reverse + justify-content:flex-end points LEFT on a reversed axis, so YOUR bubbles
+  hugged the left edge too. flex-start on the reversed row = visual right. One line.
+
 ### Build order (when the user says go)
 1. **Champion summit** — NPC population + Popularity ladder + Lord boss fight (finish
    the Rise). Small, self-contained, reuses combat entirely.
