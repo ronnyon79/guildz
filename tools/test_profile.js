@@ -52,7 +52,7 @@ game.openBout(today, myIdx); G.ui.render(S);
 ok(app().includes("chat-name plink"), "chat bubbles carry tappable name tags");
 ok(/duel-name[^]*?plink/.test(app()), "parchment duel header names tappable");
 click("profile", npc.name);
-ok(app().includes("profile-card") && app().includes("parchment") === false, "profile opens on top of a parchment");
+ok(app().includes("profile-card") && S.screen === "parchment", "profile opens on top of a parchment");
 
 
 
@@ -77,6 +77,28 @@ if (S.pendingBout) {
   ok(true, "no pending bout this day (bye) — scout card skipped by design");
   ok(true, "-");
 }
+
+
+
+/* — GUI-70: arsenal + fighting style — */
+console.log("— arsenal & style —");
+click("profile", npc.name);
+ok(/❤️ \d+ HP/.test(app()), "NPC profile shows HP pool");
+ok(/(Sword|Staff|Mace|Bow|Sling)/.test(app()), "equipment names render");
+ok(/(Armor|Chainmail|Plate|Leather|no armor)/.test(app()), "armor line renders");
+click("profile-close");
+click("profile", "Prof Tester");
+ok(/❤️ \d+ HP/.test(app()), "player profile shows own pools");
+ok(/📊 style, from \d+ parchment/.test(app()), "player style mined from own parchments");
+ok(/(⚔️ melee strikes|🏹 shots) ×\d+/.test(app()), "style counts real actions");
+click("profile-close");
+click("profile", S.lord.name);
+ok(/❤️ \d+ HP/.test(app()), "the Lord's kit renders via lordCombatChar");
+click("profile-close");
+// a mage NPC's style should mention spellcraft after replaying their bouts
+const mage = S.npcs.find((n) => n.classId === "mage" && G.game.careerOf(n.name));
+if (mage) { click("profile", mage.name); ok(app().includes("🔮") || app().includes("📊") === false, "mage style leans on spells (or no parchments)"); click("profile-close"); }
+else ok(true, "no recorded mage this world — skip");
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

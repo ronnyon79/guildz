@@ -566,6 +566,15 @@ cap (3) & per-bout replenish (50%)**, servant **upkeep/housing** cost, and **ser
   scanning the immortal fact rows. The same h2h line joins every profile card (GUI-46 pair
   complete: scout → fight → read → tap the name). test_profile grew to 20 → 303 total.
 
+- **GUI-70 Profile combat stats — v0.28.0** (user request). Profile AND scout cards gain:
+  **Arsenal** — ❤️ HP / 🔷 MP pools and equipment (weapons with dual-wield ×2, thief arrow
+  types, armor with DR) built by the SAME combat-char builders the arena uses
+  (playerCombatChar — now exported / lordCombatChar / roster.combatChar with gearScale, so
+  tax pressure shows in rivals gear); **📊 Fighting style** — their actual most-used skills
+  mined from up to 12 recent parchments (verbatim logs or seed-replays), counting their own
+  actions: melee strikes, shots, spells by name, heals, hides, potions, summons — top 4
+  with counts. test_profile 20 → 28 → 311 total green.
+
 ### Build order (when the user says go)
 1. **Champion summit** — NPC population + Popularity ladder + Lord boss fight (finish
    the Rise). Small, self-contained, reuses combat entirely.
