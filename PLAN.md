@@ -462,6 +462,10 @@ cap (3) & per-bout replenish (50%)**, servant **upkeep/housing** cost, and **ser
   critmiss/evade/dodge); the Scribe labels them **“1st strike: …grazes for 1 · 2nd strike:
   …turned aside”**. Single attacks stay unlabelled. 276 regressions green.
 
+- **GUI-58 Board foldered by band — v0.18.0** (user request). Each day/parchments now hang
+  in collapsible BAND categories (👑 Throne and 🛡️ Gauntlet pinned above, bands ascending),
+  collapsed by default with counts + a "you fought here" pill — no more one long list.
+
 ### Build order (when the user says go)
 1. **Champion summit** — NPC population + Popularity ladder + Lord boss fight (finish
    the Rise). Small, self-contained, reuses combat entirely.
