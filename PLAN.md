@@ -452,6 +452,10 @@ cap (3) & per-bout replenish (50%)**, servant **upkeep/housing** cost, and **ser
   end event now closes with seeded **death theatre** (6 variants: “…the sand rushes up to
   meet them. A heartbeat of silence — then the arena ERUPTS.”). 272 regressions green.
 
+- **GUI-56 Selectable battle reports — v0.17.1** (user report). The global mobile
+  user-select:none also froze the parchments; the Scribe writes to be READ — .log prose
+  (live battle + parchments) is now selectable/quotable; buttons and chrome stay guarded.
+
 ### Build order (when the user says go)
 1. **Champion summit** — NPC population + Popularity ladder + Lord boss fight (finish
    the Rise). Small, self-contained, reuses combat entirely.
