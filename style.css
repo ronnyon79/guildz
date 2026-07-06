@@ -218,3 +218,18 @@ button { font-family: inherit; }
 .cal-day:disabled { opacity: .25; cursor: default; }
 .cal-day.sel { border-color: var(--gold); background: #2c2338; box-shadow: 0 0 0 1px var(--gold) inset; }
 .cal-mark { display: block; font-size: 10px; line-height: 1.4; min-height: 14px; }
+
+/* ---------- band chips + the wide Board (GUI-62) ---------- */
+.bandgrid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.band-chip {
+  position: relative; padding: 8px 0 4px; text-align: center;
+  background: #221a2e; border: 1px solid var(--line); border-radius: 8px;
+  color: var(--text); font-weight: 700; font-size: 13px; cursor: pointer;
+}
+.band-chip.sel { border-color: var(--gold); background: #2c2338; box-shadow: 0 0 0 1px var(--gold) inset; }
+.band-chip .cal-mark { color: var(--muted); }
+@media (min-width: 900px) {
+  #app.wide { max-width: 1100px; }
+  #app.wide .board-cols { display: grid; grid-template-columns: 420px 1fr; gap: 18px; align-items: start; }
+  #app.wide .board-right { position: sticky; top: 8px; max-height: calc(100vh - 140px); overflow-y: auto; padding-right: 4px; }
+}

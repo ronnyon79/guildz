@@ -493,6 +493,13 @@ cap (3) & per-bout replenish (50%)**, servant **upkeep/housing** cost, and **ser
   tests pin days=3 to keep exercising the trim; facts unchanged). New .cal styles.
   283 regressions green.
 
+- **GUI-62 Band chips + the wide Board — v0.21.0** (user: still too much scrolling).
+  The stacked band folders became a compact **CHIP GRID** (👑/🛡️/0–4/5–9/… with bout counts
+  + a ⭐ marker; defaults to YOUR band) — pick a chip, read that band. On screens ≥900px the
+  Board page alone widens to 1100px and goes **two-column**: calendar + chips left, the
+  chosen band s reports in a STICKY, independently-scrolling side panel right; phones keep
+  the single column. render() toggles #app.wide per screen. 283 regressions green.
+
 ### Build order (when the user says go)
 1. **Champion summit** — NPC population + Popularity ladder + Lord boss fight (finish
    the Rise). Small, self-contained, reuses combat entirely.
