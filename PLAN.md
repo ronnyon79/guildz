@@ -485,6 +485,14 @@ cap (3) & per-bout replenish (50%)**, servant **upkeep/housing** cost, and **ser
   auto-departs. 10 headless tests (tools/test_departures.js) + 280 regressions (two suites
   updated: departing champions legitimately take their wins/fame with them).
 
+- **GUI-61 The Board calendar — v0.20.0** (user request: the day list grows long).
+  The Board is now a **paginated calendar**: one SEASON per page (◀ Season N ▶), a 5×2 grid
+  of day cells (👑 = a throne/gauntlet was fought · ⭐ = you fought · dim = parchments taken
+  down), and the picked day opens in a PANEL beneath — band folders intact, zero long
+  scroll. Parchment retention raised **BOARD.days 3 → 30** (≈ three readable seasons; ring
+  tests pin days=3 to keep exercising the trim; facts unchanged). New .cal styles.
+  283 regressions green.
+
 ### Build order (when the user says go)
 1. **Champion summit** — NPC population + Popularity ladder + Lord boss fight (finish
    the Rise). Small, self-contained, reuses combat entirely.

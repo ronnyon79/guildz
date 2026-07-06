@@ -209,7 +209,7 @@
   /* The Scribe's Bulletin Board (GUI-14): how many days of parchments stay
    * pinned before the oldest are taken down (fight RESULTS live forever in
    * career stats; only the readable blow-by-blow ring-buffers). */
-  const BOARD = { days: 3 };
+  const BOARD = { days: 30 }; // ≈ three seasons of readable parchments (calendar era, GUI-61)
 
   /* Stronghold buildings (GUI-15): institutional power — the Lord levels the
    * ARENA, and the arena defends its Lord. Treasury-funded, levels 0–3.

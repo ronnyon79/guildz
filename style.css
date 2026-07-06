@@ -207,3 +207,14 @@ button { font-family: inherit; }
 .empty { text-align: center; color: var(--muted); padding: 36px 20px; font-size: 14px; }
 .muted { color: var(--muted); }
 .center { text-align: center; }
+
+/* ---------- the Bulletin Board calendar (GUI-61) ---------- */
+.cal { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin-bottom: 6px; }
+.cal-day {
+  position: relative; padding: 8px 0 4px; text-align: center;
+  background: #221a2e; border: 1px solid var(--line); border-radius: 8px;
+  color: var(--text); font-weight: 700; font-size: 15px; cursor: pointer;
+}
+.cal-day:disabled { opacity: .25; cursor: default; }
+.cal-day.sel { border-color: var(--gold); background: #2c2338; box-shadow: 0 0 0 1px var(--gold) inset; }
+.cal-mark { display: block; font-size: 10px; line-height: 1.4; min-height: 14px; }
