@@ -195,6 +195,54 @@
     return `<div class="screen-title">🌇 Sunset — champions of the day</div>${rows}${season}`;
   }
 
+  /* ---------- champion profiles (GUI-46) ---------- */
+  // Resolve a name to whatever the world knows: you, the Lord, a resident,
+  // a sworn servant, a departed founder — or a name the Scribe barely recalls.
+  function resolvePerson(s, name) {
+    if (name === s.player.name) return { rec: s.player, status: `<span class="pill on">you</span>` };
+    if (s.lord && s.lord.name === name) return { rec: s.lord, status: `<span class="pill on">👑 Lord of the Stronghold</span>` };
+    const h = (s.household || []).find((x) => x.name === name);
+    if (h) return { rec: h, status: `<span class="pill">🛡️ sworn to the household</span>` };
+    const n = s.npcs.find((x) => x.name === name);
+    if (n) return { rec: n, status: `<span class="pill">resident champion</span>` };
+    const d = (s.departed || []).find((x) => x.name === name);
+    if (d) return { rec: d, status: `<span class="pill">${d.reason === "found" ? "🐎 founded their own hold" : "🌄 rode out for adventure"}</span>` };
+    return { rec: null, status: "" };
+  }
+
+  function profileOverlay(s) {
+    const name = ui.profileName;
+    const { rec, status } = resolvePerson(s, name);
+    const c = game.careerOf(name);
+    const cls = rec && CLASSES[rec.classId];
+    const temper = rec && rec.personality ? G.data.PERSONALITY.label(rec.personality) : "";
+    const fade = rec && rec.age != null ? G.data.AGE.mult(rec.age) : 1;
+    const lines = [];
+    if (cls) lines.push(`<div class="card-sub">${cls.name}${rec.wins != null ? ` · <b>${rec.wins}</b> career wins` : ""}${rec.reignSeasons ? ` · ${rec.reignSeasons} season${rec.reignSeasons === 1 ? "" : "s"} on the throne` : ""}</div>`);
+    if (rec && rec.age != null) lines.push(`<div class="card-sub">age ${rec.age}${fade < 1 ? ` 🍂 <span class="sys">past peak (${Math.round(fade * 100)}% strength)</span>` : ""}</div>`);
+    if (temper) lines.push(`<div class="card-sub">temperament: <b>${temper}</b></div>`);
+    if (rec && rec.popularity != null) lines.push(`<div class="card-sub">⭐ <b>${rec.popularity}</b> fame</div>`);
+    const career = c
+      ? `<div class="card-sub" style="margin-top:8px">📜 The Scribe records <b>${c.bouts}</b> bout${c.bouts === 1 ? "" : "s"}: <b>${c.wins}</b> won (${c.bouts ? Math.round((c.wins / c.bouts) * 100) : 0}%)${c.wins ? ` · crowds rated their wins ${(c.stars / c.wins).toFixed(1)}★` : ""}</div>`
+      : `<div class="card-sub" style="margin-top:8px">📜 No bouts in the Scribe records yet.</div>`;
+    const unknown = !rec && !c ? `<div class="card-sub">The Scribe leafs through the archive… this name appears in no ledger.</div>` : "";
+    return `<div class="overlay" data-act="profile-close">
+      <div class="card profile-card" data-act="profile-noop">
+        <div class="card-row">
+          <div class="avatar">${cls ? cls.emoji : "❓"}</div>
+          <div><div class="card-title">${esc(name)} ${status}</div>${lines.join("")}</div>
+          <div class="spacer"></div><button class="btn sm ghost" data-act="profile-close">✕</button>
+        </div>
+        ${career}${unknown}
+      </div>
+    </div>`;
+  }
+
+  // A tappable name — anywhere prose mentions a champion (GUI-46).
+  function plink(s, n) {
+    return `<span class="plink${n === s.player.name ? " you" : ""}" data-act="profile" data-arg="${esc(n)}">${esc(n)}</span>`;
+  }
+
   function screenFame(s) {
     const ladder = game.fameLadder();
     const myRank = ladder.findIndex((r) => r.isPlayer) + 1;
@@ -204,7 +252,7 @@
       const rank = ladder.indexOf(r) + 1;
       const npc = r.isPlayer ? null : s.npcs.find((n) => n.id === r.id);
       const temper = npc && npc.personality ? G.data.PERSONALITY.label(npc.personality) : "";
-      return `<div class="card"><div class="card-row">
+      return `<div class="card" data-act="profile" data-arg="${esc(r.name)}"><div class="card-row">
         <div class="avatar">${rank === 1 ? "👑" : CLASSES[r.classId].emoji}</div>
         <div><div class="card-title">#${rank} ${r.isPlayer ? `<span class="you">${esc(r.name)}</span> <span class="pill on">you</span>` : esc(r.name)}${temper ? ` <span class="pill">${temper}</span>` : ""}</div>
         <div class="card-sub">${CLASSES[r.classId].name} · ${r.wins} wins${npc ? ` · age ${npc.age}` : ""}</div></div>
@@ -223,9 +271,7 @@
     const br = s.playerBracket, m = s.pendingBout;
     if (!br) return screenHome(s);
     const name = (id) => game.champName(id);
-    const tag = (id) => (id === "player"
-      ? `<span class="you"><b>${esc(s.player.name)}</b></span>`
-      : esc(name(id)));
+    const tag = (id) => (id === "player" ? `<b>${plink(s, s.player.name)}</b>` : plink(s, name(id)));
     const rounds = [];
     for (let r = 1; r <= br.round; r++) {
       const ms = br.matches.filter((x) => x.round === r);
@@ -264,7 +310,7 @@
   /* ---------- the Scribe's Bulletin Board (GUI-14) ---------- */
   // One parchment row (a single bout on the board).
   function boutRow(s, di, bi, bt) {
-    const you = (n) => (n === s.player.name ? `<span class="you">${esc(n)}</span>` : esc(n));
+    const you = (n) => plink(s, n);
     return `<div class="card class-card" data-act="view-bout" data-arg="${di}:${bi}">
       <div class="card-row"><div class="avatar">${bt.throne ? "👑" : CLASSES[(bt.a || {}).classId] ? CLASSES[bt.a.classId].emoji : "⚔️"}</div>
       <div><div class="card-title" style="font-size:14px">${you(bt.a.name)} <span class="sys">vs</span> ${you(bt.b.name)}${bt.throne ? ' <span class="pill on">THRONE DUEL</span>' : ""}</div>
@@ -506,7 +552,7 @@
     const kill = opts.kill ? `<span class="crit">☠️ THE KILLING BLOW</span><br>` : "";
     return `<div class="chat-row ${side}${a}">
       <div class="chat-ava">${opts.emojiOf(c.name)}</div>
-      <div class="bubble ${side === "right" ? "me" : "them"}">${kill}<span class="chat-name">${esc(c.name)}</span>${c.act ? `<span class="chat-act">${c.act}</span>` : ""}${c.text}</div>
+      <div class="bubble ${side === "right" ? "me" : "them"}">${kill}<span class="chat-name plink" data-act="profile" data-arg="${esc(c.name)}">${esc(c.name)}</span>${c.act ? `<span class="chat-act">${c.act}</span>` : ""}${c.text}</div>
     </div>`;
   }
 
@@ -547,7 +593,7 @@
     const stIdx = play ? (play.idx > 0 ? rows[Math.min(play.idx, rows.length) - 1].logIdx : -1) : log.length - 1;
     const st = stIdx >= 0 ? timeline[stIdx] : timeline.find((x) => x); // first known state pre-play
     const fighterHead = (name, hp, max, mp, mpMax, side) =>
-      `<div class="duel-side ${side}"><div class="duel-name">${emojiOf(name)} ${esc(name)}</div>${bar("hp", hp, max)}${mpMax > 0 ? bar("mp", mp, mpMax) : ""}</div>`;
+      `<div class="duel-side ${side}"><div class="duel-name">${emojiOf(name)} ${plink(s, name)}</div>${bar("hp", hp, max)}${mpMax > 0 ? bar("mp", mp, mpMax) : ""}</div>`;
     const leftName = flip ? b.you.name : b.foe.name; // whoever chats LEFT
     const head = st ? `<div class="duel-head">${
       leftName === b.foe.name
@@ -1042,7 +1088,7 @@
   // matching the chat sides), fed by the living fighters (GUI-68).
   function battleDuelHead(b) {
     const side = (f, cls) => `<div class="duel-side ${cls}">
-      <div class="duel-name">${f.emoji} ${esc(f.name)} <span class="roll">·${f.wins}w</span></div>
+      <div class="duel-name">${f.emoji} <span class="plink" data-act="profile" data-arg="${esc(f.name)}">${esc(f.name)}</span> <span class="roll">·${f.wins}w</span></div>
       ${bar("hp", f.hp, f.maxHp)}${f.maxMp > 0 ? bar("mp", f.mp, f.maxMp) : ""}${duelTags(f)}
     </div>`;
     return `<div class="duel-head live">${side(b.foe, "left")}<div class="duel-vs">⚔</div>${side(b.you, "right")}</div>`;
@@ -1315,6 +1361,7 @@
       case "hero": html = screenHero(s); break;
       default: html = screenTitle();
     }
+    if (ui.profileName) html += profileOverlay(s);
     app.innerHTML = html;
     // The replay theater's clockwork runs only while a parchment plays (GUI-64).
     if (s.screen === "parchment") replayTick();
@@ -1348,6 +1395,9 @@
       case "replay-speed": if (ui.play) { ui.play.fast = !ui.play.fast; render(game.state); } break;
       case "replay-skip": ui.play = null; clearTimeout(ui.playTimer); render(game.state); break;
       case "board-band": ui.boardBand = arg; render(game.state); break;
+      case "profile": ui.profileName = arg; render(game.state); break;
+      case "profile-close": ui.profileName = null; render(game.state); break;
+      case "profile-noop": break;
       case "board-day": ui.boardDay = parseInt(arg, 10); ui.boardBand = null; render(game.state); break;
       case "board-season": {
         const seasons = [...new Set(game.state.board.map((d) => d.season))].sort((a, b) => a - b);
