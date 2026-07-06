@@ -146,5 +146,38 @@ if (S.screen === "defended") {
   ok(S.screen === "memorial" && S.lastThrone.fate === "defense", "a fielded defender who falls, dies (no choice)");
 }
 
+/* — GUI-51: the Lord orders his wall — */
+console.log("— gauntlet ordering —");
+{
+  // a fresh lord seat with a 3-servant wall in deliberate NON-strength order
+  game.resetGame(); game.createCharacter("fighter", "Order Lord", 515151);
+  S.player.role = "lord"; S.lord = null; S.player.crownedSeason = S.clock.season;
+  S.stronghold.buildings = S.stronghold.buildings || {}; S.stronghold.buildings.barracks = 3;
+  S.household = [
+    { id: "s1", name: "Speed Bump", classId: "thief", wins: 8 },
+    { id: "s2", name: "Middle Man", classId: "cleric", wins: 20 },
+    { id: "s3", name: "The Stopper", classId: "fighter", wins: 40 },
+  ];
+  game.moveServant("s3", -1);
+  ok(S.household.map((h) => h.id).join(",") === "s1,s3,s2", "▲ promotes a servant one slot");
+  game.moveServant("s1", 1);
+  ok(S.household.map((h) => h.id).join(",") === "s3,s1,s2", "▼ demotes a servant one slot");
+  game.moveServant("s3", -1);
+  ok(S.household[0].id === "s3", "promoting the first slot is a no-op");
+  // the gauntlet honours the chosen order: first bout is vs household[0]
+  const weak = S.npcs.reduce((a, b) => (a.wins <= b.wins ? a : b));
+  S.defense = { challengerId: weak.id, name: weak.name, season: S.clock.season, fielded: false };
+  game.beginDefense();
+  const firstDefender = S.lastDefense ? S.lastDefense.byServant
+    : S.defenseRun && S.defenseRun.bouts.length ? S.defenseRun.bouts[0].servant : null;
+  ok(firstDefender === "The Stopper",
+    "the FIRST gauntlet bout is vs household[0] — the Lord's chosen order, not auto-strongest");
+  // role gate
+  S.player.role = "champion";
+  const before = S.household.map((h) => h.id).join(",");
+  game.moveServant("s1", -1);
+  ok(S.household.map((h) => h.id).join(",") === before, "only a Lord may reorder the wall");
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

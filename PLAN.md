@@ -633,6 +633,13 @@ cap (3) & per-bout replenish (50%)**, servant **upkeep/housing** cost, and **ser
   scout intel, wins, age 🍂, temperament), rival count, "…and N more", and the 🕊️ walkover
   callout for empty bands. Lords see no field — they preside. test_crier → 11 → 354.
 
+- **GUI-51 Order your gauntlet — v0.35.0.** The household list is numbered and gains ▲▼
+  promote/demote (game.moveServant, Lord-only, persisted — array order IS the wall);
+  beginDefense now honours the LORD S chosen order instead of auto-sorting strongest-first.
+  Speed-bumps-first vs stopper-first is a real decree (challengers patch 50% between
+  bouts). NPC Lords keep sorting strongest-first — their own decree. test_defense → 34
+  (order honoured via lastDefense/defenseRun, swaps, bounds, role gate) → 359 green.
+
 ### Build order (when the user says go)
 1. **Champion summit** — NPC population + Popularity ladder + Lord boss fight (finish
    the Rise). Small, self-contained, reuses combat entirely.

@@ -116,10 +116,13 @@
     if (p.role === "lord") {
       const slots = ((s.stronghold || {}).buildings || {}).barracks || 0;
       const servants = s.household.length
-        ? s.household.map((h) => `<div class="card-sub" style="margin-top:4px">${CLASSES[h.classId].emoji} ${esc(h.name)} (${h.wins}w)
+        ? s.household.map((h, i) => `<div class="card-sub" style="margin-top:4px"><b>${i + 1}.</b> ${CLASSES[h.classId].emoji} ${esc(h.name)} (${h.wins}w)
+            <button class="btn sm ghost" data-act="servant-move" data-arg="${h.id}:-1" title="Fights earlier" ${i === 0 ? "disabled" : ""}>▲</button>
+            <button class="btn sm ghost" data-act="servant-move" data-arg="${h.id}:1" title="Fights later" ${i === s.household.length - 1 ? "disabled" : ""}>▼</button>
             <button class="btn sm ghost" data-act="servant" data-arg="${h.id}:release" title="Release">🕊️</button>
             <button class="btn sm ghost" data-act="servant" data-arg="${h.id}:exile" title="Exile">🚪</button>
             <button class="btn sm ghost" data-act="servant" data-arg="${h.id}:kill" title="Kill">💀</button></div>`).join("")
+          + `<div class="card-sub sys" style="margin-top:4px">⚔️ Challengers fight your wall in this order (1. first) — they patch only half their wounds between bouts.</div>`
         : slots ? "empty — beaten challengers may kneel" : "build the Barracks to house defenders";
       const challenge = s.defense && !s.defense.fielded ? `<div class="card" style="border-color:#c0392b">
         <div class="card-title">⚔️ A CHALLENGER COMES</div>
@@ -1625,6 +1628,7 @@
       case "profile": ui.profileName = arg; render(game.state); break;
       case "profile-close": ui.profileName = null; render(game.state); break;
       case "profile-noop": break;
+      case "servant-move": { const [sid, dir] = arg.split(":"); game.moveServant(sid, parseInt(dir, 10)); break; }
       case "board-day": ui.boardDay = parseInt(arg, 10); ui.boardBand = null; render(game.state); break;
       case "board-season": {
         const seasons = [...new Set(game.state.board.map((d) => d.season))].sort((a, b) => a - b);
