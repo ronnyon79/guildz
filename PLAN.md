@@ -537,6 +537,14 @@ cap (3) & per-bout replenish (50%)**, servant **upkeep/housing** cost, and **ser
   row-reverse + justify-content:flex-end points LEFT on a reversed axis, so YOUR bubbles
   hugged the left edge too. flex-start on the reversed row = visual right. One line.
 
+- **GUI-68 Live battle: report-style duel header + one-screen lock — v0.25.0** (user
+  request). The two stacked fighter panels became the parchment DUEL HEADER — compact
+  side-by-side HP/MP bars, foe LEFT / you RIGHT (matching the chat sides), with condensed
+  status tags (☠️/🕸️/🛡️/🌑/❄️/armor DR·durability/pet HP or rounds) and career wins. And
+  the battle now LOCKS to the viewport (100dvh, overflow hidden): the chat log scrolls
+  inside its own box — auto-following new bubbles via the existing scrollTop sync — while
+  the action buttons stay pinned. No page scrolling during play. 283 regressions green.
+
 ### Build order (when the user says go)
 1. **Champion summit** — NPC population + Popularity ladder + Lord boss fight (finish
    the Rise). Small, self-contained, reuses combat entirely.
