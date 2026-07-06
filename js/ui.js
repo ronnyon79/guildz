@@ -275,35 +275,24 @@
   /* The board, foldered: each day's parchments hang grouped by BAND (GUI-58) —
    * pick a category, read its reports. Throne & gauntlet pin above the bands. */
   // One day's bouts, hung by band (the day PANEL under the calendar).
-  function bandSections(s, di, d) {
+  // A day's bouts grouped by category key → Map("T"|"G"|band → [[bout, bi]]).
+  function dayGroups(d) {
     const groups = new Map();
     d.bouts.forEach((bt, bi) => {
       const key = bt.throne ? "T" : bt.gauntlet ? "G" : String(bt.band != null ? bt.band : "X");
       if (!groups.has(key)) groups.set(key, []);
       groups.get(key).push([bt, bi]);
     });
-    const weight = (k) => (k === "T" ? -2 : k === "G" ? -1 : k === "X" ? 999 : parseInt(k, 10));
-    return [...groups.keys()].sort((a, b) => weight(a) - weight(b)).map((key) => {
-      const items = groups.get(key);
-      const label = key === "T" ? "👑 The Throne" : key === "G" ? "🛡️ The Gauntlet"
-        : key === "X" ? "⚔️ Other bouts" : `🏟️ Band ${G.tournament.bandLabel(+key)}`;
-      const yours = items.some(([bt]) => bt.a.name === s.player.name || bt.b.name === s.player.name);
-      const openKey = di + ":" + key;
-      const open = !!ui.boardOpen[openKey];
-      const head = `<div class="card class-card" data-act="board-band" data-arg="${openKey}">
-        <div class="card-row"><div class="avatar">${open ? "📖" : "📜"}</div>
-        <div><div class="card-title" style="font-size:14px">${label}${yours ? ' <span class="pill on">you fought here</span>' : ""}</div>
-        <div class="card-sub">${items.length} bout${items.length === 1 ? "" : "s"} · tap to ${open ? "fold away" : "read"}</div></div>
-        <div class="spacer"></div><span class="pill">${open ? "▾" : "▸"}</span></div></div>`;
-      return head + (open ? items.map(([bt, bi]) => boutRow(s, di, bi, bt)).join("") : "");
-    }).join("");
+    return groups;
   }
+  const bandKeyWeight = (k) => (k === "T" ? -2 : k === "G" ? -1 : k === "X" ? 999 : parseInt(k, 10));
+  const bandKeyLabel = (k) => (k === "T" ? "👑 The Throne" : k === "G" ? "🛡️ The Gauntlet"
+    : k === "X" ? "⚔️ Other bouts" : `🏟️ Band ${G.tournament.bandLabel(+k)}`);
 
-  /* The board as a CALENDAR (GUI-61): one season per page (◀ ▶), a grid of day
-   * cells (👑 a throne/gauntlet fight that day · ⭐ you fought), and the chosen
-   * day's parchments open in the panel beneath — no more season-long scroll. */
+  /* The board (GUI-61/62): a SEASON page (◀ ▶) → a calendar of days → a compact
+   * BAND CHIP grid → the chosen band's reports. On wide screens the reports sit
+   * in a side panel next to the calendar; on phones they flow beneath. */
   function screenBoard(s) {
-    ui.boardOpen = ui.boardOpen || {};
     if (!s.board.length) {
       return topbar(s.player) + `<div class="screen">
         <div class="screen-title">The Bulletin Board</div>
@@ -332,15 +321,35 @@
     }
     const d = inSeason.find((x) => x.day === ui.boardDay);
     const di = s.board.indexOf(d);
-    const panel = d
-      ? `<div class="screen-title">📜 Day ${d.day} · Season ${d.season} — ${d.bouts.length} bout${d.bouts.length === 1 ? "" : "s"}</div>${bandSections(s, di, d)}`
-      : "";
+    let chips = "", reports = "";
+    if (d) {
+      const groups = dayGroups(d);
+      const keys = [...groups.keys()].sort((a, b) => bandKeyWeight(a) - bandKeyWeight(b));
+      if (ui.boardBand == null || !groups.has(ui.boardBand)) {
+        // default to where YOU fought, else the marquee category
+        ui.boardBand = keys.find((k) => groups.get(k).some(([bt]) => bt.a.name === s.player.name || bt.b.name === s.player.name)) || keys[0];
+      }
+      chips = `<div class="bandgrid">` + keys.map((k) => {
+        const items = groups.get(k);
+        const yours = items.some(([bt]) => bt.a.name === s.player.name || bt.b.name === s.player.name);
+        const short = k === "T" ? "👑" : k === "G" ? "🛡️" : k === "X" ? "⚔️" : G.tournament.bandLabel(+k).replace(" wins", "");
+        return `<button class="band-chip ${k === ui.boardBand ? "sel" : ""}" data-act="board-band" data-arg="${k}">${short}${yours ? " ⭐" : ""}<span class="cal-mark">${items.length}</span></button>`;
+      }).join("") + `</div>`;
+      const items = groups.get(ui.boardBand) || [];
+      reports = `<div class="screen-title">${bandKeyLabel(ui.boardBand)} — Day ${d.day} · ${items.length} bout${items.length === 1 ? "" : "s"}</div>`
+        + items.map(([bt, bi]) => boutRow(s, di, bi, bt)).join("");
+    }
     return topbar(s.player) + `<div class="screen">
       <div class="screen-title">The Bulletin Board</div>
-      ${pager}
-      <div class="cal">${cells.join("")}</div>
-      <p class="card-sub center" style="margin:2px 0 10px">Pick a day — 👑 a throne was contested · ⭐ you fought. Parchments stay pinned ${G.data.BOARD.days} days; older ones are taken down.</p>
-      ${panel}
+      <div class="board-cols">
+        <div>
+          ${pager}
+          <div class="cal">${cells.join("")}</div>
+          ${chips}
+          <p class="card-sub center" style="margin:6px 0 10px">Pick a day, then a band — 👑 throne · ⭐ you. Parchments stay pinned ${G.data.BOARD.days} days.</p>
+        </div>
+        <div class="board-right">${reports}</div>
+      </div>
     </div>` + tabbar("board");
   }
 
@@ -1074,6 +1083,8 @@
       case "hero": html = screenHero(s); break;
       default: html = screenTitle();
     }
+    // The Board earns extra width on big screens (two-column reading, GUI-62).
+    app.className = s.screen === "board" ? "wide" : "";
     app.innerHTML = html;
     if (s.screen === "battle") {
       const log = document.getElementById("battle-log");
@@ -1099,13 +1110,13 @@
       case "hold-games": G.lord.holdGames(); break;
       case "decree": { const [k, d] = arg.split(":"); game.setDecree(k, parseInt(d, 10)); break; }
       case "view-bout": { const [di, bi] = arg.split(":"); game.openBout(parseInt(di, 10), parseInt(bi, 10)); break; }
-      case "board-band": ui.boardOpen[arg] = !ui.boardOpen[arg]; render(game.state); break;
-      case "board-day": ui.boardDay = parseInt(arg, 10); render(game.state); break;
+      case "board-band": ui.boardBand = arg; render(game.state); break;
+      case "board-day": ui.boardDay = parseInt(arg, 10); ui.boardBand = null; render(game.state); break;
       case "board-season": {
         const seasons = [...new Set(game.state.board.map((d) => d.season))].sort((a, b) => a - b);
         const si = seasons.indexOf(ui.boardSeason);
         const next = seasons[si + parseInt(arg, 10)];
-        if (next != null) { ui.boardSeason = next; ui.boardDay = null; }
+        if (next != null) { ui.boardSeason = next; ui.boardDay = null; ui.boardBand = null; }
         render(game.state);
         break;
       }
