@@ -243,7 +243,7 @@ button { font-family: inherit; }
 .chat { padding: 4px 0; }
 .chat-row { display: flex; align-items: flex-end; gap: 6px; margin: 4px 0; }
 .chat-row.left { justify-content: flex-start; }
-.chat-row.right { justify-content: flex-end; flex-direction: row-reverse; }
+.chat-row.right { flex-direction: row-reverse; justify-content: flex-start; } /* reversed axis: flex-start = visual RIGHT (GUI-67) */
 .chat-row.mid { justify-content: center; }
 .chat-ava { font-size: 18px; line-height: 1; padding-bottom: 4px; }
 .bubble {
