@@ -373,7 +373,7 @@
     m.rounds = res.rounds;
     m.spec = res.spec;
     G.tournament.reportBout(br, m, res.winnerId);
-    recordBout({ band: br.band, round: m.round, a, b, winner: (res.winnerId === a.id ? a : b).name, rounds: res.rounds, spec: res.spec, seed: m.seed });
+    recordBout({ band: br.band, round: m.round, a, b, winner: (res.winnerId === a.id ? a : b).name, rounds: res.rounds, spec: res.spec, hl: res.hl, seed: m.seed });
     applyNpcBout(res.winnerId);
   }
 
@@ -567,7 +567,7 @@
             const worn = { ...ch, startHp: chHp, startMp: chMp };
             const seed = nextSeed();
             const res = G.tournament.autoBout(worn, sChar, seed);
-            recordBout({ a: worn, b: sChar, winner: res.winnerId === worn.id ? worn.name : sChar.name, rounds: res.rounds, spec: res.spec, seed, gauntlet: true });
+            recordBout({ a: worn, b: sChar, winner: res.winnerId === worn.id ? worn.name : sChar.name, rounds: res.rounds, spec: res.spec, hl: res.hl, seed, gauntlet: true });
             if (res.winnerId === sChar.id) {
               servant.wins += 1;
               news.result = "held"; news.by = servant.name; news.fate = challengerFate(npc, seed);
@@ -590,7 +590,7 @@
             const worn = { ...ch, startHp: chHp, startMp: chMp };
             const seed = nextSeed();
             const res = G.tournament.autoBout(worn, lc, seed);
-            recordBout({ a: worn, b: lc, winner: res.winnerId === worn.id ? worn.name : lc.name, rounds: res.rounds, spec: res.spec, seed, throne: true });
+            recordBout({ a: worn, b: lc, winner: res.winnerId === worn.id ? worn.name : lc.name, rounds: res.rounds, spec: res.spec, hl: res.hl, seed, throne: true });
             if (res.winnerId === worn.id) {
               news.result = "usurped";
               state.lord = { name: npc.name, classId: npc.classId, wins: npc.wins, reignSeasons: 0, age: npc.age, personality: npc.personality };
@@ -789,6 +789,7 @@
       a: slim(b.you), b: slim(b.foe), youIsA: true,
       winner: b.phase === "won" ? b.you.name : b.foe.name,
       rounds: b.round, spec: state.lastSpec ? state.lastSpec.stars : null,
+      hl: state.lastSpec ? (state.lastSpec.comeback ? "comeback" : state.lastSpec.nailBiter ? "nailbiter" : state.lastSpec.rout ? "rout" : null) : null,
       log: b.log,
     }, extra || {}));
   }
@@ -842,7 +843,7 @@
       const worn = { ...ch, startHp: state.defenseRun.chHp, startMp: state.defenseRun.chMp };
       const seed = nextSeed();
       const res = G.tournament.autoBout(worn, sChar, seed);
-      recordBout({ a: worn, b: sChar, winner: res.winnerId === worn.id ? worn.name : sChar.name, rounds: res.rounds, spec: res.spec, seed, gauntlet: true });
+      recordBout({ a: worn, b: sChar, winner: res.winnerId === worn.id ? worn.name : sChar.name, rounds: res.rounds, spec: res.spec, hl: res.hl, seed, gauntlet: true });
       const boutNote = { servant: servant.name, challenger: npc.name, spec: res.spec };
       if (res.winnerId === sChar.id) {
         // The wall holds. The challenger faces their fate; the servant grows.

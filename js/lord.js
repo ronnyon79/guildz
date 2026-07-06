@@ -48,7 +48,7 @@
       const n = state.npcs.find((x) => x.id === w.id);
       if (n) n.wins += 1; // every bout won is a career win — the residents grow
       // The Scribe records every bout of the presided games.
-      game.recordBout({ band: br.band, round: m.round, a: byId[m.a], b: byId[m.b], winner: w.name, rounds: res.rounds, spec: res.spec, seed: m.seed });
+      game.recordBout({ band: br.band, round: m.round, a: byId[m.a], b: byId[m.b], winner: w.name, rounds: res.rounds, spec: res.spec, hl: res.hl, seed: m.seed });
     });
     // Training Yard: each level drills one resident a day (+1 win of sparring).
     const yard = ((state.stronghold.buildings || {}).yard || 0);

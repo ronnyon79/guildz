@@ -63,5 +63,31 @@ S.board[S.board.length - 1].bouts.push({ a: A2, b: { name: "Foe2", classId: "cle
 game.openBout(S.board.length - 1, S.board[S.board.length - 1].bouts.length - 1); G.ui.render(S);
 ok(!app().includes("· Ferocious"), "below-threshold trait speaks neutrally (label rule)");
 
+/* — GUI-48: the Scribe writes headlines — */
+console.log("— headlines on the board —");
+{
+  const mk = (over) => Object.assign({ a: { name: "Head A", classId: "fighter", wins: 30, meleeWeapon: "one_handed_sword", missileWeapon: "long_bow" }, b: { name: "Head B", classId: "cleric", wins: 5, meleeWeapon: "mace", missileWeapon: "sling" }, winner: "Head A", rounds: 5, spec: 3, seed: 42, log: [{ t: "end", result: "won" }], youIsA: false }, over);
+  S.board.push({ day: 9, season: S.clock.season, bouts: [
+    mk({ hl: "comeback" }),
+    mk({ winner: "Head B" }),      // 30w falls to 5w — upset by win-gap
+    mk({ rounds: 11 }),            // war of attrition
+    mk({ spec: 1 }),               // dud
+    mk({}),                        // nothing special — no headline
+  ]});
+  game.go("board"); G.ui.render(S);
+  const all = app();
+  ok(/🔥 (COMEBACK FOR THE AGES|Back from the BRINK)/.test(all), "stored comeback flag becomes a headline");
+  ok(/😱/.test(all), "win-gap upset detected (30w falls to 5w)");
+  ok(/⚔️ (A war of attrition|They fought until the lamps burned low)/.test(all), "11-round war headlined");
+  ok(/🥱/.test(all), "1★ dud mocked by the crowd");
+  ok((all.match(/class="card-sub headline"/g) || []).length === 4, "exactly the 4 special bouts carry headlines");
+}
+console.log("— flags flow out of autoBout —");
+{
+  const A = G.roster.combatChar(S.npcs[0], 1), B = G.roster.combatChar(S.npcs[1], 1);
+  const res = G.tournament.autoBout(A, B, 4242);
+  ok("hl" in res && (res.hl === null || ["comeback","nailbiter","rout"].includes(res.hl)), "autoBout returns the Scribe angle (or null)");
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

@@ -406,12 +406,40 @@
   }
 
   /* ---------- the Scribe's Bulletin Board (GUI-14) ---------- */
+  // The Scribe's HEADLINE for a parchment (GUI-48): stored spectacle flags
+  // first (comeback/nail-biter/rout), then derived angles (upset by win-gap,
+  // wars, 5★ classics, 1★ duds). Seeded variants keep the board lively.
+  const HEADLINES = {
+    comeback: ["🔥 COMEBACK FOR THE AGES!", "🔥 Back from the BRINK!"],
+    upset: ["😱 UPSET! The ladder trembles!", "😱 Nobody saw THIS coming!"],
+    nailbiter: ["💓 A nail-biter to the last breath", "💓 Decided by a whisker"],
+    rout: ["🧹 A ruthless rout", "🧹 Utterly one-sided"],
+    war: ["⚔️ A war of attrition", "⚔️ They fought until the lamps burned low"],
+    classic: ["🌟 A bout for the ages", "🌟 The crowd will speak of this for years"],
+    dud: ["🥱 A dull affair, says the crowd", "🥱 The pigeons watched with more interest"],
+  };
+  function headline(bt) {
+    const seed = (bt.seed || 0) + (bt.rounds || 0) * 7;
+    const upset = bt.a && bt.b && bt.a.wins != null && bt.b.wins != null
+      && Math.abs(bt.a.wins - bt.b.wins) >= 15
+      && bt.winner === (bt.a.wins < bt.b.wins ? bt.a.name : bt.b.name);
+    const key = bt.hl === "comeback" ? "comeback"
+      : upset ? "upset"
+      : bt.hl === "nailbiter" ? "nailbiter"
+      : bt.hl === "rout" ? "rout"
+      : (bt.rounds || 0) >= 9 ? "war"
+      : bt.spec === 5 ? "classic"
+      : bt.spec === 1 ? "dud" : null;
+    return key ? `<div class="card-sub headline">${pickVar(HEADLINES[key], seed)}</div>` : "";
+  }
+
   // One parchment row (a single bout on the board).
   function boutRow(s, di, bi, bt) {
     const you = (n) => plink(s, n);
     return `<div class="card class-card" data-act="view-bout" data-arg="${di}:${bi}">
       <div class="card-row"><div class="avatar">${bt.throne ? "👑" : CLASSES[(bt.a || {}).classId] ? CLASSES[bt.a.classId].emoji : "⚔️"}</div>
       <div><div class="card-title" style="font-size:14px">${you(bt.a.name)} <span class="sys">vs</span> ${you(bt.b.name)}${bt.throne ? ' <span class="pill on">THRONE DUEL</span>' : ""}</div>
+      ${headline(bt)}
       <div class="card-sub">🏆 ${you(bt.winner)} · ${bt.rounds} rounds${bt.spec ? ` · ${starsOf(bt.spec)}` : ""}</div></div>
       <div class="spacer"></div><span class="pill">Read →</span></div></div>`;
   }
