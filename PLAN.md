@@ -526,6 +526,13 @@ cap (3) & per-bout replenish (50%)**, servant **upkeep/housing** cost, and **ser
   content centres at 660px reading width inside the constant frame; only the Board
   (.board-screen) spans full width for its two columns. JS class toggle removed.
 
+- **GUI-66 Live battles speak chat — v0.24.0** (user request). The in-fight log now uses the
+  SAME renderer as the parchments (shared chatRow helper — the two can never diverge): you
+  chat from the right, the foe left, action labels + first-person quips, narrator bubbles,
+  round dividers, new rows fading in as rounds resolve. Fighter panels/range banner/action
+  grid untouched (they ARE the live duel header). Old third-person narrate() retained only
+  for the win/loss recap lines. 283 regressions green.
+
 ### Build order (when the user says go)
 1. **Champion summit** — NPC population + Popularity ladder + Lord boss fight (finish
    the Rise). Small, self-contained, reuses combat entirely.

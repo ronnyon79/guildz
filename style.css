@@ -279,3 +279,7 @@ button { font-family: inherit; }
   height: 56vh; overflow: hidden;
   display: flex; flex-direction: column; justify-content: flex-end;
 }
+
+/* ---------- the live battle speaks chat too (GUI-66) ---------- */
+.log.chatlog { padding: 8px 10px; }
+.chat-row.anim, .chat-div.anim { opacity: 0; animation: fadein .25s forwards; }
