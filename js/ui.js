@@ -180,7 +180,9 @@
     const rows = lastDay.board.map((w) => `<div class="card"><div class="card-row">
       <div class="avatar">${w.classId && CLASSES[w.classId] ? CLASSES[w.classId].emoji : "🏆"}</div>
       <div><div class="card-title">${w.isPlayer ? `<span class="you">${esc(w.name)}</span>` : esc(w.name)} ${w.isPlayer ? '<span class="pill on">you</span>' : ""}</div>
-      <div class="card-sub">Band ${w.label} · ${w.boutsWon} bout${w.boutsWon === 1 ? "" : "s"} won · <b>+${w.popGain} ⭐</b></div></div></div></div>`).join("");
+      <div class="card-sub">Band ${w.label} · ${w.boutsWon === 0
+        ? `<span class="sys">🕊️ walkover — no challengers in this band</span>`
+        : `${w.boutsWon} bout${w.boutsWon === 1 ? "" : "s"} won · <b>+${w.popGain} ⭐</b>`}</div></div></div></div>`).join("");
     let season = "";
     if (lastDay.seasonEnd) {
       const t = lastDay.seasonEnd.top[0];
