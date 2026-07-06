@@ -496,6 +496,20 @@
     return out;
   }
 
+  // One rendered chat row — shared by the parchment AND the live battle (GUI-66).
+  function chatRow(c, i, opts) {
+    const a = opts.anim ? " anim" : "";
+    if (c.side === "DIV") return `<div class="chat-div${a}">${c.text}</div>`;
+    if (c.side === "KO") return `<div class="chat-row mid${a}"><div class="bubble ko">${c.text}</div></div>`;
+    if (c.side === "N") return `<div class="chat-row mid${a}"><div class="bubble nar">${c.text}</div></div>`;
+    const side = (c.side === "L") !== opts.flip ? "right" : "left"; // b.you sits right unless the player is the foe
+    const kill = opts.kill ? `<span class="crit">☠️ THE KILLING BLOW</span><br>` : "";
+    return `<div class="chat-row ${side}${a}">
+      <div class="chat-ava">${opts.emojiOf(c.name)}</div>
+      <div class="bubble ${side === "right" ? "me" : "them"}">${kill}<span class="chat-name">${esc(c.name)}</span>${c.act ? `<span class="chat-act">${c.act}</span>` : ""}${c.text}</div>
+    </div>`;
+  }
+
   function screenParchment(s) {
     const v = s.viewBout;
     const rec = v && s.board[v.di] && s.board[v.di].bouts[v.bi];
@@ -523,19 +537,7 @@
     log.forEach((ev, i) => {
       const c = chatFor(ev, i, ctx);
       if (!c) return;
-      let html;
-      if (c.side === "DIV") html = `<div class="chat-div">${c.text}</div>`;
-      else if (c.side === "KO") html = `<div class="chat-row mid"><div class="bubble ko">${c.text}</div></div>`;
-      else if (c.side === "N") html = `<div class="chat-row mid"><div class="bubble nar">${c.text}</div></div>`;
-      else {
-        const side = (c.side === "L") !== flip ? "right" : "left"; // b.you sits right unless the player is the foe
-        const kill = i === killIdx ? `<span class="crit">☠️ THE KILLING BLOW</span><br>` : "";
-        html = `<div class="chat-row ${side}">
-          <div class="chat-ava">${emojiOf(c.name)}</div>
-          <div class="bubble ${side === "right" ? "me" : "them"}">${kill}<span class="chat-name">${esc(c.name)}</span>${c.act ? `<span class="chat-act">${c.act}</span>` : ""}${c.text}</div>
-        </div>`;
-      }
-      rows.push({ html, logIdx: i });
+      rows.push({ html: chatRow(c, i, { flip, emojiOf, kill: i === killIdx }), logIdx: i });
     });
     const intro = `<div class="chat-row mid"><div class="bubble nar">⚔️ <b>${esc(b.you.name)}</b> and <b>${esc(b.foe.name)}</b> face off across the sand — the crowd leans in…</div></div>`;
 
@@ -1025,12 +1027,14 @@
   function screenBattle(s) {
     const b = s.battle, pName = s.player.name;
     const ctx = battleCtx(b, pName);
-    const intro = `<p class="line-intro shown">${fill(pickVar(INTRO, b.seed), {
-      A: `<span class="you">${esc(b.you.name)}</span>`,
-      B: `<span class="foe">${esc(b.foe.name)}</span>`,
-      bc: CLASSES[b.foe.classId].name,
-    })}</p>`;
-    const lines = intro + b.log.map((ev, i) => narrate(ev, i, ctx, i >= ui.shownLog)).join("");
+    // The live log speaks the same language as the Scribe reports (GUI-66):
+    // chat bubbles, action labels, first-person voices, round dividers.
+    const emojiOf = (n) => { const c = CLASSES[ctx.classOf(n)]; return c ? c.emoji : "⚔️"; };
+    const intro = `<div class="chat-row mid"><div class="bubble nar">⚔️ <b>${esc(b.you.name)}</b> vs <b>${esc(b.foe.name)}</b> the ${CLASSES[b.foe.classId].name} — the crowd leans in…</div></div>`;
+    const lines = intro + b.log.map((ev, i) => {
+      const c = chatFor(ev, i, ctx);
+      return c ? chatRow(c, i, { flip: false, emojiOf, anim: i >= ui.shownLog }) : "";
+    }).join("");
     ui.shownLog = b.log.length;
 
     const actions = G.combat.actionsFor(b.you, b.range);
@@ -1049,7 +1053,7 @@
       ${fighterPanel(b.foe, "foe")}
       ${rangeBanner(b.range)}
       ${fighterPanel(b.you, "you")}
-      <div class="log" id="battle-log">${lines || '<p class="sys shown">The arena bell rings — you face off at missile range. Choose your move…</p>'}</div>
+      <div class="log chatlog" id="battle-log">${lines || '<p class="sys shown">The arena bell rings — you face off at missile range. Choose your move…</p>'}</div>
       ${stunned}
       <div class="actions">${actionHTML}</div>
     </div>`;
