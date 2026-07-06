@@ -510,6 +510,17 @@ cap (3) & per-bout replenish (50%)**, servant **upkeep/housing** cost, and **ser
   d20 rolls, CRIT, dual, 1st/2nd strike, armor/shield notes, ☠️ THE KILLING BLOW. Bubbles
   selectable. Live battle log unchanged (own pass if wanted). 283 regressions green.
 
+- **GUI-64 Action labels + the replay theater — v0.23.0** (user: quips unclear + immersion
+  without scrolling). Every fighter bubble now leads with a PLAIN action label ("⚔️ Strikes —
+  greatsword · HIT" / "🔮 Casts Fireball · FIZZLES" / "💨 Evades" / "1st: 🏹 Shoots — longbow
+  · MISS") above the first-person quip — WHAT they did, then the voice. And **▶ Replay the
+  bout**: a no-scroll THEATER — a fixed one-screen stage where bubbles land on a cadence
+  (⏸ pause · ⏩ 2× · ⏭ skip), older ones slide off the top, beneath a **pinned duel header**
+  with both fighters HP/MP bars draining LIVE (hpTimeline computed from the log: round
+  snapshots + per-event soak-aware damage/heals/potions). Transcript stays the default;
+  pre-v0.17 logs (no round snapshots) hide the bars gracefully; clockwork tears down on
+  leaving. Verified end-to-end via captured click handler. 283 regressions green.
+
 ### Build order (when the user says go)
 1. **Champion summit** — NPC population + Popularity ladder + Lord boss fight (finish
    the Rise). Small, self-contained, reuses combat entirely.

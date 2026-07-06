@@ -408,38 +408,41 @@
     const dmgS = ev.dmg != null ? ` <b>−${ev.dmg}</b>` : "";
     const strikeS = ev.strikes > 1 && ev.strike ? `<span class="sys">${["", "1st", "2nd", "3rd", "4th"][ev.strike] || ev.strike + "th"}:</span> ` : "";
     const w = (name, kind) => ctx.weaponOf(name, kind);
-    const F = (name, text) => ({ side: name === ctx.youName ? "L" : "R", name, text });
+    // `act` = the plain ACTION LABEL above the quip — what they actually did (GUI-64).
+    const F = (name, text, act) => ({ side: name === ctx.youName ? "L" : "R", name, text, act: act || "" });
     const N = (text) => ({ side: "N", name: "", text });
     switch (ev.t) {
       case "round":
         if (ev.n === 1) return null;
         return { side: "DIV", name: "", text: `— Round ${ev.n} — ${esc(ctx.youName)} <b>${ev.youHp}</b>/${ev.youMaxHp}${ev.youMaxMp > 0 ? ` · ${ev.youMp}MP` : ""} ⚔ ${esc(ctx.foeName)} <b>${ev.foeHp}</b>/${ev.foeMaxHp}${ev.foeMaxMp > 0 ? ` · ${ev.foeMp}MP` : ""}` };
       case "initiative": return N(`⚡ ${esc(ev.first)} moves first${ev.youRoll != null ? ` <span class="roll">[${Math.max(ev.youRoll, ev.foeRoll)} vs ${Math.min(ev.youRoll, ev.foeRoll)}]</span>` : ""}`);
-      case "move": return F(ev.who, V(ev.to === "melee" ? FP.charge : FP.retreat));
+      case "move": return F(ev.who, V(ev.to === "melee" ? FP.charge : FP.retreat), ev.to === "melee" ? "🏃 Charges to melee" : "↩️ Falls back to range");
       case "hit": {
         const tier = dmgTier(ev.dmg);
-        const base = ev.crit ? V(FP.crit) : fill(V((ev.kind === "melee" ? FP.meleeHit : FP.missileHit)[tier]), { w: w(ev.who, ev.kind) });
-        return F(ev.who, strikeS + base + dmgS + (ev.crit ? ' <span class="crit">CRIT!</span>' : "") + (ev.dual ? ' <span class="dual-tag">⚔️⚔️</span>' : "") + rollS + shieldNote(ev) + armorNote(ev));
+        const weapon = ev.arrow && ARROWS[ev.arrow] ? ARROWS[ev.arrow].noun : w(ev.who, ev.kind);
+        const base = ev.crit ? V(FP.crit) : fill(V((ev.kind === "melee" ? FP.meleeHit : FP.missileHit)[tier]), { w: weapon });
+        return F(ev.who, base + dmgS + (ev.crit ? ' <span class="crit">CRIT!</span>' : "") + (ev.dual ? ' <span class="dual-tag">⚔️⚔️ dual</span>' : "") + rollS + shieldNote(ev) + armorNote(ev),
+          strikeS + (ev.kind === "melee" ? `⚔️ Strikes — ${weapon}` : `🏹 Shoots — ${weapon}`) + " · HIT");
       }
-      case "miss": return F(ev.who, strikeS + V(FP.miss) + rollS);
-      case "evade": case "dodge": return F(ev.who, V(FP.evade) + (ev.roll != null ? ` <span class="roll">[d20: ${ev.roll}]</span>` : ""));
-      case "critmiss": return F(ev.who, strikeS + V(FP.critmiss) + rollS);
-      case "recover": return F(ev.who, V(FP.recover));
-      case "hide": return F(ev.who, V(ev.success ? FP.hideOk : FP.hideFail) + rollS);
+      case "miss": return F(ev.who, V(FP.miss) + rollS, strikeS + (ev.kind === "melee" ? `⚔️ Strikes — ${w(ev.who, ev.kind)}` : `🏹 Shoots — ${w(ev.who, ev.kind)}`) + " · MISS");
+      case "evade": case "dodge": return F(ev.who, V(FP.evade) + (ev.roll != null ? ` <span class="roll">[d20: ${ev.roll}]</span>` : ""), "💨 Evades the attack");
+      case "critmiss": return F(ev.who, V(FP.critmiss) + rollS, strikeS + "💫 FUMBLES — stunned next round");
+      case "recover": return F(ev.who, V(FP.recover), "😵 Stunned — turn lost");
+      case "hide": return F(ev.who, V(ev.success ? FP.hideOk : FP.hideFail) + rollS, ev.success ? "🌑 Hides in shadows" : "🌑 Tries to hide · FAILS");
       case "spell": {
         const pool = FP.spells[ev.skill] || FP.spellGeneric;
-        return F(ev.who, fill(V(pool), { S: ev.skill }) + dmgS + (ev.crit ? ' <span class="crit">CRIT!</span>' : "") + rollS + shieldNote(ev) + armorNote(ev));
+        return F(ev.who, fill(V(pool), { S: ev.skill }) + dmgS + (ev.crit ? ' <span class="crit">CRIT!</span>' : "") + rollS + shieldNote(ev) + armorNote(ev), `🔮 Casts ${ev.skill} · HIT`);
       }
-      case "fizzle": return F(ev.who, V(ev.reason === "no mp" ? FP.fizzleNoMp : FP.fizzle) + rollS);
-      case "applyDot": return F(ev.who, V(FP.applyDot) + ` <span class="poison-tag">${ev.turns} turns</span>` + rollS);
-      case "applyCurse": return F(ev.who, fill(V(FP.applyCurse), { turns: ev.turns }) + rollS);
-      case "heal": return F(ev.who, fill(V(FP.heal), { amt: ev.amt }) + rollS);
-      case "item": return F(ev.who, V(ev.effect === "fullmana" ? FP.itemMana : FP.itemLife));
-      case "shield": return F(ev.who, fill(V(FP.shield), { amount: ev.amount }) + rollS);
-      case "summonWeapon": return F(ev.who, V(FP.spirit) + ` <span class="sys">(${ev.turns} rounds)</span>` + rollS);
-      case "summon": return F(ev.who, fill(V(FP.summon), { hp: ev.hp }) + rollS);
-      case "arrowSwap": return F(ev.who, fill(V(FP.arrowSwap), { arrow: ev.arrow }));
-      case "regen": return F(ev.who, fill(V(FP.regen), { amt: ev.amt }));
+      case "fizzle": return F(ev.who, V(ev.reason === "no mp" ? FP.fizzleNoMp : FP.fizzle) + rollS, ev.reason === "no mp" ? "🔮 Tries to cast · NO MANA" : `🔮 Casts ${ev.skill || "a spell"} · FIZZLES`);
+      case "applyDot": return F(ev.who, V(FP.applyDot) + ` <span class="poison-tag">${ev.turns} turns</span>` + rollS, `☠️ Casts ${ev.skill || "Poison Cloud"} · lands`);
+      case "applyCurse": return F(ev.who, fill(V(FP.applyCurse), { turns: ev.turns }) + rollS, `🕸️ Casts ${ev.skill || "Curse"}`);
+      case "heal": return F(ev.who, fill(V(FP.heal), { amt: ev.amt }) + rollS, `💚 Casts ${ev.skill || "a healing prayer"}`);
+      case "item": return F(ev.who, V(ev.effect === "fullmana" ? FP.itemMana : FP.itemLife), ev.effect === "fullmana" ? "🔷 Drinks a mana potion" : "🧪 Drinks a healing potion");
+      case "shield": return F(ev.who, fill(V(FP.shield), { amount: ev.amount }) + rollS, "🛡️ Casts Shield of Faith");
+      case "summonWeapon": return F(ev.who, V(FP.spirit) + ` <span class="sys">(${ev.turns} rounds)</span>` + rollS, "🗡️ Summons a Spiritual Weapon");
+      case "summon": return F(ev.who, fill(V(FP.summon), { hp: ev.hp }) + rollS, "🌪️ Summons an Air Elemental");
+      case "arrowSwap": return F(ev.who, fill(V(FP.arrowSwap), { arrow: ev.arrow }), `🔄 Loads ${ev.arrow} (full turn)`);
+      case "regen": return F(ev.who, fill(V(FP.regen), { amt: ev.amt }), "✚ Tended by the healers");
       // The Narrator keeps the scene: DoTs, pets, arrow effects, the fall.
       case "poison": return N((ev.dotType === "burn" ? "🔥" : "☠️") + ` ${esc(ev.who)} ${ev.dotType === "burn" ? "burns" : "chokes on poison"} for <b>${ev.dmg}</b>.`);
       case "arrowFx": return N(ev.fx === "slow" ? `❄️ Frost slows ${esc(ev.target)} for ${ev.turns} rounds.` : `🔥 ${esc(ev.target)} catches fire — ${ev.turns} rounds of flame.`);
@@ -455,6 +458,42 @@
       }
       default: return null;
     }
+  }
+
+  /* HP/MP after every log event (drives the duel header, GUI-64). Maxes come
+   * from the round snapshots; logs without them (pre-v0.17) hide the bars. */
+  function hpTimeline(log, yn, fn) {
+    let known = false;
+    const st = { yHp: 0, yMax: 0, yMp: 0, yMpMax: 0, fHp: 0, fMax: 0, fMp: 0, fMpMax: 0 };
+    const out = [];
+    const dmgTo = (name, real) => {
+      if (name === yn) st.yHp = Math.max(0, st.yHp - real);
+      else if (name === fn) st.fHp = Math.max(0, st.fHp - real);
+    };
+    const healTo = (name, amt) => {
+      if (name === yn) st.yHp = Math.min(st.yMax || 1e9, st.yHp + amt);
+      else if (name === fn) st.fHp = Math.min(st.fMax || 1e9, st.fHp + amt);
+    };
+    for (const ev of log) {
+      switch (ev.t) {
+        case "round":
+          known = true;
+          st.yHp = ev.youHp; st.yMax = ev.youMaxHp; st.yMp = ev.youMp; st.yMpMax = ev.youMaxMp;
+          st.fHp = ev.foeHp; st.fMax = ev.foeMaxHp; st.fMp = ev.foeMp; st.fMpMax = ev.foeMaxMp;
+          break;
+        case "hit": case "spell": case "petHit":
+          dmgTo(ev.target, Math.max(0, (ev.dmg || 0) - (ev.absorbed || 0) - (ev.mitigated || 0)));
+          break;
+        case "poison": dmgTo(ev.who, ev.dmg || 0); break;
+        case "heal": case "regen": healTo(ev.who, ev.amt || 0); break;
+        case "item":
+          if (ev.effect === "fullheal") { if (ev.who === yn) st.yHp = st.yMax; else if (ev.who === fn) st.fHp = st.fMax; }
+          else if (ev.who === yn) st.yMp = st.yMpMax; else if (ev.who === fn) st.fMp = st.fMpMax;
+          break;
+      }
+      out.push(known ? { ...st } : null);
+    }
+    return out;
   }
 
   function screenParchment(s) {
@@ -479,27 +518,80 @@
     for (let i = (endIdx < 0 ? log.length : endIdx) - 1; i >= 0; i--) {
       if (["hit", "spell", "petHit", "poison"].includes(log[i].t) && (log[i].dmg || 0) > 0) { killIdx = i; break; }
     }
-    const bubbles = log.map((ev, i) => {
+    const timeline = hpTimeline(log, b.you.name, b.foe.name);
+    const rows = []; // [{html, logIdx}] — the theater slices this
+    log.forEach((ev, i) => {
       const c = chatFor(ev, i, ctx);
-      if (!c) return "";
-      if (c.side === "DIV") return `<div class="chat-div">${c.text}</div>`;
-      if (c.side === "KO") return `<div class="chat-row mid"><div class="bubble ko">${c.text}</div></div>`;
-      if (c.side === "N") return `<div class="chat-row mid"><div class="bubble nar">${c.text}</div></div>`;
-      const side = (c.side === "L") !== flip ? "right" : "left"; // b.you sits right unless the player is the foe
-      const kill = i === killIdx ? `<span class="crit">☠️ THE KILLING BLOW</span><br>` : "";
-      return `<div class="chat-row ${side}">
-        <div class="chat-ava">${emojiOf(c.name)}</div>
-        <div class="bubble ${side === "right" ? "me" : "them"}">${kill}<span class="chat-name">${esc(c.name)}</span>${c.text}</div>
-      </div>`;
-    }).join("");
+      if (!c) return;
+      let html;
+      if (c.side === "DIV") html = `<div class="chat-div">${c.text}</div>`;
+      else if (c.side === "KO") html = `<div class="chat-row mid"><div class="bubble ko">${c.text}</div></div>`;
+      else if (c.side === "N") html = `<div class="chat-row mid"><div class="bubble nar">${c.text}</div></div>`;
+      else {
+        const side = (c.side === "L") !== flip ? "right" : "left"; // b.you sits right unless the player is the foe
+        const kill = i === killIdx ? `<span class="crit">☠️ THE KILLING BLOW</span><br>` : "";
+        html = `<div class="chat-row ${side}">
+          <div class="chat-ava">${emojiOf(c.name)}</div>
+          <div class="bubble ${side === "right" ? "me" : "them"}">${kill}<span class="chat-name">${esc(c.name)}</span>${c.act ? `<span class="chat-act">${c.act}</span>` : ""}${c.text}</div>
+        </div>`;
+      }
+      rows.push({ html, logIdx: i });
+    });
     const intro = `<div class="chat-row mid"><div class="bubble nar">⚔️ <b>${esc(b.you.name)}</b> and <b>${esc(b.foe.name)}</b> face off across the sand — the crowd leans in…</div></div>`;
+
+    // ---- the DUEL HEADER: pinned HP/MP bars driven by the timeline ----
+    const play = ui.play ? ((ui.play.total = rows.length), (ui.play.idx = Math.min(ui.play.idx, rows.length)), ui.play) : null;
+    const shownRows = play ? rows.slice(0, play.idx) : rows;
+    const stIdx = play ? (play.idx > 0 ? rows[Math.min(play.idx, rows.length) - 1].logIdx : -1) : log.length - 1;
+    const st = stIdx >= 0 ? timeline[stIdx] : timeline.find((x) => x); // first known state pre-play
+    const fighterHead = (name, hp, max, mp, mpMax, side) =>
+      `<div class="duel-side ${side}"><div class="duel-name">${emojiOf(name)} ${esc(name)}</div>${bar("hp", hp, max)}${mpMax > 0 ? bar("mp", mp, mpMax) : ""}</div>`;
+    const leftName = flip ? b.you.name : b.foe.name; // whoever chats LEFT
+    const head = st ? `<div class="duel-head">${
+      leftName === b.foe.name
+        ? fighterHead(b.foe.name, st.fHp, st.fMax, st.fMp, st.fMpMax, "left") + `<div class="duel-vs">⚔</div>` + fighterHead(b.you.name, st.yHp, st.yMax, st.yMp, st.yMpMax, "right")
+        : fighterHead(b.you.name, st.yHp, st.yMax, st.yMp, st.yMpMax, "left") + `<div class="duel-vs">⚔</div>` + fighterHead(b.foe.name, st.fHp, st.fMax, st.fMp, st.fMpMax, "right")
+    }</div>` : "";
+
+    // ---- controls: transcript ↔ the replay theater ----
+    const done = play && play.idx >= rows.length;
+    const controls = play
+      ? `<div class="alloc-row" style="justify-content:center;gap:8px;margin:6px 0">
+          ${done
+            ? `<button class="btn sm" data-act="replay-start">⏮ Again</button><button class="btn sm ghost" data-act="replay-skip">📜 Transcript</button>`
+            : `<button class="btn sm" data-act="replay-toggle">${play.on ? "⏸ Pause" : "▶ Resume"}</button>
+               <button class="btn sm ghost" data-act="replay-speed">${play.fast ? "⏩ 2×" : "▶️ 1×"}</button>
+               <button class="btn sm ghost" data-act="replay-skip">⏭ Skip</button>`}
+        </div>`
+      : `<div class="alloc-row" style="justify-content:center;margin:6px 0">
+          <button class="btn sm gold" data-act="replay-start">▶ Replay the bout</button>
+        </div>`;
+
+    const chatBody = play
+      ? `<div class="chat stage">${play.idx === 0 ? intro : ""}${shownRows.map((r) => r.html).join("")}</div>`
+      : `<div class="chat">${intro}${rows.map((r) => r.html).join("")}</div>`;
+
     return topbar(s.player) + `<div class="screen">
       <button class="btn ghost sm" data-act="tab" data-arg="board" style="margin:4px 0 10px">← The board</button>
       <div class="screen-title">${rec.throne ? "👑 The Throne Duel" : "⚔️ " + esc(rec.a.name) + " vs " + esc(rec.b.name)}</div>
       <p class="card-sub center">🏆 ${esc(rec.winner)} · ${rec.rounds} rounds${rec.spec ? ` · ${starsOf(rec.spec)}` : ""}</p>
-      <div class="chat">${intro}${bubbles}</div>
+      ${head}
+      ${controls}
+      ${chatBody}
       <p class="card-sub center" style="margin-top:8px">— faithfully transcribed by the Scribe 🖋️</p>
     </div>`;
+  }
+
+  // The theater's clockwork: reveal the next bubble on a cadence (GUI-64).
+  function replayTick() {
+    clearTimeout(ui.playTimer);
+    if (!ui.play || !ui.play.on) return;
+    ui.playTimer = setTimeout(() => {
+      if (!ui.play || !ui.play.on) return;
+      ui.play.idx += 1;
+      if (ui.play.idx >= ui.play.total) ui.play.on = false;
+      render(game.state);
+    }, ui.play.fast ? 450 : 950);
   }
 
   // The Lord's decrees (GUI-13): the knobs of the realm.
@@ -1199,6 +1291,9 @@
     // The Board earns extra width on big screens (two-column reading, GUI-62).
     app.className = s.screen === "board" ? "wide" : "";
     app.innerHTML = html;
+    // The replay theater's clockwork runs only while a parchment plays (GUI-64).
+    if (s.screen === "parchment") replayTick();
+    else if (ui.play) { ui.play = null; clearTimeout(ui.playTimer); }
     if (s.screen === "battle") {
       const log = document.getElementById("battle-log");
       if (log) log.scrollTop = log.scrollHeight;
@@ -1222,7 +1317,11 @@
       }
       case "hold-games": G.lord.holdGames(); break;
       case "decree": { const [k, d] = arg.split(":"); game.setDecree(k, parseInt(d, 10)); break; }
-      case "view-bout": { const [di, bi] = arg.split(":"); game.openBout(parseInt(di, 10), parseInt(bi, 10)); break; }
+      case "view-bout": { const [di, bi] = arg.split(":"); ui.play = null; clearTimeout(ui.playTimer); game.openBout(parseInt(di, 10), parseInt(bi, 10)); break; }
+      case "replay-start": ui.play = { idx: 0, on: true, fast: false, total: Infinity }; render(game.state); break;
+      case "replay-toggle": if (ui.play) { ui.play.on = !ui.play.on; render(game.state); } break;
+      case "replay-speed": if (ui.play) { ui.play.fast = !ui.play.fast; render(game.state); } break;
+      case "replay-skip": ui.play = null; clearTimeout(ui.playTimer); render(game.state); break;
       case "board-band": ui.boardBand = arg; render(game.state); break;
       case "board-day": ui.boardDay = parseInt(arg, 10); ui.boardBand = null; render(game.state); break;
       case "board-season": {
