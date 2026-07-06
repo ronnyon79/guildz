@@ -466,6 +466,13 @@ cap (3) & per-bout replenish (50%)**, servant **upkeep/housing** cost, and **ser
   in collapsible BAND categories (👑 Throne and 🛡️ Gauntlet pinned above, bands ascending),
   collapsed by default with counts + a "you fought here" pill — no more one long list.
 
+- **GUI-59 Walkover labels — v0.18.1** (user: "how come 0 bouts?"). Sparse high bands hold
+  one veteran → the day resolves by WALKOVER (designed: 0 boutsWon → +0 fame, no farming an
+  empty bracket). The sunset board now says **"🕊️ walkover — no challengers in this band"**
+  instead of the puzzling "0 bouts won · +0⭐". OPEN design question posed to the user:
+  merge sparse adjacent bands for the day so lone veterans still fight (would amend the
+  bands-of-5 rule — awaiting their call).
+
 ### Build order (when the user says go)
 1. **Champion summit** — NPC population + Popularity ladder + Lord boss fight (finish
    the Rise). Small, self-contained, reuses combat entirely.
