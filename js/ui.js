@@ -355,6 +355,108 @@
 
   // A parchment: the full blow-by-blow, re-rendered deterministically from the
   // seed (or the verbatim log for bouts the champion fought in person).
+  /* ---------- the report as a three-way CHAT (GUI-63) ----------
+   * The fighters call their OWN actions in punchy first person; the Narrator
+   * keeps the scene (rounds, initiative, poison, pets, the fall). */
+  const FP = {
+    meleeHit: [
+      ["A scratch — but I'll take it.", "Just a graze… for now."],
+      ["My {w} bites — feel that?", "Clean hit! There's more coming."],
+      ["I hammer you back a step!", "That one sank DEEP."],
+      ["EVERYTHING behind that blow!", "I nearly split you in two!"],
+    ],
+    missileHit: [
+      ["A nick — hold still, would you?", "Winged you."],
+      ["My {w} finds you!", "Square hit — from all the way out here!"],
+      ["Punched that clean through your guard!", "That shot ROCKED you."],
+      ["A shot they'll talk about for years!", "Nearly dropped you from across the sand!"],
+    ],
+    crit: ["PERFECT — right through your guard!", "Dead centre! DOWN you go!", "That's the opening I wanted!"],
+    miss: ["Wide — curse it!", "Slippery little—", "You won't be that lucky twice."],
+    evade: ["Ha! Too slow.", "I'm not where you think I am.", "You're swinging at shadows."],
+    charge: ["No more hiding — I'm coming for you!", "Closing in. Let's end this face to face."],
+    retreat: ["Back to range — reach me if you can.", "I'll pick you apart from out here."],
+    critmiss: ["No—! Overreached… I'm reeling. 😵", "My footing—! A disastrous slip. 😵"],
+    recover: ["Still reeling… I can't strike this round.", "Shaking off the daze — you got lucky."],
+    hideOk: ["Now you see me… 🌑 now you don't.", "Into the shadows. Sleep lightly."],
+    hideFail: ["Spotted—! No matter.", "The shadows refuse me this time."],
+    spells: {
+      "Magic Missile": ["Bolt of force — it NEVER misses. ✨", "Straight through your guard! ✨"],
+      "Lightning Bolt": ["Feel the sky's wrath! ⚡", "Lightning answers me! ⚡"],
+      "Fireball": ["BURN! 🔥", "A little warmth for you — catch! 🔥"],
+    },
+    spellGeneric: ["My {S} strikes true!", "{S} — take it!"],
+    applyDot: ["Choke on this cloud! ☠️", "Poison, friend — it's already in your lungs. ☠️"],
+    applyCurse: ["A hex upon you — feel your strength drain! 🕸️"],
+    shield: ["Faith, shield me! 🛡️ ({amount})", "A wall of light between us. 🛡️ ({amount})"],
+    spirit: ["Rise, blade of spirit — fight beside me! 🗡️", "My faith takes form — a floating blade! 🗡️"],
+    summon: ["Winds, ANSWER ME! 🌪️ ({hp} HP)", "I call the storm itself to my side! 🌪️ ({hp} HP)"],
+    heal: ["Light, mend me… ✚{amt}.", "My wounds close — ✚{amt}. Not done yet."],
+    itemLife: ["A gulp of the good stuff — I'm WHOLE again! 🧪", "Potion down — wounds gone! 🧪"],
+    itemMana: ["Mana floods back — oh, that's better. 🔷", "Drink deep… the weave returns to me. 🔷"],
+    fizzle: ["The weave slips — NOTHING! Argh.", "Fizzled! The magic mocks me."],
+    fizzleNoMp: ["Empty… nothing left to cast.", "No mana. Steel will have to do."],
+    arrowSwap: ["Switching quivers — {arrow} next.", "{arrow} nocked. Try me now."],
+    regen: ["The healers' hands close my wounds. ✚{amt}"],
+  };
+
+  // One chat line: {side: "L"|"R"|"N"|null, name, text} — null = skip.
+  function chatFor(ev, i, ctx) {
+    const seed = i * 131 + (ev.roll || 0) * 17 + (ev.dmg || 0) * 5;
+    const V = (arr) => pickVar(arr, seed);
+    const rollS = ev.roll != null ? ` <span class="roll">[d20: ${ev.roll}]</span>` : "";
+    const dmgS = ev.dmg != null ? ` <b>−${ev.dmg}</b>` : "";
+    const strikeS = ev.strikes > 1 && ev.strike ? `<span class="sys">${["", "1st", "2nd", "3rd", "4th"][ev.strike] || ev.strike + "th"}:</span> ` : "";
+    const w = (name, kind) => ctx.weaponOf(name, kind);
+    const F = (name, text) => ({ side: name === ctx.youName ? "L" : "R", name, text });
+    const N = (text) => ({ side: "N", name: "", text });
+    switch (ev.t) {
+      case "round":
+        if (ev.n === 1) return null;
+        return { side: "DIV", name: "", text: `— Round ${ev.n} — ${esc(ctx.youName)} <b>${ev.youHp}</b>/${ev.youMaxHp}${ev.youMaxMp > 0 ? ` · ${ev.youMp}MP` : ""} ⚔ ${esc(ctx.foeName)} <b>${ev.foeHp}</b>/${ev.foeMaxHp}${ev.foeMaxMp > 0 ? ` · ${ev.foeMp}MP` : ""}` };
+      case "initiative": return N(`⚡ ${esc(ev.first)} moves first${ev.youRoll != null ? ` <span class="roll">[${Math.max(ev.youRoll, ev.foeRoll)} vs ${Math.min(ev.youRoll, ev.foeRoll)}]</span>` : ""}`);
+      case "move": return F(ev.who, V(ev.to === "melee" ? FP.charge : FP.retreat));
+      case "hit": {
+        const tier = dmgTier(ev.dmg);
+        const base = ev.crit ? V(FP.crit) : fill(V((ev.kind === "melee" ? FP.meleeHit : FP.missileHit)[tier]), { w: w(ev.who, ev.kind) });
+        return F(ev.who, strikeS + base + dmgS + (ev.crit ? ' <span class="crit">CRIT!</span>' : "") + (ev.dual ? ' <span class="dual-tag">⚔️⚔️</span>' : "") + rollS + shieldNote(ev) + armorNote(ev));
+      }
+      case "miss": return F(ev.who, strikeS + V(FP.miss) + rollS);
+      case "evade": case "dodge": return F(ev.who, V(FP.evade) + (ev.roll != null ? ` <span class="roll">[d20: ${ev.roll}]</span>` : ""));
+      case "critmiss": return F(ev.who, strikeS + V(FP.critmiss) + rollS);
+      case "recover": return F(ev.who, V(FP.recover));
+      case "hide": return F(ev.who, V(ev.success ? FP.hideOk : FP.hideFail) + rollS);
+      case "spell": {
+        const pool = FP.spells[ev.skill] || FP.spellGeneric;
+        return F(ev.who, fill(V(pool), { S: ev.skill }) + dmgS + (ev.crit ? ' <span class="crit">CRIT!</span>' : "") + rollS + shieldNote(ev) + armorNote(ev));
+      }
+      case "fizzle": return F(ev.who, V(ev.reason === "no mp" ? FP.fizzleNoMp : FP.fizzle) + rollS);
+      case "applyDot": return F(ev.who, V(FP.applyDot) + ` <span class="poison-tag">${ev.turns} turns</span>` + rollS);
+      case "applyCurse": return F(ev.who, fill(V(FP.applyCurse), { turns: ev.turns }) + rollS);
+      case "heal": return F(ev.who, fill(V(FP.heal), { amt: ev.amt }) + rollS);
+      case "item": return F(ev.who, V(ev.effect === "fullmana" ? FP.itemMana : FP.itemLife));
+      case "shield": return F(ev.who, fill(V(FP.shield), { amount: ev.amount }) + rollS);
+      case "summonWeapon": return F(ev.who, V(FP.spirit) + ` <span class="sys">(${ev.turns} rounds)</span>` + rollS);
+      case "summon": return F(ev.who, fill(V(FP.summon), { hp: ev.hp }) + rollS);
+      case "arrowSwap": return F(ev.who, fill(V(FP.arrowSwap), { arrow: ev.arrow }));
+      case "regen": return F(ev.who, fill(V(FP.regen), { amt: ev.amt }));
+      // The Narrator keeps the scene: DoTs, pets, arrow effects, the fall.
+      case "poison": return N((ev.dotType === "burn" ? "🔥" : "☠️") + ` ${esc(ev.who)} ${ev.dotType === "burn" ? "burns" : "chokes on poison"} for <b>${ev.dmg}</b>.`);
+      case "arrowFx": return N(ev.fx === "slow" ? `❄️ Frost slows ${esc(ev.target)} for ${ev.turns} rounds.` : `🔥 ${esc(ev.target)} catches fire — ${ev.turns} rounds of flame.`);
+      case "petHit": return N(`${ev.who === "Spiritual Weapon" ? "🗡️ The spirit blade" : "🌪️ The elemental"} tears at ${esc(ev.target)} for <b>${ev.dmg}</b>${ev.crit ? ' <span class="crit">CRIT!</span>' : ""}.${shieldNote(ev)}${armorNote(ev)}`);
+      case "petMiss": return N(`🗡️ The spirit blade glances wide of ${esc(ev.target)}.`);
+      case "petMove": return N(`🗡️ ${esc(ev.who)} flies in to engage.`);
+      case "petDown": return N(`💨 ${esc(ev.who)} is torn apart and scatters.`);
+      case "petExpire": return N(`💨 ${esc(ev.who)} fades, its purpose served.`);
+      case "end": {
+        const W = ev.result === "won" ? ctx.youName : ctx.foeName;
+        const L = ev.result === "won" ? ctx.foeName : ctx.youName;
+        return { side: "KO", name: "", text: `💀 ${fill(pickVar(DEATH_THEATRE, seed), { W: `<b>${esc(W)}</b>`, L: `<b>${esc(L)}</b>` })}` };
+      }
+      default: return null;
+    }
+  }
+
   function screenParchment(s) {
     const v = s.viewBout;
     const rec = v && s.board[v.di] && s.board[v.di].bouts[v.bi];
@@ -368,24 +470,35 @@
       log = b.log;
     }
     const ctx = battleCtx(b, s.player.name);
-    const intro = `<p class="line-intro shown">${fill(pickVar(INTRO, rec.seed || 7), {
-      A: `<span class="${b.you.name === s.player.name ? "you" : "foe"}">${esc(b.you.name)}</span>`,
-      B: `<span class="foe">${esc(b.foe.name)}</span>`,
-      bc: CLASSES[b.foe.classId] ? CLASSES[b.foe.classId].name : "",
-    })}</p>`;
+    // The player always chats from the RIGHT side, like any messenger.
+    const flip = b.foe.name === s.player.name;
+    const emojiOf = (n) => { const c = CLASSES[ctx.classOf(n)]; return c ? c.emoji : "⚔️"; };
     // The last damaging strike before the end is THE KILLING BLOW.
     const endIdx = log.findIndex((e) => e.t === "end");
     let killIdx = -1;
     for (let i = (endIdx < 0 ? log.length : endIdx) - 1; i >= 0; i--) {
       if (["hit", "spell", "petHit", "poison"].includes(log[i].t) && (log[i].dmg || 0) > 0) { killIdx = i; break; }
     }
-    const lines = log.map((ev, i) => narrate(ev, i, ctx, false, i === killIdx)).join("");
+    const bubbles = log.map((ev, i) => {
+      const c = chatFor(ev, i, ctx);
+      if (!c) return "";
+      if (c.side === "DIV") return `<div class="chat-div">${c.text}</div>`;
+      if (c.side === "KO") return `<div class="chat-row mid"><div class="bubble ko">${c.text}</div></div>`;
+      if (c.side === "N") return `<div class="chat-row mid"><div class="bubble nar">${c.text}</div></div>`;
+      const side = (c.side === "L") !== flip ? "right" : "left"; // b.you sits right unless the player is the foe
+      const kill = i === killIdx ? `<span class="crit">☠️ THE KILLING BLOW</span><br>` : "";
+      return `<div class="chat-row ${side}">
+        <div class="chat-ava">${emojiOf(c.name)}</div>
+        <div class="bubble ${side === "right" ? "me" : "them"}">${kill}<span class="chat-name">${esc(c.name)}</span>${c.text}</div>
+      </div>`;
+    }).join("");
+    const intro = `<div class="chat-row mid"><div class="bubble nar">⚔️ <b>${esc(b.you.name)}</b> and <b>${esc(b.foe.name)}</b> face off across the sand — the crowd leans in…</div></div>`;
     return topbar(s.player) + `<div class="screen">
       <button class="btn ghost sm" data-act="tab" data-arg="board" style="margin:4px 0 10px">← The board</button>
       <div class="screen-title">${rec.throne ? "👑 The Throne Duel" : "⚔️ " + esc(rec.a.name) + " vs " + esc(rec.b.name)}</div>
       <p class="card-sub center">🏆 ${esc(rec.winner)} · ${rec.rounds} rounds${rec.spec ? ` · ${starsOf(rec.spec)}` : ""}</p>
-      <div class="log" style="max-height:none">${intro}${lines}</div>
-      <p class="card-sub center" style="margin-top:8px">— faithfully recorded by the Scribe 🖋️</p>
+      <div class="chat">${intro}${bubbles}</div>
+      <p class="card-sub center" style="margin-top:8px">— faithfully transcribed by the Scribe 🖋️</p>
     </div>`;
   }
 

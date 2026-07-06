@@ -500,6 +500,16 @@ cap (3) & per-bout replenish (50%)**, servant **upkeep/housing** cost, and **ser
   chosen band s reports in a STICKY, independently-scrolling side panel right; phones keep
   the single column. render() toggles #app.wide per screen. 283 regressions green.
 
+- **GUI-63 The report becomes a three-way CHAT — v0.22.0** (user request: long + confusing).
+  Parchments now read like a messenger thread: the two fighters call their OWN actions in
+  punchy FIRST PERSON (30+ new voice pools — "My greatsword bites — feel that? −8" · "Ha!
+  Too slow." on an evade · "BURN! 🔥" · "No—! Overreached… 😵"), the **player always chats
+  from the RIGHT**, the foe left (class-emoji avatars, name tags), and the **Narrator**
+  keeps the scene in centered dashed bubbles (initiative, DoT ticks, pets, arrow effects)
+  with round-divider rules and the **death theatre in a gold KO bubble**. All tags kept:
+  d20 rolls, CRIT, dual, 1st/2nd strike, armor/shield notes, ☠️ THE KILLING BLOW. Bubbles
+  selectable. Live battle log unchanged (own pass if wanted). 283 regressions green.
+
 ### Build order (when the user says go)
 1. **Champion summit** — NPC population + Popularity ladder + Lord boss fight (finish
    the Rise). Small, self-contained, reuses combat entirely.
