@@ -575,6 +575,10 @@ cap (3) & per-bout replenish (50%)**, servant **upkeep/housing** cost, and **ser
   actions: melee strikes, shots, spells by name, heals, hides, potions, summons — top 4
   with counts. test_profile 20 → 28 → 311 total green.
 
+- **GUI-71 Style as percentages — v0.28.1** (user tweak). The style line now reads action
+  SHARES ("⚔️ melee strikes 62% · 🌑 hides 11%" of all their recorded actions) instead of
+  raw ×counts — comparable across champions regardless of how many parchments exist.
+
 ### Build order (when the user says go)
 1. **Champion summit** — NPC population + Popularity ladder + Lord boss fight (finish
    the Rise). Small, self-contained, reuses combat entirely.

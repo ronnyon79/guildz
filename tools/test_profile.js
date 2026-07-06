@@ -90,7 +90,7 @@ click("profile-close");
 click("profile", "Prof Tester");
 ok(/❤️ \d+ HP/.test(app()), "player profile shows own pools");
 ok(/📊 style, from \d+ parchment/.test(app()), "player style mined from own parchments");
-ok(/(⚔️ melee strikes|🏹 shots) ×\d+/.test(app()), "style counts real actions");
+ok(/(⚔️ melee strikes|🏹 shots) \d+%/.test(app()), "style shows action shares as %");
 click("profile-close");
 click("profile", S.lord.name);
 ok(/❤️ \d+ HP/.test(app()), "the Lord's kit renders via lordCombatChar");

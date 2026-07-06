@@ -267,13 +267,14 @@
         if (bouts >= 12) break outer;
       }
     }
-    return { bouts, top: Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 4) };
+    const total = Object.values(counts).reduce((a, b) => a + b, 0);
+    return { bouts, total, top: Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 4) };
   }
 
   function styleLine(s, name) {
     const st = styleStats(s, name);
     if (!st.bouts || !st.top.length) return "";
-    return `<div class="card-sub">📊 style, from ${st.bouts} parchment${st.bouts === 1 ? "" : "s"}: ${st.top.map(([k, n]) => `${k} ×${n}`).join(" · ")}</div>`;
+    return `<div class="card-sub">📊 style, from ${st.bouts} parchment${st.bouts === 1 ? "" : "s"}: ${st.top.map(([k, n]) => `${k} ${Math.round((n / st.total) * 100)}%`).join(" · ")}</div>`;
   }
 
   function profileOverlay(s) {
