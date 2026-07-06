@@ -646,6 +646,13 @@ cap (3) & per-bout replenish (50%)**, servant **upkeep/housing** cost, and **ser
   visibly move the needle within a week. Ring persisted (state.ledgerLog, reconciles to the
   treasury). test_crier → 17 → 365 green.
 
+- **GUI-54 Name your Stronghold — v0.37.0.** Creation gains a hold-name field (blank → the
+  Scribe picks a seeded default from new HOLD_NAMES pools: "Ravenhold", "Stormgate"…, 12×10
+  combos). Shown on the home day-line (🏰), the title-screen world cards, the crier header
+  ("The crier of Wolfden Keep") and the Lord s title — who may RENAME it (✏️ prompt,
+  game.renameHold, Lord-only). Old saves backfilled with the seeded default on load.
+  test_crier → 25 → 373 green.
+
 ### Build order (when the user says go)
 1. **Champion summit** — NPC population + Popularity ladder + Lord boss fight (finish
    the Rise). Small, self-contained, reuses combat entirely.

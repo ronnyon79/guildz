@@ -234,6 +234,11 @@
    * ROTATES instead of ratcheting. Old residents retire and a young hopeful
    * arrives in their place (the first churn cycle); an undefeated Lord dies of
    * old age on the throne, and the crown passes to the people's favourite. */
+  // Stronghold naming (GUI-54): a seeded default the player may overwrite.
+  const HOLD_NAMES = {
+    prefixes: ["Raven", "Iron", "Grim", "Storm", "Ember", "Wolf", "Thorn", "Ash", "Stone", "Briar", "Frost", "Gold"],
+    suffixes: ["hold", "gate", "spire", "keep", "reach", "fen", "garde", "rock", "watch", "mere"],
+  };
   const AGE = {
     start: 18,          // a new champion's age
     peak: 35,           // decline begins past this
@@ -276,5 +281,5 @@
   };
   const SEASON = { days: 10 }; // days per season — first guess, tune via sim (GUI-30)
 
-  G.data = { CLASSES, WEAPONS, ARMOR, ARMOR_MAXTIER, VENDORS, ITEMS, ARROWS, GOLD_PER_WIN, goldForWin, totalGoldAt, POINTS_PER_WIN, CRIT_MULT, FOE_NAMES, EPITHETS, ROSTER, POPULARITY, SEASON, LORD, ECONOMY, BOARD, BUILDINGS, BUILDING_FX, AGE, PERSONALITY, WORLDGEN };
+  G.data = { CLASSES, WEAPONS, ARMOR, ARMOR_MAXTIER, VENDORS, ITEMS, ARROWS, GOLD_PER_WIN, goldForWin, totalGoldAt, POINTS_PER_WIN, CRIT_MULT, FOE_NAMES, EPITHETS, HOLD_NAMES, ROSTER, POPULARITY, SEASON, LORD, ECONOMY, BOARD, BUILDINGS, BUILDING_FX, AGE, PERSONALITY, WORLDGEN };
 })(typeof window !== "undefined" ? window : globalThis);

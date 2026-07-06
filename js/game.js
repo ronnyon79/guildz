@@ -83,6 +83,7 @@
   function worldMeta(id, d) {
     return {
       id, name: d.player.name, classId: d.player.classId,
+      hold: (d.stronghold || {}).name || "",
       role: d.player.role || "champion", wins: d.player.wins,
       season: (d.clock || {}).season || 1, day: (d.clock || {}).day || 1,
     };
@@ -103,6 +104,21 @@
       G.store.remove(LEGACY_KEY);
     } catch (e) {}
   }
+  // A hold's seeded default name (GUI-54): "Ravenhold", "Stormgate"…
+  function defaultHoldName(seed) {
+    const rng = G.engine.makeRng((seed ^ 0x5747) >>> 0);
+    const H = G.data.HOLD_NAMES;
+    return G.engine.pick(rng, H.prefixes) + G.engine.pick(rng, H.suffixes);
+  }
+  // The Lord may rename the hold; commoners live where they live.
+  function renameHold(name) {
+    if (!state.stronghold || state.player.role !== "lord") return;
+    const n = (name || "").trim().slice(0, 18);
+    if (!n) return;
+    state.stronghold.name = n;
+    save(); emit();
+  }
+
   function listWorlds() { migrateLegacy(); return readIndex().worlds; }
   function boot() { migrateLegacy(); state.screen = "title"; emit(); }
 
@@ -176,6 +192,7 @@
       state.ledgerLog = Array.isArray(data.ledgerLog) ? data.ledgerLog : [];
       // Migrate saves created before the economy existed.
       state.stronghold = data.stronghold || { ...ECONOMY.start };
+      if (!state.stronghold.name) state.stronghold.name = defaultHoldName(state.player.worldSeed || 7); // pre-GUI-54 saves
       if (!state.stronghold.buildings) state.stronghold.buildings = { seating: 0, armory: 0, infirmary: 0, barracks: 0, yard: 0 };
       state.household = Array.isArray(data.household) ? data.household : [];
       state.departed = Array.isArray(data.departed) ? data.departed : [];
@@ -191,7 +208,7 @@
   function emit() { for (const fn of listeners) fn(state); }
 
   // ---- actions ----
-  function createCharacter(classId, name, worldSeed) {
+  function createCharacter(classId, name, worldSeed, holdName) {
     const seed = (worldSeed != null ? worldSeed : Date.now()) >>> 0;
     const ix = readIndex();
     state.worldId = "w" + ix.nextId++;
@@ -224,6 +241,7 @@
     const history = G.worldgen.simulateHistory(state.npcs, lordBox, state.player.name, seed + 99);
     state.lord = lordBox.lord;
     state.stronghold = { ...ECONOMY.start, buildings: { seating: 0, armory: 0, infirmary: 0, barracks: 0, yard: 0 } };
+    state.stronghold.name = (holdName || "").trim().slice(0, 18) || defaultHoldName(seed);
     state.household = [];
     state.defense = null;
     state.board = history.board;
@@ -1191,7 +1209,7 @@
     challengeLord, chooseFate,
     allocate, fightOn, retreat, returnHome, resetGame,
     openVendor, closeVendor, buyItem, buyArrow, loadArrow, buyArmor,
-    taxedCost, gearScale, setDecree, buyBuilding, recordBout, openBout,
+    taxedCost, gearScale, setDecree, buyBuilding, recordBout, openBout, renameHold, defaultHoldName,
     beginDefense, defensePerks, startDefenseDuel, removeServant, moveServant,
     reignEnds: () => perish("throne-age"),
     nextSeed, settleDay, emit, // the seam lord.js drives the shared day through
