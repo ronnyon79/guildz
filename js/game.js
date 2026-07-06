@@ -342,6 +342,23 @@
     } catch (e) {}
   }
 
+  // Head-to-head from the fact rows (GUI-47): every recorded meeting of two
+  // names, whoever was listed first. [season, day, band, a, b, winner, ...]
+  function headToHead(x, y) {
+    try {
+      const rows = JSON.parse(G.store.get("guildz.facts." + state.worldId) || "[]");
+      const h = { meetings: 0, xWins: 0, yWins: 0 };
+      for (const r of rows) {
+        const a = r[3], b = r[4];
+        if ((a === x && b === y) || (a === y && b === x)) {
+          h.meetings++;
+          if (r[5] === x) h.xWins++; else if (r[5] === y) h.yWins++;
+        }
+      }
+      return h;
+    } catch (e) { return { meetings: 0, xWins: 0, yWins: 0 }; }
+  }
+
   // The rollup, read back (GUI-24): a champion's recorded career in O(1).
   function careerOf(name) {
     try { return JSON.parse(G.store.get("guildz.rollup." + state.worldId) || "{}")[name] || null; }
@@ -1056,7 +1073,7 @@
 
   G.game = {
     state, subscribe, boot, load, save, listWorlds, deleteWorld,
-    computeMax, champName, fameLadder, lordCombatChar, careerOf,
+    computeMax, champName, fameLadder, lordCombatChar, careerOf, headToHead,
     createCharacter, go, enterArena, fightBout, chooseAction,
     challengeLord, chooseFate,
     allocate, fightOn, retreat, returnHome, resetGame,

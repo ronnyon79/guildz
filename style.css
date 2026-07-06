@@ -304,3 +304,6 @@ button { font-family: inherit; }
 .plink { text-decoration: underline dotted var(--muted); text-underline-offset: 3px; cursor: pointer; }
 .plink.you { color: var(--accent-2); font-weight: 700; }
 .fame-row { cursor: pointer; }
+
+/* ---------- the scout's card (GUI-47) ---------- */
+.scout-card { border-color: var(--accent-2); background: #1d2430; }
