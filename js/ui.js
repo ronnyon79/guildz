@@ -256,23 +256,49 @@
   }
 
   /* ---------- the Scribe's Bulletin Board (GUI-14) ---------- */
+  // One parchment row (a single bout on the board).
+  function boutRow(s, di, bi, bt) {
+    const you = (n) => (n === s.player.name ? `<span class="you">${esc(n)}</span>` : esc(n));
+    return `<div class="card class-card" data-act="view-bout" data-arg="${di}:${bi}">
+      <div class="card-row"><div class="avatar">${bt.throne ? "👑" : CLASSES[(bt.a || {}).classId] ? CLASSES[bt.a.classId].emoji : "⚔️"}</div>
+      <div><div class="card-title" style="font-size:14px">${you(bt.a.name)} <span class="sys">vs</span> ${you(bt.b.name)}${bt.throne ? ' <span class="pill on">THRONE DUEL</span>' : ""}</div>
+      <div class="card-sub">🏆 ${you(bt.winner)} · ${bt.rounds} rounds${bt.spec ? ` · ${starsOf(bt.spec)}` : ""}</div></div>
+      <div class="spacer"></div><span class="pill">Read →</span></div></div>`;
+  }
+
+  /* The board, foldered: each day's parchments hang grouped by BAND (GUI-58) —
+   * pick a category, read its reports. Throne & gauntlet pin above the bands. */
   function screenBoard(s) {
+    ui.boardOpen = ui.boardOpen || {};
     const days = s.board.slice().reverse(); // newest first
     const body = days.length ? days.map((d, ri) => {
       const di = s.board.length - 1 - ri;
-      const rows = d.bouts.map((bt, bi) => {
-        const you = (n) => (n === s.player.name ? `<span class="you">${esc(n)}</span>` : esc(n));
-        return `<div class="card class-card" data-act="view-bout" data-arg="${di}:${bi}">
-          <div class="card-row"><div class="avatar">${bt.throne ? "👑" : CLASSES[(bt.a || {}).classId] ? CLASSES[bt.a.classId].emoji : "⚔️"}</div>
-          <div><div class="card-title" style="font-size:14px">${you(bt.a.name)} <span class="sys">vs</span> ${you(bt.b.name)}${bt.throne ? ' <span class="pill on">THRONE DUEL</span>' : ""}</div>
-          <div class="card-sub">🏆 ${you(bt.winner)} · ${bt.rounds} rounds${bt.spec ? ` · ${starsOf(bt.spec)}` : ""}${bt.band != null ? ` · Band ${G.tournament.bandLabel(bt.band)}` : ""}</div></div>
-          <div class="spacer"></div><span class="pill">Read →</span></div></div>`;
+      const groups = new Map();
+      d.bouts.forEach((bt, bi) => {
+        const key = bt.throne ? "T" : bt.gauntlet ? "G" : String(bt.band != null ? bt.band : "X");
+        if (!groups.has(key)) groups.set(key, []);
+        groups.get(key).push([bt, bi]);
+      });
+      const weight = (k) => (k === "T" ? -2 : k === "G" ? -1 : k === "X" ? 999 : parseInt(k, 10));
+      const sections = [...groups.keys()].sort((a, b) => weight(a) - weight(b)).map((key) => {
+        const items = groups.get(key);
+        const label = key === "T" ? "👑 The Throne" : key === "G" ? "🛡️ The Gauntlet"
+          : key === "X" ? "⚔️ Other bouts" : `🏟️ Band ${G.tournament.bandLabel(+key)}`;
+        const yours = items.some(([bt]) => bt.a.name === s.player.name || bt.b.name === s.player.name);
+        const openKey = di + ":" + key;
+        const open = !!ui.boardOpen[openKey];
+        const head = `<div class="card class-card" data-act="board-band" data-arg="${openKey}">
+          <div class="card-row"><div class="avatar">${open ? "📖" : "📜"}</div>
+          <div><div class="card-title" style="font-size:14px">${label}${yours ? ' <span class="pill on">you fought here</span>' : ""}</div>
+          <div class="card-sub">${items.length} bout${items.length === 1 ? "" : "s"} · tap to ${open ? "fold away" : "read"}</div></div>
+          <div class="spacer"></div><span class="pill">${open ? "▾" : "▸"}</span></div></div>`;
+        return head + (open ? items.map(([bt, bi]) => boutRow(s, di, bi, bt)).join("") : "");
       }).join("");
-      return `<div class="screen-title">📜 Day ${d.day} · Season ${d.season}</div>${rows}`;
+      return `<div class="screen-title">📜 Day ${d.day} · Season ${d.season}</div>${sections}`;
     }).join("") : `<p class="card-sub center" style="margin-top:20px">The board is bare — no games have been fought yet. The Scribe waits, quill ready.</p>`;
     return topbar(s.player) + `<div class="screen">
       <div class="screen-title">The Bulletin Board</div>
-      <p class="card-sub center" style="margin-bottom:10px">The Scribe records every bout. Parchments stay pinned for ${G.data.BOARD.days} days.</p>
+      <p class="card-sub center" style="margin-bottom:10px">The Scribe records every bout, hung by band. Parchments stay pinned for ${G.data.BOARD.days} days.</p>
       ${body}
     </div>` + tabbar("board");
   }
@@ -1032,6 +1058,7 @@
       case "hold-games": G.lord.holdGames(); break;
       case "decree": { const [k, d] = arg.split(":"); game.setDecree(k, parseInt(d, 10)); break; }
       case "view-bout": { const [di, bi] = arg.split(":"); game.openBout(parseInt(di, 10), parseInt(bi, 10)); break; }
+      case "board-band": ui.boardOpen[arg] = !ui.boardOpen[arg]; render(game.state); break;
       case "build": toast(game.buyBuilding(arg) ? "Raised!" : "The treasury cannot bear it.") ; break;
       case "begin-defense": game.beginDefense(); break;
       case "servant": {
