@@ -39,7 +39,7 @@ const popOf = (id) => (id === "player" ? S.player.popularity || 0 : (S.npcs.find
 const snapshot = () => { const m = { player: S.player.popularity || 0 }; for (const n of S.npcs) m[n.id] = n.popularity || 0; return m; };
 
 console.log("— award math —");
-game.createCharacter("fighter", "Rok", 99001);
+game.createCharacter("fighter", "Rok", 99001); S.throneRestUntil = 9999; // GUI-72 quiet
 ok(S.player.popularity === 0 && S.clock.day === 1 && S.clock.season === 1, "fresh world: 0 fame, day 1 season 1");
 const pre = snapshot();
 playDay();

@@ -39,7 +39,7 @@ function playDay() {
 }
 
 console.log("— roster —");
-game.createCharacter("thief", "Sly", 424242);
+game.createCharacter("thief", "Sly", 424242); S.throneRestUntil = 9999; // GUI-72 quiet
 ok(S.npcs.length === G.data.ROSTER.size, `roster generated (${S.npcs.length})`);
 ok(new Set(S.npcs.map((n) => n.name)).size === S.npcs.length, "NPC names are unique");
 ok(!S.npcs.some((n) => n.name.toLowerCase() === "sly"), "no NPC collides with the player's name");
@@ -52,7 +52,7 @@ ok(ch.maxHp > 25 && ch.armor, "veteran NPC combat char has grown pools + armor")
 console.log("— world-gen determinism —");
 const namesA = S.npcs.map((n) => n.name).join("|");
 game.resetGame();
-game.createCharacter("thief", "Sly", 424242);
+game.createCharacter("thief", "Sly", 424242); S.throneRestUntil = 9999; // GUI-72 quiet
 ok(S.npcs.map((n) => n.name).join("|") === namesA, "same worldSeed → identical roster");
 
 console.log("— one full day —");

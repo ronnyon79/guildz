@@ -190,7 +190,11 @@
       const gone = (lastDay.departures || []).map((d) => d.reason === "found"
         ? `🐎 <b>${esc(d.name)}</b> (${d.wins}w), with no rival left worth fighting, rides out to raise a banner of their own.`
         : `🌄 <b>${esc(d.name)}</b> (${d.wins}w) leaves the Stronghold to seek adventures beyond the gates.`).join("<br>");
-      season = `<div class="levelup">🍂 Season ${lastDay.seasonEnd.season} ends! ${t ? `${t.isPlayer ? "<b>You</b>" : `<b>${esc(t.name)}</b>`} top${t.isPlayer ? "" : "s"} the fame ladder with ⭐ ${t.popularity}.` : ""} All fame fades by half as the new season dawns.${lastDay.mayChallenge ? " <b>👑 The right to challenge the Lord is yours — it awaits you at home.</b>" : ""}${gone ? `<br>${gone}` : ""}</div>`;
+      const nt = lastDay.npcThrone;
+      const throne = nt ? (nt.result === "usurped"
+        ? `👑 <b>${esc(nt.challenger)}</b> stormed the keep — <b>the throne FELL</b>. ${esc(nt.lordName)}'s reign is ended; a new Lord rules the Stronghold.`
+        : `👑 <b>${esc(nt.challenger)}</b> came for the throne — <b>${esc(nt.by)}</b> ${nt.by === nt.lordName ? "cut them down" : "held the wall"}${nt.fate === "exile" ? "; the beaten challenger rode into exile" : nt.fate === "die" ? "; the challenger lies dead" : ""}. The parchments hang on the board.`) : "";
+      season = `<div class="levelup">🍂 Season ${lastDay.seasonEnd.season} ends! ${t ? `${t.isPlayer ? "<b>You</b>" : `<b>${esc(t.name)}</b>`} top${t.isPlayer ? "" : "s"} the fame ladder with ⭐ ${t.popularity}.` : ""} All fame fades by half as the new season dawns.${lastDay.mayChallenge ? " <b>👑 The right to challenge the Lord is yours — it awaits you at home.</b>" : ""}${throne ? `<br>${throne}` : ""}${gone ? `<br>${gone}` : ""}</div>`;
     }
     return `<div class="screen-title">🌇 Sunset — champions of the day</div>${rows}${season}`;
   }

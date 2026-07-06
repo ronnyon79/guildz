@@ -107,7 +107,7 @@
   function save() {
     if (!state.worldId) return;
     try {
-      const blob = { player: state.player, npcs: state.npcs, lord: state.lord, stronghold: state.stronghold, household: state.household, defense: state.defense, board: state.board, departed: state.departed, clock: state.clock, lastSeason: state.lastSeason, challengeOpen: state.challengeOpen, seedCounter: state.seedCounter };
+      const blob = { player: state.player, npcs: state.npcs, lord: state.lord, stronghold: state.stronghold, household: state.household, defense: state.defense, board: state.board, departed: state.departed, clock: state.clock, lastSeason: state.lastSeason, challengeOpen: state.challengeOpen, throneRestUntil: state.throneRestUntil || 0, seedCounter: state.seedCounter };
       G.store.set(worldKey(state.worldId), JSON.stringify(blob));
       const ix = readIndex();
       const i = ix.worlds.findIndex((w) => w.id === state.worldId);
@@ -169,6 +169,7 @@
         : generateLord((state.player.worldSeed || state.seedCounter * 97) + 1);
       if (state.lord && state.lord.age == null) state.lord.age = AGE.start + Math.round(state.lord.wins / 3) + (state.lord.reignSeasons || 1) + 6;
       state.challengeOpen = !!data.challengeOpen;
+      state.throneRestUntil = data.throneRestUntil || 0;
       // Migrate saves created before the economy existed.
       state.stronghold = data.stronghold || { ...ECONOMY.start };
       if (!state.stronghold.buildings) state.stronghold.buildings = { seating: 0, armory: 0, infirmary: 0, barracks: 0, yard: 0 };
@@ -225,6 +226,7 @@
     state.clock = history.clock;
     state.lastSeason = history.lastSeason;
     state.challengeOpen = false;
+    state.throneRestUntil = 0;
     state.lastThrone = null;
     state.screen = "home";
     save(); emit();
@@ -472,6 +474,19 @@
           state.lastDay.defenseComing = bold.name;
         }
       }
+      // GUI-72: while YOU hold no seat, the throne is still a prize — the
+      // boldest famous resident lays a claim (resolved after the roll, when
+      // the world's beds are settled). Your #1 finish always outranks theirs.
+      let npcClaim = null;
+      if (state.lord && state.player.role !== "lord" && state.player.role !== "servant" && !state.challengeOpen
+          && state.clock.season >= (state.throneRestUntil || 0)) {
+        // Gates that keep reigns at the designed 5–6 seasons: any real fame won
+        // pre-decay, not residue), ambition, and a season of rest after any
+        // rebellion — the Stronghold suffers no two in quick succession.
+        const famous = fameLadder().filter((r) => !r.isPlayer && r.popularity > 0).slice(0, 3);
+        const bold = famous.find((r) => { const n = npcById(r.id); return n && (!n.personality || n.personality.amb >= 0.3); });
+        if (bold) { npcClaim = bold.id; state.throneRestUntil = state.clock.season + 2; }
+      }
       state.player.popularity = Math.round((state.player.popularity || 0) / 2);
       for (const n of state.npcs) n.popularity = Math.round((n.popularity || 0) / 2);
       state.clock.season += 1;
@@ -534,6 +549,58 @@
             state.lastDay.departures = departures;
             arriveHopefuls(departures.length, "d");
           }
+        }
+      }
+      // GUI-72: the claim is answered — the Lord's wall in order, then the
+      // Lord himself. Same law as ever: 50% replenish, fallen servants die,
+      // and every bout is pinned to the board (👑 on the new season's day 1).
+      if (npcClaim) {
+        const npc = npcById(npcClaim);
+        if (npc && state.lord) {
+          const ch = G.roster.combatChar(npc, gearScale());
+          let chHp = ch.maxHp, chMp = ch.maxMp;
+          const news = { challenger: npc.name, lordName: state.lord.name };
+          const order = state.household.slice().sort((a, b) => b.wins - a.wins);
+          let stopped = false;
+          for (const servant of order) {
+            const sChar = G.roster.combatChar(servant, 1);
+            const worn = { ...ch, startHp: chHp, startMp: chMp };
+            const seed = nextSeed();
+            const res = G.tournament.autoBout(worn, sChar, seed);
+            recordBout({ a: worn, b: sChar, winner: res.winnerId === worn.id ? worn.name : sChar.name, rounds: res.rounds, spec: res.spec, seed, gauntlet: true });
+            if (res.winnerId === sChar.id) {
+              servant.wins += 1;
+              news.result = "held"; news.by = servant.name; news.fate = challengerFate(npc, seed);
+              stopped = true;
+              break;
+            }
+            state.household = state.household.filter((s) => s.id !== servant.id);
+            const after = G.tournament.replayBout(worn, sChar, seed);
+            const chSide = after.you.name === npc.name ? after.you : after.foe;
+            chHp = Math.min(ch.maxHp, Math.round(chSide.hp + ch.maxHp * 0.5));
+            chMp = Math.min(ch.maxMp, Math.round(chSide.mp + ch.maxMp * 0.5));
+          }
+          if (!stopped) {
+            const lc = lordCombatChar();
+            // No wall of servants? The keep guard still harries the way in.
+            if (!order.length) {
+              chHp = Math.round(chHp * LORD.keepGuardWear);
+              chMp = Math.round(chMp * LORD.keepGuardWear);
+            }
+            const worn = { ...ch, startHp: chHp, startMp: chMp };
+            const seed = nextSeed();
+            const res = G.tournament.autoBout(worn, lc, seed);
+            recordBout({ a: worn, b: lc, winner: res.winnerId === worn.id ? worn.name : lc.name, rounds: res.rounds, spec: res.spec, seed, throne: true });
+            if (res.winnerId === worn.id) {
+              news.result = "usurped";
+              state.lord = { name: npc.name, classId: npc.classId, wins: npc.wins, reignSeasons: 0, age: npc.age, personality: npc.personality };
+              state.npcs = state.npcs.filter((x) => x.id !== npc.id);
+              arriveHopefuls(1, "t");
+            } else {
+              news.result = "held"; news.by = state.lord.name; news.fate = challengerFate(npc, seed);
+            }
+          }
+          state.lastDay.npcThrone = news;
         }
       }
       if (state.player.role === "lord") {

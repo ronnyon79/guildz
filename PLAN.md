@@ -579,6 +579,19 @@ cap (3) & per-bout replenish (50%)**, servant **upkeep/housing** cost, and **ser
   SHARES ("⚔️ melee strikes 62% · 🌑 hides 11%" of all their recorded actions) instead of
   raw ×counts — comparable across champions regardless of how many parchments exist.
 
+- **GUI-72 NPC throne challenges — v0.29.0** (user decision: season-end only, same law as
+  the player). While YOU hold no seat, the boldest famous resident (fame top-3, amb≥0.3)
+  claims the throne at the season roll — YOUR #1 finish always outranks. Resolved through
+  the real machinery: household gauntlet in order (50% replenish, fallen servants die),
+  then the throne duel vs lordCombatChar; with no household, the KEEP GUARD harries the
+  challenger to LORD.keepGuardWear (0.75) of full. Winner takes the throne (roster exit +
+  hopeful arrives); loser meets challengerFate. All bouts pinned as 👑/🛡️ parchments on the
+  new season s day 1 (replayable); sunset announces the outcome. **Cadence sim-tuned**
+  (8 worlds × 15 seasons): challenges ~53% of seasons (1-season cooldown, persisted +
+  reset on new world), 33%/challenge topple → NPC Lords fall every ~4.6 seasons (2–9) vs
+  the player-Lord design target 5–6 with a true gauntlet. NEW SUITE test_npcthrone (16);
+  test_popularity/test_day pin the cooldown (they test fame/day math). 321 green / 18.
+
 ### Build order (when the user says go)
 1. **Champion summit** — NPC population + Popularity ladder + Lord boss fight (finish
    the Rise). Small, self-contained, reuses combat entirely.
