@@ -285,7 +285,7 @@ button { font-family: inherit; }
 .chat-row.anim, .chat-div.anim { opacity: 0; animation: fadein .25s forwards; }
 
 /* ---------- the live battle locks to one screen (GUI-68) ---------- */
-.battle { height: 100vh; height: 100dvh; overflow: hidden; }
+.battle { flex: none; height: 100vh; height: 100dvh; overflow: hidden; } /* flex:1 has basis 0 and grows with content — it silently beats height (GUI-69) */
 .battle .log { min-height: 0; }
 .duel-head.live .duel-tags { display: flex; gap: 5px; flex-wrap: wrap; font-size: 10.5px; margin-top: 3px; }
 .duel-head.live .duel-side.right .duel-tags { justify-content: flex-end; }
