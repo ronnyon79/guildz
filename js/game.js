@@ -212,12 +212,16 @@
     };
     state.npcs = G.roster.generateRoster(seed, state.player.name);
     state.lord = generateLord(seed + 1);
+    // The world was alive before you: pre-simulate its history (GUI-33).
+    const lordBox = { lord: state.lord };
+    const history = G.worldgen.simulateHistory(state.npcs, lordBox, state.player.name, seed + 99);
+    state.lord = lordBox.lord;
     state.stronghold = { ...ECONOMY.start, buildings: { seating: 0, armory: 0, infirmary: 0, barracks: 0, yard: 0 } };
     state.household = [];
     state.defense = null;
-    state.board = [];
-    state.clock = { day: 1, season: 1 };
-    state.lastSeason = null;
+    state.board = history.board;
+    state.clock = history.clock;
+    state.lastSeason = history.lastSeason;
     state.challengeOpen = false;
     state.lastThrone = null;
     state.screen = "home";

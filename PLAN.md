@@ -384,6 +384,19 @@ cap (3) & per-bout replenish (50%)**, servant **upkeep/housing** cost, and **ser
   (narration keys on names). 14 headless tests + 238 regressions. Guilds (GUI-18/19/20),
   Exile/Adventure (GUI-28/29) & warfare (GUI-38/39) remain PARKED per user.
 
+- **GUI-33 World-gen depth — v0.14.0** ✅ You now join a LIVING world: js/worldgen.js
+  pre-simulates **3 background seasons** (data.WORLDGEN, seeded, deterministic) through the
+  REAL engines — dawn-to-sunset days, fame + decay, aging + retirement churn, and throne
+  challenges WITH TEETH (in 8 probe worlds, 8 thrones changed hands during history — the
+  single-duel era is brutal; the household gauntlet is why reigns can now last). On arrival:
+  residents carry real fame + grown careers (avg ~34 wins at depth 3), the last day of
+  history hangs on the Bulletin Board (seed-replayable), lastSeason standings are real, and
+  a fresh INTAKE of 10 hopefuls arrives at the gates with you (bands 0–1 have peers, not
+  ghosts — found + fixed: history had emptied the novice bands). Depth study (the GUI-33
+  question): 1 season = 192ms/28 famed · 3 = 830ms/37 famed · 5 = 1683ms/37 famed →
+  **3 chosen** (lived-in, sub-second). seasons=0 supported (pristine worlds for tests).
+  12 headless tests + 240 regressions.
+
 ### Build order (when the user says go)
 1. **Champion summit** — NPC population + Popularity ladder + Lord boss fight (finish
    the Rise). Small, self-contained, reuses combat entirely.
