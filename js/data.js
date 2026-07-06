@@ -185,6 +185,11 @@
     wins: [40, 60],          // veteran career at world-gen
     crowd: { toHit: 5, toCrit: 5 },
     treasury: { potion_healing: 1, potion_mana: 1 },
+    // GUI-72: with no household to run, an NPC Lord's KEEP GUARD harries the
+    // challenger on the way in — they reach the throne duel at this fraction
+    // of full HP/MP (the commoner-world stand-in for the servant gauntlet;
+    // tuned by sim to keep reigns near the designed 5–6 seasons).
+    keepGuardWear: 0.75,
   };
 
   /* The Stronghold economy (GUI-12/13) — every number here is a first guess for
