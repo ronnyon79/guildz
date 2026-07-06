@@ -544,6 +544,77 @@
     regen: ["The healers' hands close my wounds. ✚{amt}"],
   };
 
+  /* Temperament VOICES (GUI-49): when a fighter's loudest trait crosses the
+   * PERSONALITY.label threshold, their bubbles speak in that voice for the
+   * marquee moments — big hits, crits, misses, evades, charges, retreats.
+   * Everyone else (and every other event) keeps the neutral pools. */
+  const TFP = {
+    Ferocious: {
+      bigHit: ["BLOOD! Give me MORE!", "I'll tear you APART!"],
+      crit: ["RIP AND RUIN!", "Your guard means NOTHING to me!"],
+      miss: ["ARGH — stand STILL!", "You can't dodge me forever!"],
+      evade: ["Pathetic swing!", "Is that ALL your arm can do?"],
+      charge: ["RAAAH — no more distance!", "I'm going to EAT you alive!"],
+      retreat: ["Back — but only to charge again!", "Range won't save you from me!"],
+    },
+    Fearless: {
+      bigHit: ["Ha! Felt that, did you?", "Come on — hit me BACK!"],
+      crit: ["Straight through — no fear, no hesitation!", "THAT is how the brave strike!"],
+      miss: ["A flinch? Never. Again!", "Missed — and still not afraid."],
+      evade: ["You'll have to do better than that!", "I don't blink."],
+      charge: ["Face me!", "No shield, no fear — HERE I come!"],
+      retreat: ["Range favors the bold too.", "I retreat from nothing — I reposition."],
+    },
+    Ambitious: {
+      bigHit: ["One step closer to the throne.", "Remember this blow when they crown me."],
+      crit: ["This is what DESTINY feels like!", "Carve my name into the ladder!"],
+      miss: ["A setback. Nothing more.", "The climb allows a stumble."],
+      evade: ["You won't stall my rise.", "Destiny doesn't stand where you swing."],
+      charge: ["History doesn't wait!", "My legend starts at arm's length!"],
+      retreat: ["A tactical step — the crown is patient.", "I'll win this from wherever I please."],
+    },
+    Cunning: {
+      bigHit: ["You never saw the real strike coming.", "Exactly where I wanted you."],
+      crit: ["The trap SPRINGS!", "Check… and mate."],
+      miss: ["Interesting… noted.", "That miss? Bait."],
+      evade: ["I read you three moves ago.", "Swing at where I was, by all means."],
+      charge: ["Closer… just as planned.", "Let's change the game, shall we?"],
+      retreat: ["Chase me. Go on.", "Every step back is a thread in the web."],
+    },
+    Disciplined: {
+      bigHit: ["Form. Timing. Result.", "Practiced ten thousand times. Felt once."],
+      crit: ["Textbook. Devastating.", "Precision is mercy — this ends quicker."],
+      miss: ["Recalibrating.", "Error logged. It won't repeat."],
+      evade: ["Sloppy. I am not.", "Your footwork betrayed that a mile away."],
+      charge: ["Advance. Engage.", "Closing distance — by the book."],
+      retreat: ["Withdraw. Reset. Continue.", "Distance is a tool like any other."],
+    },
+    Cruel: {
+      bigHit: ["Scream for them, won't you?", "I felt that one from HERE. Delicious."],
+      crit: ["Oh, that one will SCAR.", "Beg. It won't help — but do beg."],
+      miss: ["Tsk. I wanted that to HURT.", "Hold still — this is meant to be slow."],
+      evade: ["Wriggle, little worm.", "Prolong it. I don't mind at all."],
+      charge: ["Let me hurt you properly.", "Close enough to hear you whimper."],
+      retreat: ["I'll bleed you from afar.", "Die slowly at range, then."],
+    },
+    Steadfast: {
+      bigHit: ["For the Stronghold!", "This arm has never once failed them."],
+      crit: ["The wall strikes BACK!", "Stand or fall — I know which I do."],
+      miss: ["Steady. Again.", "A miss bends nothing in me."],
+      evade: ["I do not break.", "You'll tire before I yield."],
+      charge: ["Shoulder to shoulder — forward!", "I hold the line wherever it stands."],
+      retreat: ["The line holds, even from range.", "Ground given, never lost."],
+    },
+    Grasping: {
+      bigHit: ["That's coin in MY purse!", "Every drop of that is owed to me!"],
+      crit: ["JACKPOT!", "I'll be counting THIS one for weeks!"],
+      miss: ["Wasted effort — costly.", "That swing came out of MY winnings."],
+      evade: ["You'll not take what's mine!", "Not one copper of damage, thank you."],
+      charge: ["Time is money — let's finish this!", "The purse is close — so am I!"],
+      retreat: ["I protect my investment.", "Risk management, friend."],
+    },
+  };
+
   // One chat line: {side: "L"|"R"|"N"|null, name, text} — null = skip.
   function chatFor(ev, i, ctx) {
     const seed = i * 131 + (ev.roll || 0) * 17 + (ev.dmg || 0) * 5;
@@ -553,23 +624,25 @@
     const strikeS = ev.strikes > 1 && ev.strike ? `<span class="sys">${["", "1st", "2nd", "3rd", "4th"][ev.strike] || ev.strike + "th"}:</span> ` : "";
     const w = (name, kind) => ctx.weaponOf(name, kind);
     // `act` = the plain ACTION LABEL above the quip — what they actually did (GUI-64).
-    const F = (name, text, act) => ({ side: name === ctx.youName ? "L" : "R", name, text, act: act || "" });
+    const F = (name, text, act) => ({ side: name === ctx.youName ? "L" : "R", name, text, act: act || "", temper: ctx.temperOf(name) });
+    const TV = (name, key) => { const t = TFP[ctx.temperOf(name)]; return t && t[key] ? pickVar(t[key], seed) : null; };
     const N = (text) => ({ side: "N", name: "", text });
     switch (ev.t) {
       case "round":
         if (ev.n === 1) return null;
         return { side: "DIV", name: "", text: `— Round ${ev.n} — ${esc(ctx.youName)} <b>${ev.youHp}</b>/${ev.youMaxHp}${ev.youMaxMp > 0 ? ` · ${ev.youMp}MP` : ""} ⚔ ${esc(ctx.foeName)} <b>${ev.foeHp}</b>/${ev.foeMaxHp}${ev.foeMaxMp > 0 ? ` · ${ev.foeMp}MP` : ""}` };
       case "initiative": return N(`⚡ ${esc(ev.first)} moves first${ev.youRoll != null ? ` <span class="roll">[${Math.max(ev.youRoll, ev.foeRoll)} vs ${Math.min(ev.youRoll, ev.foeRoll)}]</span>` : ""}`);
-      case "move": return F(ev.who, V(ev.to === "melee" ? FP.charge : FP.retreat), ev.to === "melee" ? "🏃 Charges to melee" : "↩️ Falls back to range");
+      case "move": return F(ev.who, TV(ev.who, ev.to === "melee" ? "charge" : "retreat") || V(ev.to === "melee" ? FP.charge : FP.retreat), ev.to === "melee" ? "🏃 Charges to melee" : "↩️ Falls back to range");
       case "hit": {
         const tier = dmgTier(ev.dmg);
         const weapon = ev.arrow && ARROWS[ev.arrow] ? ARROWS[ev.arrow].noun : w(ev.who, ev.kind);
-        const base = ev.crit ? V(FP.crit) : fill(V((ev.kind === "melee" ? FP.meleeHit : FP.missileHit)[tier]), { w: weapon });
+        const base = ev.crit ? (TV(ev.who, "crit") || V(FP.crit))
+          : (tier >= 2 && TV(ev.who, "bigHit")) || fill(V((ev.kind === "melee" ? FP.meleeHit : FP.missileHit)[tier]), { w: weapon });
         return F(ev.who, base + dmgS + (ev.crit ? ' <span class="crit">CRIT!</span>' : "") + (ev.dual ? ' <span class="dual-tag">⚔️⚔️ dual</span>' : "") + rollS + shieldNote(ev) + armorNote(ev),
           strikeS + (ev.kind === "melee" ? `⚔️ Strikes — ${weapon}` : `🏹 Shoots — ${weapon}`) + " · HIT");
       }
-      case "miss": return F(ev.who, V(FP.miss) + rollS, strikeS + (ev.kind === "melee" ? `⚔️ Strikes — ${w(ev.who, ev.kind)}` : `🏹 Shoots — ${w(ev.who, ev.kind)}`) + " · MISS");
-      case "evade": case "dodge": return F(ev.who, V(FP.evade) + (ev.roll != null ? ` <span class="roll">[d20: ${ev.roll}]</span>` : ""), "💨 Evades the attack");
+      case "miss": return F(ev.who, (TV(ev.who, "miss") || V(FP.miss)) + rollS, strikeS + (ev.kind === "melee" ? `⚔️ Strikes — ${w(ev.who, ev.kind)}` : `🏹 Shoots — ${w(ev.who, ev.kind)}`) + " · MISS");
+      case "evade": case "dodge": return F(ev.who, (TV(ev.who, "evade") || V(FP.evade)) + (ev.roll != null ? ` <span class="roll">[d20: ${ev.roll}]</span>` : ""), "💨 Evades the attack");
       case "critmiss": return F(ev.who, V(FP.critmiss) + rollS, strikeS + "💫 FUMBLES — stunned next round");
       case "recover": return F(ev.who, V(FP.recover), "😵 Stunned — turn lost");
       case "hide": return F(ev.who, V(ev.success ? FP.hideOk : FP.hideFail) + rollS, ev.success ? "🌑 Hides in shadows" : "🌑 Tries to hide · FAILS");
@@ -650,7 +723,7 @@
     const kill = opts.kill ? `<span class="crit">☠️ THE KILLING BLOW</span><br>` : "";
     return `<div class="chat-row ${side}${a}">
       <div class="chat-ava">${opts.emojiOf(c.name)}</div>
-      <div class="bubble ${side === "right" ? "me" : "them"}">${kill}<span class="chat-name plink" data-act="profile" data-arg="${esc(c.name)}">${esc(c.name)}</span>${c.act ? `<span class="chat-act">${c.act}</span>` : ""}${c.text}</div>
+      <div class="bubble ${side === "right" ? "me" : "them"}">${kill}<span class="chat-name plink" data-act="profile" data-arg="${esc(c.name)}">${esc(c.name)}${c.temper ? ` <span class="sys">· ${c.temper}</span>` : ""}</span>${c.act ? `<span class="chat-act">${c.act}</span>` : ""}${c.text}</div>
     </div>`;
   }
 
@@ -1158,6 +1231,8 @@
         const w = WEAPONS[kind === "melee" ? f.meleeWeapon : f.missileWeapon];
         return w ? w.noun : "attack";
       },
+      // GUI-49: the loudest trait names the voice ("" = even-tempered/neutral).
+      temperOf: (n) => { const f = fighterOf(n); return f && f.personality ? G.data.PERSONALITY.label(f.personality) : ""; },
     };
   }
   // The last damaging event of a finished fight — narrated as the "final blow".

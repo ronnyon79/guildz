@@ -603,6 +603,17 @@ cap (3) & per-bout replenish (50%)**, servant **upkeep/housing** cost, and **ser
   dead in the 5–6 design band; challenge cadence unchanged (~52%). test_npcthrone → 21;
   326 green / 18 suites.
 
+- **GUI-49 Temperament voices — v0.31.0.** The chat bubbles now speak in CHARACTER: when a
+  fighter s loudest trait crosses the label threshold (≥0.7), their marquee moments — big
+  hits (tier≥2), crits, misses, evades, charges, retreats — draw from one of 8 temperament
+  voice pools (96 new lines): Ferocious ("BLOOD! Give me MORE!"), Cunning ("The trap
+  SPRINGS!"), Disciplined ("Form. Timing. Result."), Cruel, Fearless, Ambitious, Steadfast
+  ("For the Stronghold!"), Grasping ("JACKPOT!"). Everyone else — and every other event —
+  keeps the neutral pools. The bubble name line carries the cue ("Vex · Ferocious"),
+  matching the profile card. battleCtx.temperOf() feeds live fights, parchments and the
+  theater through the one shared renderer. NEW SUITE test_voices (11, synthetic verbatim
+  logs pin each pool provably) → 337 green / 19 suites.
+
 ### Build order (when the user says go)
 1. **Champion summit** — NPC population + Popularity ladder + Lord boss fight (finish
    the Rise). Small, self-contained, reuses combat entirely.
