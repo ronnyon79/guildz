@@ -109,6 +109,8 @@
     // multiples of 5 so they map cleanly onto the d20.
     if (char.toHitBonus) f.toHit += char.toHitBonus;
     if (char.toCritBonus) f.toCrit += char.toCritBonus;
+    // Arcane mastery: spell damage grows with the career (data-driven, GUI-37).
+    if (c.spellPowerPer) f.spellPower += Math.floor(f.wins / c.spellPowerPer);
     // Win-based class perks (extra attacks, improved crit). Later entries win ties.
     for (const perk of c.perks || []) {
       if (f.wins >= perk.at) {

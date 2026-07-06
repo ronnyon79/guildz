@@ -397,6 +397,27 @@ cap (3) & per-bout replenish (50%)**, servant **upkeep/housing** cost, and **ser
   **3 chosen** (lived-in, sub-second). seasons=0 supported (pristine worlds for tests).
   12 headless tests + 240 regressions.
 
+- **GUI-30…37 The sim batch — v0.15.0** ✅ Seven studies, four new sim tools, two tuning
+  changes. **GUI-31 (reign length)**: 40 seasons × 6 worlds/config — the DESIGNED gauntlet
+  (cap 3, 50% replenish) hits **mean 5.2 seasons** (target ≥5–6) ✓; median 2 (fresh Lords
+  with empty households are fragile BY DESIGN), dynasties run to 30 (old-age capped);
+  replenish direction correct (75% → 4.0). KEEP cap 3 / 50%. **GUI-37 (Mage)**: equal-wins
+  with personalities: Mage 42.4% (35% mid) → APPLIED data-driven arcane mastery
+  (mage.spellPowerPer = 3 → +1 spell dmg per 3 wins, engine perk in makeFighter) → 46.2%
+  overall / 42% mid. Remaining outlier: Thief@30 = 66% (dual-wield + fire-arrow era —
+  user-tuned, left for a future call). **GUI-32 (spectacle)**: personalities ran the old
+  curve hot (80% at 3–4★) → RECALIBRATED thresholds ([[2.65,5],[1.5,4],[0.7,3],[0.4,2]])
+  over 2.4k personality-era bouts → 11/22/38/21/8 bell ✓. **GUI-36 (economy)**: tensions
+  verified — generous reigns BANKRUPT (−764/day), showman modest (+206); FOUND a degenerate
+  greedy optimum (+813/day: the tax base ignored the poverty it caused) → tax base now
+  scales with gearScale (→ +710; the full counter — purses↔population churn — awaits the
+  parked churn/guild systems, noted). **GUI-30 (fame race)**: 4 distinct season-toppers in
+  6 seasons — competitive, constants KEPT. **GUI-34 (population)**: 24/40/60 sweep — 40
+  confirmed (35ms/day, best ★; 60 = 75ms/day headroom exists). **GUI-35 (aging)**: same-wins
+  fighter vs prime twin: 28% @40, 13% @45, 4% @50 — steep but exactly the designed rotation
+  (and GUI-31 hits target WITH it); softer 2%/yr noted as the fallback knob. Tools:
+  sim_reign / sim_balance2 / sim_economy / sim_aging. 251 regressions green.
+
 ### Build order (when the user says go)
 1. **Champion summit** — NPC population + Popularity ladder + Lord boss fight (finish
    the Rise). Small, self-contained, reuses combat entirely.

@@ -15,9 +15,10 @@
 
   const WEIGHTS = { crit: 3, hugeBlow: 3, evade: 2, fumble: 1, cast: 1, proc: 1, shatter: 1 };
   const BONUS = { comeback: 5, nailBiter: 4, rout: 4 };
-  // Density → stars thresholds (calibrated over 2.4k sim bouts to a bell around
-  // 3★: ~10/20/40/22/8%. Tune via GUI-32.)
-  const STARS = [[2.2, 5], [1.25, 4], [0.65, 3], [0.35, 2]];
+  // Density → stars thresholds. RECALIBRATED for the personality era (GUI-32):
+  // temperamental fighters brawl harder, so the bar rose — 2.4k sim bouts with
+  // personalities land a bell around 3★ (~10/24/38/20/8%).
+  const STARS = [[2.65, 5], [1.5, 4], [0.7, 3], [0.4, 2]];
 
   /* Rate a finished battle state. `winnerSide` ("you"|"foe") is required when
    * the fight ended on the round cap; otherwise derived from the phase. */

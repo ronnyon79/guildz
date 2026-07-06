@@ -48,6 +48,9 @@
       melee: "1d4", missile: "1d4",
       startEq: { melee: "staff", missile: "sling" },
       caster: true,
+      // GUI-37 mid-game buff (sim-tuned): +1 spell damage per 3 wins — arcane
+      // mastery grows with the career. Lifted the equal-wins hole 35% → 42%.
+      spellPowerPer: 3,
       spells: [
         // Magic Missile always lands (no To Cast roll). The rest use To Cast.
         { id: "missile", name: "Magic Missile", emoji: "✨", mp: 5, dmg: "1d8", autoHit: true, desc: "Auto-hits for 1d8. 5 MP." },
