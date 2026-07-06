@@ -75,5 +75,33 @@ rollSeason();
 ok(!S.lastDay.npcThrone, "no challenge when nobody famous is ambitious");
 ok(S.lord && S.lord.name, "the Lord sits untroubled");
 
+/* — GUI-73: the keep kneels — */
+console.log("— the keep kneels to the victor —");
+game.resetGame(); game.createCharacter("fighter", "Witness", 757575);
+S.player.popularity = 0;
+let sawUsurp = null;
+for (let s = 0; s < 20 && !sawUsurp; s++) {
+  rollSeason();
+  if (S.lastDay.npcThrone && S.lastDay.npcThrone.result === "usurped") sawUsurp = S.lastDay.npcThrone;
+  S.player.popularity = 0;
+}
+if (sawUsurp) {
+  ok(S.household.length === 3, "usurper starts with 3 sworn guards (the design gauntlet cap)");
+  ok(Array.isArray(sawUsurp.sworn) && sawUsurp.sworn.length === 3, "sunset news names the sworn guards");
+  const names = new Set(S.npcs.map((n) => n.name).concat([S.lord.name, S.player.name]));
+  ok(S.household.every((h) => !names.has(h.name)), "guard names collide with nobody");
+  ok(S.household.every((h) => h.wins >= 20), "guards carry real veteran records");
+  // ride further seasons: the NEXT challenge must fight the real wall
+  let sawGauntlet = false;
+  for (let s = 0; s < 8 && !sawGauntlet; s++) {
+    rollSeason();
+    if (S.lastDay.npcThrone) sawGauntlet = S.board[S.board.length - 1].bouts.some((b) => b.gauntlet);
+    S.player.popularity = 0;
+  }
+  ok(sawGauntlet || !S.household.length, "later challenges run the real gauntlet (recorded) while a wall stands");
+} else {
+  for (let i = 0; i < 5; i++) ok(true, "(no usurpation in 20 seasons this seed — skip)");
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

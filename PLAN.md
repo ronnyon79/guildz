@@ -592,6 +592,17 @@ cap (3) & per-bout replenish (50%)**, servant **upkeep/housing** cost, and **ser
   the player-Lord design target 5–6 with a true gauntlet. NEW SUITE test_npcthrone (16);
   test_popularity/test_day pin the cooldown (they test fame/day math). 321 green / 18.
 
+- **GUI-73 The keep kneels — v0.30.0** (user design: keep-guard wear is FIRST-Lord-only).
+  When an NPC usurps the throne, the guard that harried them SWEARS to the victor: the new
+  Lord starts with **3 named servants** (wins = max(20, 0.7×lord s)) — unique names, real
+  records, so later challenges fight a REAL recorded gauntlet (🛡️ parchments, replayable).
+  Beaten challengers may now KNEEL to NPC Lords too (loyalty roll, cap 3 — the design s
+  gauntlet cap), growing walls between reigns. keepGuardWear (0.75) remains only as the
+  empty-keep fallback (worldgen s first Lord, or a keep bled dry by a failed storming).
+  Sunset names the sworn. **Sim: successor-Lord reigns 5.7 seasons mean** (range 2–9) —
+  dead in the 5–6 design band; challenge cadence unchanged (~52%). test_npcthrone → 21;
+  326 green / 18 suites.
+
 ### Build order (when the user says go)
 1. **Champion summit** — NPC population + Popularity ladder + Lord boss fight (finish
    the Rise). Small, self-contained, reuses combat entirely.

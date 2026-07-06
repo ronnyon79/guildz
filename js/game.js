@@ -596,6 +596,17 @@
               state.lord = { name: npc.name, classId: npc.classId, wins: npc.wins, reignSeasons: 0, age: npc.age, personality: npc.personality };
               state.npcs = state.npcs.filter((x) => x.id !== npc.id);
               arriveHopefuls(1, "t");
+              // The keep KNEELS to the victor (GUI-73, user design): the guard
+              // that harried the way in swears on as NAMED servants — every
+              // Lord after the first defends with a real, recordable wall.
+              const guards = G.roster.generateRoster(((state.player.worldSeed || 1) ^ (state.clock.season * 7919) ^ 0xBEEF) >>> 0, state.player.name, 3, "g" + state.clock.season + "_");
+              const taken = new Set(state.npcs.map((x) => x.name).concat([state.lord.name, state.player.name], (state.departed || []).map((x) => x.name)));
+              state.household = guards.map((f) => {
+                while (taken.has(f.name)) f.name += " II";
+                taken.add(f.name);
+                return { id: f.id, name: f.name, classId: f.classId, wins: Math.max(20, Math.round(npc.wins * 0.7)), age: AGE.start + 8, personality: f.personality };
+              });
+              news.sworn = state.household.map((h) => h.name);
             } else {
               news.result = "held"; news.by = state.lord.name; news.fate = challengerFate(npc, seed);
             }
@@ -805,7 +816,9 @@
     const P = npc.personality || {};
     state.npcs = state.npcs.filter((x) => x.id !== npc.id); // leaves the roster either way
     const kneel = 0.2 + 0.6 * (P.loy != null ? P.loy : 0.5); // loyalty bends the knee
-    if (r < kneel && state.player.role === "lord" && state.household.length < barracksSlots()) {
+    const room = state.player.role === "lord" ? state.household.length < barracksSlots()
+      : !!state.lord && state.household.length < 3; // NPC keeps hold 3 (GUI-73)
+    if (r < kneel && room) {
       state.household.push({ id: npc.id, name: npc.name, classId: npc.classId, wins: npc.wins, age: npc.age, personality: npc.personality });
       return "serve"; // kneels — your wall grows
     }
