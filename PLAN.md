@@ -628,6 +628,11 @@ cap (3) & per-bout replenish (50%)**, servant **upkeep/housing** cost, and **ser
   ⚠️, your earned challenge right, and season fame leaders ⭐. Surfaced as the 📯 town crier
   card on home (last 6, newest first, date-stamped D·S). NEW SUITE test_crier (7) → 350.
 
+- **GUI-50 Today s field — v0.34.0.** The home screen now shows WHO shares your win-band
+  before you commit: 🌅 card with up to 8 rivals (class emoji, tappable name → profile with
+  scout intel, wins, age 🍂, temperament), rival count, "…and N more", and the 🕊️ walkover
+  callout for empty bands. Lords see no field — they preside. test_crier → 11 → 354.
+
 ### Build order (when the user says go)
 1. **Champion summit** — NPC population + Popularity ladder + Lord boss fight (finish
    the Rise). Small, self-contained, reuses combat entirely.

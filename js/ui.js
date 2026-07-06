@@ -150,6 +150,22 @@
     </div>`;
   }
 
+  /* 🌅 Today's field (GUI-50): who shares your win-band this morning — so
+   * "enter or let the moment pass" is an informed choice. Names tap to the
+   * profile card (with its scout intel). Lords see no field; they preside. */
+  function fieldBlock(s) {
+    if (s.player.role === "lord") return "";
+    const band = G.tournament.bandOf(s.player.wins);
+    const rivals = s.npcs.filter((n) => G.tournament.bandOf(n.wins) === band);
+    if (!rivals.length) return `<div class="card"><div class="card-title" style="font-size:14px">🌅 Today's field — Band ${G.tournament.bandLabel(band)}</div>
+      <div class="card-sub" style="margin-top:6px">🕊️ No rivals share your band this morning — enter and the day is a walkover.</div></div>`;
+    const rows = rivals.slice(0, 8).map((n) => {
+      const temper = n.personality ? G.data.PERSONALITY.label(n.personality) : "";
+      return `<div class="card-sub crier-row">${CLASSES[n.classId].emoji} ${plink(s, n.name)} · ${n.wins}w · age ${n.age}${G.data.AGE.mult(n.age) < 1 ? " 🍂" : ""}${temper ? ` · <b>${temper}</b>` : ""}</div>`;
+    }).join("");
+    return `<div class="card"><div class="card-title" style="font-size:14px">🌅 Today's field — Band ${G.tournament.bandLabel(band)} · ${rivals.length} rival${rivals.length === 1 ? "" : "s"}</div>${rows}${rivals.length > 8 ? `<div class="card-sub crier-row sys">…and ${rivals.length - 8} more</div>` : ""}</div>`;
+  }
+
   // 📯 The town crier (GUI-53): the world's recent news, newest first.
   function crierBlock(s) {
     if (!s.news || !s.news.length) return "";
@@ -170,6 +186,7 @@
         ${classStats(p.classId)}
       </div>
       ${lordBlock(s)}
+      ${fieldBlock(s)}
       ${crierBlock(s)}
       ${p.role === "lord"
         ? `${decreesBlock(s)}
