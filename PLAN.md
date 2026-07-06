@@ -456,6 +456,12 @@ cap (3) & per-bout replenish (50%)**, servant **upkeep/housing** cost, and **ser
   user-select:none also froze the parchments; the Scribe writes to be READ — .log prose
   (live battle + parchments) is now selectable/quotable; buttons and chrome stay guarded.
 
+- **GUI-57 Flurries read as one action — v0.17.2** (user confusion reading a report: a
+  fighter "dodged but also got damaged" — it was TWO strikes of a multi-attack rendered as
+  unrelated sentences). Engine tags every blow of a flurry (strike/strikes on hit/miss/
+  critmiss/evade/dodge); the Scribe labels them **“1st strike: …grazes for 1 · 2nd strike:
+  …turned aside”**. Single attacks stay unlabelled. 276 regressions green.
+
 ### Build order (when the user says go)
 1. **Champion summit** — NPC population + Popularity ladder + Lord boss fight (finish
    the Rise). Small, self-contained, reuses combat entirely.
