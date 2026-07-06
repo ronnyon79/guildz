@@ -76,7 +76,7 @@ ok(S.lastDay.seasonEnd && S.lastDay.seasonEnd.season === 1, "sunset surfaced the
 const gains = {};
 for (const w of S.lastDay.board) {
   const row = game.fameLadder().find((r) => r.name === w.name);
-  gains[row.id] = w.popGain;
+  if (row) gains[row.id] = w.popGain; // a departed idle veteran (GUI-60) takes their fame with them
 }
 const allIds = ["player", ...S.npcs.map((n) => n.id)];
 ok(allIds.every((id) => popOf(id) === Math.round(((preRoll[id] || 0) + (gains[id] || 0)) / 2)),

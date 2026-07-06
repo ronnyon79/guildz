@@ -186,7 +186,11 @@
     let season = "";
     if (lastDay.seasonEnd) {
       const t = lastDay.seasonEnd.top[0];
-      season = `<div class="levelup">🍂 Season ${lastDay.seasonEnd.season} ends! ${t ? `${t.isPlayer ? "<b>You</b>" : `<b>${esc(t.name)}</b>`} top${t.isPlayer ? "" : "s"} the fame ladder with ⭐ ${t.popularity}.` : ""} All fame fades by half as the new season dawns.${lastDay.mayChallenge ? " <b>👑 The right to challenge the Lord is yours — it awaits you at home.</b>" : ""}</div>`;
+      // Idle veterans riding out (GUI-60) — announced with the season's turn.
+      const gone = (lastDay.departures || []).map((d) => d.reason === "found"
+        ? `🐎 <b>${esc(d.name)}</b> (${d.wins}w), with no rival left worth fighting, rides out to raise a banner of their own.`
+        : `🌄 <b>${esc(d.name)}</b> (${d.wins}w) leaves the Stronghold to seek adventures beyond the gates.`).join("<br>");
+      season = `<div class="levelup">🍂 Season ${lastDay.seasonEnd.season} ends! ${t ? `${t.isPlayer ? "<b>You</b>" : `<b>${esc(t.name)}</b>`} top${t.isPlayer ? "" : "s"} the fame ladder with ⭐ ${t.popularity}.` : ""} All fame fades by half as the new season dawns.${lastDay.mayChallenge ? " <b>👑 The right to challenge the Lord is yours — it awaits you at home.</b>" : ""}${gone ? `<br>${gone}` : ""}</div>`;
     }
     return `<div class="screen-title">🌇 Sunset — champions of the day</div>${rows}${season}`;
   }

@@ -107,7 +107,7 @@
   function save() {
     if (!state.worldId) return;
     try {
-      const blob = { player: state.player, npcs: state.npcs, lord: state.lord, stronghold: state.stronghold, household: state.household, defense: state.defense, board: state.board, clock: state.clock, lastSeason: state.lastSeason, challengeOpen: state.challengeOpen, seedCounter: state.seedCounter };
+      const blob = { player: state.player, npcs: state.npcs, lord: state.lord, stronghold: state.stronghold, household: state.household, defense: state.defense, board: state.board, departed: state.departed, clock: state.clock, lastSeason: state.lastSeason, challengeOpen: state.challengeOpen, seedCounter: state.seedCounter };
       G.store.set(worldKey(state.worldId), JSON.stringify(blob));
       const ix = readIndex();
       const i = ix.worlds.findIndex((w) => w.id === state.worldId);
@@ -173,6 +173,7 @@
       state.stronghold = data.stronghold || { ...ECONOMY.start };
       if (!state.stronghold.buildings) state.stronghold.buildings = { seating: 0, armory: 0, infirmary: 0, barracks: 0, yard: 0 };
       state.household = Array.isArray(data.household) ? data.household : [];
+      state.departed = Array.isArray(data.departed) ? data.departed : [];
       state.defense = data.defense || null;
       state.board = Array.isArray(data.board) ? data.board : [];
       state.screen = "home";
@@ -467,11 +468,10 @@
       for (const n of state.npcs) n.age = (n.age || AGE.start) + 1;
       for (const h of state.household) h.age = (h.age || AGE.start) + 1;
       if (state.lord) state.lord.age = (state.lord.age || 40) + 1;
-      // Old residents bow out; young hopefuls take their beds (churn's first cycle).
-      const retiring = state.npcs.filter((n) => n.age >= AGE.retire + (hash(n.id) % 12));
-      if (retiring.length) {
-        state.npcs = state.npcs.filter((n) => !retiring.includes(n));
-        const fresh = G.roster.generateRoster(((state.player.worldSeed || 1) ^ (state.clock.season * 2654435761)) >>> 0, state.player.name, retiring.length, "a" + state.clock.season + "_");
+      // Fresh hopefuls arrive to fill emptied beds (shared by churn + departures).
+      const arriveHopefuls = (count, prefix) => {
+        if (count <= 0) return;
+        const fresh = G.roster.generateRoster(((state.player.worldSeed || 1) ^ (state.clock.season * 2654435761) ^ hash(prefix)) >>> 0, state.player.name, count, prefix + state.clock.season + "_");
         const taken = new Set(state.npcs.map((n) => n.name).concat(state.household.map((h) => h.name), state.lord ? [state.lord.name] : []));
         for (const f of fresh) {
           f.wins = Math.min(f.wins, 4); f.age = AGE.start + (hash(f.id) % 4);
@@ -479,7 +479,45 @@
           taken.add(f.name);
           state.npcs.push(f);
         }
+      };
+      // Old residents bow out; young hopefuls take their beds (churn's first cycle).
+      const retiring = state.npcs.filter((n) => n.age >= AGE.retire + (hash(n.id) % 12));
+      if (retiring.length) {
+        state.npcs = state.npcs.filter((n) => !retiring.includes(n));
+        arriveHopefuls(retiring.length, "a");
         state.lastDay.retired = retiring.map((r) => r.name);
+      }
+      /* Idle veterans move on (GUI-60, user design): a resident who fought NO
+       * bouts all season — alone at the top, fame-locked out of the throne —
+       * decides by temperament: the AMBITIOUS ride out to FOUND their own hold
+       * (the founders' ledger seeds the multi-stronghold world, GUI-25), the
+       * RESTLESS leave for adventure, the steadfast linger another year. */
+      {
+        const closing = state.lastSeason.season;
+        let fought = null;
+        try {
+          fought = new Set();
+          for (const f of JSON.parse(G.store.get("guildz.facts." + state.worldId) || "[]")) {
+            if (f[0] === closing) { fought.add(f[3]); fought.add(f[4]); }
+          }
+        } catch (e) { fought = null; }
+        if (fought) {
+          const departures = [];
+          for (const n of state.npcs.slice()) {
+            if (n.wins < 25 || fought.has(n.name)) continue; // only idle VETERANS stagnate
+            const P = n.personality || {};
+            const reason = (P.amb != null ? P.amb : 0.5) >= 0.5 ? "found"
+              : (P.brv != null ? P.brv : 0.5) >= 0.4 ? "adventure" : null;
+            if (!reason) continue; // the steadfast wait for a worthy rival
+            departures.push({ name: n.name, classId: n.classId, wins: n.wins, age: n.age, reason, season: closing });
+            state.npcs = state.npcs.filter((x) => x.id !== n.id);
+          }
+          if (departures.length) {
+            state.departed = (state.departed || []).concat(departures).slice(-12); // the founders' ledger
+            state.lastDay.departures = departures;
+            arriveHopefuls(departures.length, "d");
+          }
+        }
       }
       if (state.player.role === "lord") {
         // An undefeated Lord dies ON the throne — the rarest of endings.

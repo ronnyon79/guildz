@@ -134,7 +134,7 @@ if (S.screen === "bracket") {
   const realWins = S.board[S.board.length - 1].bouts.slice(boutsBefore).filter((b) => (b.winner === b.a.name ? b.a.id : b.b.id) === opp.id).length;
   ok(opp.wins === oppWins + realWins, `walkover grants NO career win (delta ${opp.wins - oppWins} = ${realWins} real bouts won)`);
   ok(S.lastDay && !S.lastDay.champion, "forfeited day never crowns the player");
-  ok(S.npcs.reduce((s, n) => s + n.wins, 0) >= totalBefore, "other bouts still resolved");
+  ok(S.board[S.board.length - 1].bouts.length > boutsBefore, "other bouts still resolved (recorded by the Scribe)");
 } else { game.returnHome(); ok(true, "(walkover day — forfeit path skipped)"); }
 
 console.log(`\n${pass} passed, ${fail} failed`);
