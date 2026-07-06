@@ -79,7 +79,7 @@
     const roleBadge = (w) => (w.role === "lord" ? "👑 Lord" : w.role === "servant" ? "🙇 Servant" : "⚔️ Champion");
     const cards = worlds.map((w) => `<div class="card class-card" data-act="load-world" data-arg="${w.id}">
       <div class="card-row"><div class="avatar">${CLASSES[w.classId] ? CLASSES[w.classId].emoji : "⚔️"}</div>
-        <div><div class="card-title">${esc(w.name)} <span class="pill">${roleBadge(w)}</span></div>
+        <div><div class="card-title">${esc(w.name)} <span class="pill">${roleBadge(w)}</span>${w.hold ? ` <span class="pill">🏰 ${esc(w.hold)}</span>` : ""}</div>
         <div class="card-sub">${CLASSES[w.classId] ? CLASSES[w.classId].name : ""} · ${w.wins} wins · Season ${w.season}, Day ${w.day}</div></div>
         <div class="spacer"></div>
         <button class="btn sm ghost" data-act="delete-world" data-arg="${w.id}">🗑</button></div></div>`).join("");
@@ -106,6 +106,8 @@
       <div class="screen-title">Choose your class</div>${cards}
       <div class="screen-title">Your name</div>
       <input class="name-input" id="hero-name" maxlength="14" placeholder="Hero" />
+      <div class="screen-title">Your Stronghold's name <span class="sys" style="text-transform:none">(leave blank and the Scribe picks one)</span></div>
+      <input class="name-input" id="hold-name" maxlength="18" placeholder="Ravenhold" />
       <button class="btn block lg" style="margin-top:14px" data-act="create">Begin</button>
     </div>`;
   }
@@ -129,7 +131,7 @@
         <div class="card-sub"><b>${esc(s.defense.name)}</b> ended the season as the people's favourite and demands your throne. The challenge cannot be refused — your household fights first, then it is you.</div>
         <button class="btn block lg" style="margin-top:10px" data-act="begin-defense">🛡️ Answer the challenge</button></div>` : "";
       return `<div class="card"><div class="card-row"><div class="avatar">👑</div>
-        <div><div class="card-title"><span class="you">${esc(p.name)}</span> <span class="pill on">Lord of the Stronghold</span></div>
+        <div><div class="card-title"><span class="you">${esc(p.name)}</span> <span class="pill on">👑 Lord of ${esc((s.stronghold || {}).name || "the Stronghold")}</span> <button class="btn sm ghost" data-act="rename-hold" title="Rename your hold">✏️</button></div>
         <div class="card-sub">${s.npcs.length} champions fight under your banner.</div>
         <div class="card-sub">🏚️ Household (${s.household.length}/${slots}): ${servants}</div></div></div></div>` + challenge;
     }
@@ -174,7 +176,7 @@
     if (!s.news || !s.news.length) return "";
     const rows = s.news.slice(-6).reverse().map((n) =>
       `<div class="card-sub crier-row">${n.icon} <span class="sys">D${n.d}·S${n.s}</span> ${n.text}</div>`).join("");
-    return `<div class="card"><div class="card-title" style="font-size:14px">📯 The town crier</div>${rows}</div>`;
+    return `<div class="card"><div class="card-title" style="font-size:14px">📯 The crier of ${esc((s.stronghold || {}).name || "the Stronghold")}</div>${rows}</div>`;
   }
 
   // 📒 The clerk's book (GUI-52): the last 7 presided days of treasury flow —
@@ -213,10 +215,10 @@
       ${decreesBlock(s)}
       ${buildingsBlock(s)}
       <button class="btn block lg gold" data-act="hold-games">👑 Hold the Day's Games</button>
-      <p class="card-sub center" style="margin-top:12px"><b>Day ${s.clock.day} · Season ${s.clock.season}</b></p>
+      <p class="card-sub center" style="margin-top:12px">🏰 <b>${esc((s.stronghold || {}).name || "The Stronghold")}</b> · Day ${s.clock.day} · Season ${s.clock.season}</p>
       <p class="card-sub center" style="margin-top:6px">Every band fights while you watch from the high seat. Champions earn fame in your arena — and one day, the boldest of them will come for your throne.</p>`
         : `<button class="btn block lg gold" data-act="enter-arena">🌅 Enter the Day's Tournament</button>
-      <p class="card-sub center" style="margin-top:12px"><b>Day ${s.clock.day} · Season ${s.clock.season}</b></p>
+      <p class="card-sub center" style="margin-top:12px">🏰 <b>${esc((s.stronghold || {}).name || "The Stronghold")}</b> · Day ${s.clock.day} · Season ${s.clock.season}</p>
       <p class="card-sub center" style="margin-top:6px">Each day is a knockout tournament in your win-band (${G.tournament.bandLabel(G.tournament.bandOf(p.wins))}). Every bout won earns gold and stats — lose once and your day ends, but you keep everything. Take the band to be <b>Champion of the Day</b> and earn ⭐ fame — the most famous at season's end may challenge the Lord.</p>`}
     </div>` + tabbar("home");
   }
@@ -1647,6 +1649,7 @@
       case "profile-close": ui.profileName = null; render(game.state); break;
       case "profile-noop": break;
       case "servant-move": { const [sid, dir] = arg.split(":"); game.moveServant(sid, parseInt(dir, 10)); break; }
+      case "rename-hold": { const n = typeof prompt === "function" ? prompt("Name your Stronghold:", (game.state.stronghold || {}).name || "") : null; if (n) game.renameHold(n); break; }
       case "board-day": ui.boardDay = parseInt(arg, 10); ui.boardBand = null; render(game.state); break;
       case "board-season": {
         const seasons = [...new Set(game.state.board.map((d) => d.season))].sort((a, b) => a - b);
@@ -1680,7 +1683,8 @@
       case "pick-class": ui.selectedClass = arg; render(game.state); break;
       case "create": {
         const name = (document.getElementById("hero-name") || {}).value || "";
-        game.createCharacter(ui.selectedClass, name.trim());
+        const holdEl = document.getElementById("hold-name");
+        game.createCharacter(ui.selectedClass, name.trim(), undefined, holdEl ? holdEl.value : "");
         break;
       }
       case "tab": game.go(arg); break;

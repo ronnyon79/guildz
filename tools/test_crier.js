@@ -26,7 +26,7 @@ ok(S.news.every((n) => n.d != null && n.s != null), "every entry is date-stamped
 
 console.log("— the crier cries on the home screen —");
 game.go("home"); G.ui.render(S);
-ok(app().includes("📯 The town crier"), "crier card renders at home");
+ok(app().includes("📯 The crier of"), "crier card renders at home");
 ok(app().includes(bold.name), "the challenger is named in the cry");
 
 console.log("— the ring persists and stays capped —");
@@ -81,6 +81,34 @@ console.log("— the clerk's book —");
   game.go("home"); G.ui.render(S);
   ok(app().includes("📒 The clerk's book"), "the book renders on the Lord's home");
   ok(/[+-]\d+g over 7 days/.test(app()), "the 7-day total is pinned in the title");
+}
+
+/* — GUI-54: name your Stronghold — */
+console.log("— naming the hold —");
+{
+  game.resetGame(); game.createCharacter("fighter", "Named One", 545454, "Wolfden Keep");
+  ok(S.stronghold.name === "Wolfden Keep", "a chosen name sticks");
+  game.go("home"); G.ui.render(S);
+  ok(app().includes("🏰 <b>Wolfden Keep</b>"), "the hold heads the home screen");
+  game.save();
+  ok(game.listWorlds().some((w) => w.hold === "Wolfden Keep"), "the world index carries the hold");
+  game.resetGame(); game.createCharacter("mage", "Blank Namer", 555555, "");
+  ok(/^[A-Z][a-z]+(hold|gate|spire|keep|reach|fen|garde|rock|watch|mere)$/.test(S.stronghold.name), `blank name → the Scribe picks one (${S.stronghold.name})`);
+  const first = S.stronghold.name;
+  game.resetGame(); game.createCharacter("mage", "Blank Namer", 555555, "");
+  ok(S.stronghold.name === first, "the default is seeded — same world seed, same name");
+  // renaming: lords only
+  game.renameHold("Sneaky Rename");
+  ok(S.stronghold.name === first, "a commoner cannot rename the hold");
+  S.player.role = "lord";
+  game.renameHold("New Banner");
+  ok(S.stronghold.name === "New Banner", "the Lord may rename");
+  // old saves get a backfilled name
+  const raw = JSON.parse(store["guildz.world." + S.worldId]);
+  delete raw.stronghold.name;
+  store["guildz.world." + S.worldId] = JSON.stringify(raw);
+  game.load(S.worldId);
+  ok(!!S.stronghold.name, "old saves are backfilled with a seeded name");
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);
