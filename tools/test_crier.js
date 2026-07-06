@@ -41,5 +41,24 @@ S.lastDay = { board: [] };
 game.enterArena(); game.retreat(); if (S.screen !== "home") game.returnHome();
 ok(S.news.length <= 20, `ring capped at 20 (${S.news.length})`);
 
+/* — GUI-50: today's field at sunrise — */
+console.log("— today's field —");
+{
+  game.go("home"); G.ui.render(S);
+  const band = G.tournament.bandOf(S.player.wins);
+  const rivals = S.npcs.filter((n) => G.tournament.bandOf(n.wins) === band);
+  ok(app().includes("🌅 Today's field"), "field card renders at home");
+  if (rivals.length) {
+    ok(app().includes(rivals[0].name), "rivals are listed by name");
+    ok(new RegExp(rivals.length + " rival").test(app()), "rival count shown");
+  } else {
+    ok(app().includes("walkover"), "empty band announces the walkover");
+    ok(true, "-");
+  }
+  const role = S.player.role; S.player.role = "lord"; G.ui.render(S);
+  ok(!app().includes("🌅 Today's field"), "Lords see no field — they preside");
+  S.player.role = role;
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
