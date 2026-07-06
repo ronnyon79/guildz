@@ -521,6 +521,11 @@ cap (3) & per-bout replenish (50%)**, servant **upkeep/housing** cost, and **ser
   pre-v0.17 logs (no round snapshots) hide the bars gracefully; clockwork tears down on
   leaving. Verified end-to-end via captured click handler. 283 regressions green.
 
+- **GUI-65 Constant page width — v0.23.1** (user: page + tab bar jumped entering/leaving
+  the Board). On desktop #app — and with it the top/tab bars — is ALWAYS 1100px; non-board
+  content centres at 660px reading width inside the constant frame; only the Board
+  (.board-screen) spans full width for its two columns. JS class toggle removed.
+
 ### Build order (when the user says go)
 1. **Champion summit** — NPC population + Popularity ladder + Lord boss fight (finish
    the Rise). Small, self-contained, reuses combat entirely.
