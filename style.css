@@ -254,3 +254,23 @@ button { font-family: inherit; }
 .chat-div { text-align: center; color: var(--muted); font-size: 11.5px; margin: 10px 0 4px; border-top: 1px solid var(--line); padding-top: 6px; user-select: text; -webkit-user-select: text; }
 .bubble .roll { color: #7d6f96; font-size: 10.5px; }
 .bubble .crit { color: var(--gold); font-weight: 700; }
+
+/* ---------- action labels + the replay theater (GUI-64) ---------- */
+.chat-act { display: block; font-size: 11px; font-weight: 700; color: var(--accent-2); margin-bottom: 2px; }
+.bubble.them .chat-act { color: #d98a9c; }
+.duel-head {
+  position: sticky; top: 0; z-index: 5;
+  display: flex; gap: 10px; align-items: center;
+  background: var(--bg-2, #1a1423); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 8px 10px; margin-bottom: 4px;
+}
+.duel-side { flex: 1; min-width: 0; }
+.duel-side.right { text-align: right; }
+.duel-name { font-size: 12.5px; font-weight: 700; margin-bottom: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.duel-vs { color: var(--muted); font-size: 14px; }
+.duel-head .bar { height: 10px; margin-top: 3px; }
+.duel-head .bar span { font-size: 9px; }
+.chat.stage {
+  height: 56vh; overflow: hidden;
+  display: flex; flex-direction: column; justify-content: flex-end;
+}
