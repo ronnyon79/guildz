@@ -614,6 +614,14 @@ cap (3) & per-bout replenish (50%)**, servant **upkeep/housing** cost, and **ser
   theater through the one shared renderer. NEW SUITE test_voices (11, synthetic verbatim
   logs pin each pool provably) → 337 green / 19 suites.
 
+- **GUI-48 Scribe headlines — v0.32.0.** Board parchment rows now carry the Scribe s angle
+  in gold italics: 🔥 comebacks / 💓 nail-biters / 🧹 routs (spectacle s own flags, now
+  flowing out of autoBout and stored per rec as \`hl\`, incl. player bouts via lastSpec),
+  plus derived angles at render: 😱 UPSETS (win-gap ≥15 falls to the underdog), ⚔️ wars of
+  attrition (≥9 rounds), 🌟 5★ classics, 🥱 1★ duds. Two seeded phrasings each; ordinary
+  bouts stay unadorned. Old recs (no hl) still get the derived angles. test_voices → 17;
+  343 green / 19 suites.
+
 ### Build order (when the user says go)
 1. **Champion summit** — NPC population + Popularity ladder + Lord boss fight (finish
    the Rise). Small, self-contained, reuses combat entirely.

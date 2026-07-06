@@ -307,3 +307,6 @@ button { font-family: inherit; }
 
 /* ---------- the scout's card (GUI-47) ---------- */
 .scout-card { border-color: var(--accent-2); background: #1d2430; }
+
+/* ---------- the Scribe's headlines (GUI-48) ---------- */
+.headline { color: var(--gold); font-weight: 700; font-style: italic; font-size: 12.5px; }

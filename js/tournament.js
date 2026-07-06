@@ -125,9 +125,11 @@
       : s.phase === "lost" ? false
       : s.you.hp / s.you.maxHp >= s.foe.hp / s.foe.maxHp;
     const winner = youWon ? (aIsYou ? a : b) : (aIsYou ? b : a);
-    // Crowd Rating (if the spectacle module is loaded).
-    const spec = G.spectacle ? G.spectacle.rate(s, youWon ? "you" : "foe").stars : null;
-    return { winnerId: winner.id, rounds: s.round, log: s.log, spec };
+    // Crowd Rating (if the spectacle module is loaded) + the Scribe's angle:
+    // what KIND of fight was it (GUI-48)? comeback > nail-biter > rout.
+    const r = G.spectacle ? G.spectacle.rate(s, youWon ? "you" : "foe") : null;
+    const hl = r ? (r.comeback ? "comeback" : r.nailBiter ? "nailbiter" : r.rout ? "rout" : null) : null;
+    return { winnerId: winner.id, rounds: s.round, log: s.log, spec: r ? r.stars : null, hl };
   }
 
   /* Sunset in one call: run every bracket to completion with autoBout.
