@@ -120,6 +120,9 @@ button { font-family: inherit; }
 .alloc-row { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
 
 .log { flex: 1; background: #15101d; border: 1px solid var(--line); border-radius: var(--radius); padding: 10px 12px; overflow-y: auto; font-size: 13.5px; line-height: 1.6; min-height: 90px; }
+/* The Scribe writes to be READ: prose is selectable/quotable (GUI-56) —
+   the global user-select:none only guards buttons and chrome. */
+.log, .log * { user-select: text; -webkit-user-select: text; cursor: auto; }
 .log p { margin: 0; opacity: 0; animation: fadein .25s forwards; }
 .log .you { color: var(--accent-2); }
 .log .foe { color: var(--danger); }
