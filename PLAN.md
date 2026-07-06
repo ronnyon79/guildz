@@ -640,6 +640,12 @@ cap (3) & per-bout replenish (50%)**, servant **upkeep/housing** cost, and **ser
   bouts). NPC Lords keep sorting strongest-first — their own decree. test_defense → 34
   (order honoured via lastDefense/defenseRun, swaps, bounds, role gate) → 359 green.
 
+- **GUI-52 The clerk s book — v0.36.0.** Lords see their last 7 presided days of treasury
+  flow on the dashboard: date-stamped rows with green/red magnitude bars, net per day, the
+  running balance after each, and the 7-day total pinned in the title — decree changes now
+  visibly move the needle within a week. Ring persisted (state.ledgerLog, reconciles to the
+  treasury). test_crier → 17 → 365 green.
+
 ### Build order (when the user says go)
 1. **Champion summit** — NPC population + Popularity ladder + Lord boss fight (finish
    the Rise). Small, self-contained, reuses combat entirely.

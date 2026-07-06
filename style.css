@@ -314,3 +314,11 @@ button { font-family: inherit; }
 /* ---------- the town crier (GUI-53) ---------- */
 .crier-row { margin-top: 6px; line-height: 1.5; }
 .crier-row .sys { font-size: 10.5px; }
+
+/* ---------- the clerk's book (GUI-52) ---------- */
+.ledger-row { display: flex; align-items: center; gap: 8px; margin-top: 5px; }
+.ledger-bar { display: inline-block; height: 8px; border-radius: 4px; }
+.ledger-bar.up { background: var(--hp); }
+.ledger-bar.down { background: var(--danger); }
+.ledger-row b.up { color: var(--hp); }
+.ledger-row b.down { color: var(--danger); }

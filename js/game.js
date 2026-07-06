@@ -27,6 +27,7 @@
     stronghold: null,    // treasury + the Lord's decrees (persisted)
     household: [],       // the Lord's servants — throne defenders (persisted)
     news: [],            // the town crier's ring — recent world events (persisted, GUI-53)
+    ledgerLog: [],       // the clerk's book — last 7 presided days (persisted, GUI-52)
     defense: null,       // a pending challenge {challengerId, name, season, fielded} (persisted)
     defenseRun: null,    // transient gauntlet progress {bouts, chHp, chMp}
     board: [],           // the Scribe's parchments: recent days' bouts (persisted ring)
@@ -108,7 +109,7 @@
   function save() {
     if (!state.worldId) return;
     try {
-      const blob = { player: state.player, npcs: state.npcs, lord: state.lord, stronghold: state.stronghold, household: state.household, defense: state.defense, board: state.board, departed: state.departed, clock: state.clock, lastSeason: state.lastSeason, challengeOpen: state.challengeOpen, throneRestUntil: state.throneRestUntil || 0, news: state.news, seedCounter: state.seedCounter };
+      const blob = { player: state.player, npcs: state.npcs, lord: state.lord, stronghold: state.stronghold, household: state.household, defense: state.defense, board: state.board, departed: state.departed, clock: state.clock, lastSeason: state.lastSeason, challengeOpen: state.challengeOpen, throneRestUntil: state.throneRestUntil || 0, news: state.news, ledgerLog: state.ledgerLog, seedCounter: state.seedCounter };
       G.store.set(worldKey(state.worldId), JSON.stringify(blob));
       const ix = readIndex();
       const i = ix.worlds.findIndex((w) => w.id === state.worldId);
@@ -172,6 +173,7 @@
       state.challengeOpen = !!data.challengeOpen;
       state.throneRestUntil = data.throneRestUntil || 0;
       state.news = Array.isArray(data.news) ? data.news : [];
+      state.ledgerLog = Array.isArray(data.ledgerLog) ? data.ledgerLog : [];
       // Migrate saves created before the economy existed.
       state.stronghold = data.stronghold || { ...ECONOMY.start };
       if (!state.stronghold.buildings) state.stronghold.buildings = { seating: 0, armory: 0, infirmary: 0, barracks: 0, yard: 0 };
@@ -230,6 +232,7 @@
     state.challengeOpen = false;
     state.throneRestUntil = 0;
     state.news = [];
+    state.ledgerLog = [];
     state.lastThrone = null;
     state.screen = "home";
     save(); emit();

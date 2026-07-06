@@ -60,5 +60,28 @@ console.log("— today's field —");
   S.player.role = role;
 }
 
+/* — GUI-52: the clerk's book — */
+console.log("— the clerk's book —");
+{
+  game.resetGame(); game.createCharacter("fighter", "Ledger Lord", 525252);
+  S.player.role = "lord"; S.lord = null; S.player.crownedSeason = S.clock.season;
+  S.stronghold.treasury = 5000;
+  let treasuries = [S.stronghold.treasury];
+  for (let i = 0; i < 9; i++) {
+    G.lord.holdGames();
+    if (S.screen !== "home") game.returnHome();
+    treasuries.push(S.stronghold.treasury);
+  }
+  ok(S.ledgerLog.length === 7, `the book keeps exactly 7 days (${S.ledgerLog.length})`);
+  const last = S.ledgerLog[S.ledgerLog.length - 1];
+  ok(last.after === S.stronghold.treasury, "the closing balance matches the treasury");
+  ok(S.ledgerLog.every((r, i) => i === 0 || S.ledgerLog[i - 1].after + r.net === r.after), "each net reconciles to the running balance");
+  game.save(); game.load(S.worldId);
+  ok(S.ledgerLog.length === 7, "the book survives save/load");
+  game.go("home"); G.ui.render(S);
+  ok(app().includes("📒 The clerk's book"), "the book renders on the Lord's home");
+  ok(/[+-]\d+g over 7 days/.test(app()), "the 7-day total is pinned in the title");
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

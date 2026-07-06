@@ -61,6 +61,10 @@
     const ledger = ledgerFor(day, state);
     state.stronghold.treasury += ledger.net;
     state.lastDay.ledger = ledger;
+    // The clerk keeps a running book (GUI-52): last 7 presided days.
+    state.ledgerLog = state.ledgerLog || [];
+    state.ledgerLog.push({ d: state.clock.day, s: state.clock.season, net: ledger.net, after: state.stronghold.treasury });
+    while (state.ledgerLog.length > 7) state.ledgerLog.shift();
     state.screen = "lord-sunset";
     game.save();
     game.emit();
