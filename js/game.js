@@ -26,6 +26,7 @@
     lord: null,          // the reigning Lord (persisted; null once YOU reign)
     stronghold: null,    // treasury + the Lord's decrees (persisted)
     household: [],       // the Lord's servants — throne defenders (persisted)
+    news: [],            // the town crier's ring — recent world events (persisted, GUI-53)
     defense: null,       // a pending challenge {challengerId, name, season, fielded} (persisted)
     defenseRun: null,    // transient gauntlet progress {bouts, chHp, chMp}
     board: [],           // the Scribe's parchments: recent days' bouts (persisted ring)
@@ -107,7 +108,7 @@
   function save() {
     if (!state.worldId) return;
     try {
-      const blob = { player: state.player, npcs: state.npcs, lord: state.lord, stronghold: state.stronghold, household: state.household, defense: state.defense, board: state.board, departed: state.departed, clock: state.clock, lastSeason: state.lastSeason, challengeOpen: state.challengeOpen, throneRestUntil: state.throneRestUntil || 0, seedCounter: state.seedCounter };
+      const blob = { player: state.player, npcs: state.npcs, lord: state.lord, stronghold: state.stronghold, household: state.household, defense: state.defense, board: state.board, departed: state.departed, clock: state.clock, lastSeason: state.lastSeason, challengeOpen: state.challengeOpen, throneRestUntil: state.throneRestUntil || 0, news: state.news, seedCounter: state.seedCounter };
       G.store.set(worldKey(state.worldId), JSON.stringify(blob));
       const ix = readIndex();
       const i = ix.worlds.findIndex((w) => w.id === state.worldId);
@@ -170,6 +171,7 @@
       if (state.lord && state.lord.age == null) state.lord.age = AGE.start + Math.round(state.lord.wins / 3) + (state.lord.reignSeasons || 1) + 6;
       state.challengeOpen = !!data.challengeOpen;
       state.throneRestUntil = data.throneRestUntil || 0;
+      state.news = Array.isArray(data.news) ? data.news : [];
       // Migrate saves created before the economy existed.
       state.stronghold = data.stronghold || { ...ECONOMY.start };
       if (!state.stronghold.buildings) state.stronghold.buildings = { seating: 0, armory: 0, infirmary: 0, barracks: 0, yard: 0 };
@@ -227,6 +229,7 @@
     state.lastSeason = history.lastSeason;
     state.challengeOpen = false;
     state.throneRestUntil = 0;
+    state.news = [];
     state.lastThrone = null;
     state.screen = "home";
     save(); emit();
@@ -641,6 +644,21 @@
           state.lastDay.newLord = npc.name;
         }
       }
+    }
+    // ---- the town crier hears everything (GUI-53) ----
+    {
+      const rolled = !!state.lastDay.seasonEnd; // clock already ticked past the settled day
+      const cry = (icon, text) => state.news.push({ s: rolled ? state.clock.season - 1 : state.clock.season, d: rolled ? G.data.SEASON.days : Math.max(1, state.clock.day - 1), icon, text });
+      const nt = state.lastDay.npcThrone;
+      if (nt && nt.result === "usurped") cry("👑", `<b>${nt.challenger}</b> stormed the keep — the throne FELL. A new Lord rules.${nt.sworn ? " The keep's guard knelt to the victor." : ""}`);
+      else if (nt) cry("🛡️", `<b>${nt.challenger}</b> came for the throne — <b>${nt.by}</b> ${nt.by === nt.lordName ? "cut them down" : "held the wall"}.`);
+      for (const d2 of state.lastDay.departures || []) cry(d2.reason === "found" ? "🐎" : "🌄", `<b>${d2.name}</b> (${d2.wins}w) ${d2.reason === "found" ? "rode out to raise a banner of their own" : "left to seek adventure beyond the gates"}.`);
+      for (const r of state.lastDay.retired || []) cry("🍂", `<b>${r}</b> hung up their blade — a young hopeful took the empty bed.`);
+      if (state.lastDay.newLord) cry("⚱️", `The old Lord died on the throne. <b>${state.lastDay.newLord}</b>, most famed of the residents, was raised in their place.`);
+      if (state.lastDay.defenseComing) cry("⚠️", `<b>${state.lastDay.defenseComing}</b> eyes the throne — a challenge comes with the season.`);
+      if (state.lastDay.mayChallenge) cry("👑", `The season was <b>yours</b> — the right to challenge the Lord awaits at home.`);
+      else if (state.lastDay.seasonEnd && state.lastDay.seasonEnd.top[0]) cry("⭐", `Season ${state.lastDay.seasonEnd.season} closed with <b>${state.lastDay.seasonEnd.top[0].name}</b> atop the fame ladder (⭐${state.lastDay.seasonEnd.top[0].popularity}).`);
+      while (state.news.length > 20) state.news.shift();
     }
     return state.lastDay;
   }
