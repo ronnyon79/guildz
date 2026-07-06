@@ -435,6 +435,14 @@ cap (3) & per-bout replenish (50%)**, servant **upkeep/housing** cost, and **ser
   Exile/Adventure + warfare modes; a Web Worker earns its keep only at multi-stronghold
   scale (days cost 35ms today). 14 headless tests (tools/test_store.js) + 241 regressions.
 
+- **GUI-44 BUGFIX: dual wield was firing at missile range — v0.16.1** (user-found, reading
+  the battle parchments!) applyAction passed actor.weapons to EVERY attack, so a 25-win
+  thief shot the off-hand die from a longbow. Fixed: dual wield is MELEE-ONLY (engine +
+  the ⚔️×2 button tag). BALANCE LANDSLIDE: the fix collapsed the Thief outlier — overall
+  fighter 50.3 / thief 52.6 / mage 46.7 / cleric 50.5 (Thief@30: 66% → 55%); tightest
+  spread the game has had (~6 pts). 5-test regression lock (tools/test_dualwield.js) +
+  255 regressions green.
+
 ### Build order (when the user says go)
 1. **Champion summit** — NPC population + Popularity ladder + Lord boss fight (finish
    the Rise). Small, self-contained, reuses combat entirely.

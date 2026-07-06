@@ -145,7 +145,10 @@
   // Actions available to a fighter given the current shared range.
   function actionsFor(fighter, range) {
     const list = [];
-    const mult = fighter.attacks > 1 ? ` ×${fighter.attacks}` : fighter.weapons > 1 ? ` ⚔️×${fighter.weapons}` : "";
+    // Multi-attack applies at any range; dual wield only where two blades can
+    // actually be held — melee (GUI-44).
+    const mult = fighter.attacks > 1 ? ` ×${fighter.attacks}`
+      : range === "melee" && fighter.weapons > 1 ? ` ⚔️×${fighter.weapons}` : "";
     if (range === "missile") {
       const w = WEAPONS[fighter.missileWeapon];
       const ar = ARROWS[fighter.activeArrow];
@@ -371,10 +374,12 @@
       // Perks may grant multiple strikes per attack action; stop early on a kill.
       // A critical miss (nat 1) fumbles so badly it aborts the rest of the flurry
       // and stuns the attacker next round (skipNext set inside doOneAttack).
+      // Dual wield is MELEE-ONLY — two blades in hand, not two bows (GUI-44).
+      const weapons = melee ? actor.weapons : 1;
       const n = actor.attacks || 1;
       for (let i = 0; i < n; i++) {
         if (target.hp <= 0) break;
-        doOneAttack(actor, target, dice, kind, rng, log, actor.autoCritNext && i === 0, arrow, actor.weapons);
+        doOneAttack(actor, target, dice, kind, rng, log, actor.autoCritNext && i === 0, arrow, weapons);
         if (actor.skipNext) break; // fumbled — remaining strikes are lost
       }
       actor.autoCritNext = false; // consumed by attacking (first strike)
