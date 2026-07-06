@@ -653,6 +653,14 @@ cap (3) & per-bout replenish (50%)**, servant **upkeep/housing** cost, and **ser
   game.renameHold, Lord-only). Old saves backfilled with the seeded default on load.
   test_crier → 25 → 373 green.
 
+- **GUI-55 PWA install — v0.38.0.** Guildz is installable: manifest.webmanifest (standalone,
+  portrait, theme #1a1423), REAL PNG icons (192/512, gold sword on plum — generated
+  programmatically in pure node: zlib + hand-built PNG chunks), sw.js offline shell with
+  NETWORK-FIRST + cache fallback (updates never stick; cache name keyed to VERSION via
+  ?v=, old caches swept on activate), registration in main.js guarded for browsers.
+  NEW SUITE test_pwa (15: manifest, PNG signatures/dimensions, strategy, shell-asset
+  existence, wiring) → 388 green / 21 suites. Add to Home Screen away. 📱
+
 ### Build order (when the user says go)
 1. **Champion summit** — NPC population + Popularity ladder + Lord boss fight (finish
    the Rise). Small, self-contained, reuses combat entirely.
