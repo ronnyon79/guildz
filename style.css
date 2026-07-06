@@ -291,3 +291,16 @@ button { font-family: inherit; }
 .duel-head.live .duel-side.right .duel-tags { justify-content: flex-end; }
 .duel-head.live .duel-name .roll { font-size: 10px; }
 .range-banner { flex: none; }
+
+/* ---------- champion profiles (GUI-46) ---------- */
+.overlay {
+  position: fixed; inset: 0; z-index: 50;
+  background: rgba(12, 8, 18, .72);
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+}
+.profile-card { max-width: 420px; width: 100%; box-shadow: 0 12px 40px rgba(0,0,0,.5); border-color: var(--accent); }
+.profile-card .card-sub { user-select: text; -webkit-user-select: text; }
+.plink { text-decoration: underline dotted var(--muted); text-underline-offset: 3px; cursor: pointer; }
+.plink.you { color: var(--accent-2); font-weight: 700; }
+.fame-row { cursor: pointer; }

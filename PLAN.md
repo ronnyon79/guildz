@@ -551,6 +551,14 @@ cap (3) & per-bout replenish (50%)**, servant **upkeep/housing** cost, and **ser
   the page scrolled. flex:none makes the viewport lock real; the log (min-height:0,
   overflow-y:auto) now scrolls in its own box and the scrollTop auto-follow finally bites.
 
+- **GUI-46 Champion profiles — v0.26.0.** Tap ANY name — fame ladder rows, board parchment
+  rows, bracket entries, chat-bubble name tags, both duel headers — and a profile card
+  overlays: class, career wins, age (🍂 past peak with % strength), temperament, ⭐ fame,
+  reign seasons for Lords, and the Scribe career line from the O(1) rollups (bouts, win %,
+  avg ★ on wins). resolvePerson() knows you / the Lord / household / residents / the
+  departed founders ledger / unknown names ("appears in no ledger"). New plink() helper +
+  .overlay/.profile-card CSS. NEW SUITE tools/test_profile.js (14) → 297 total green.
+
 ### Build order (when the user says go)
 1. **Champion summit** — NPC population + Popularity ladder + Lord boss fight (finish
    the Rise). Small, self-contained, reuses combat entirely.
