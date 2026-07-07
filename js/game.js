@@ -119,13 +119,32 @@
     save(); emit();
   }
 
+  /* ---- the Hold Chronicle (GUI-87) ----
+   * The permanent, curated counterpart of the 20-cap news ring: one line per
+   * event that matters in a hundred years. Append-only, never trimmed. Types:
+   * founding · regime · succession · uprising · child · milestone · legend
+   * (softfail arrives with Stewardship, conquest with Warfare). Entries are
+   * {y, d, icon, type, text, refs} — refs name real records so the hold
+   * profile card (GUI-88) can make every line tappable. The optional unique
+   * key `k` guards once-only entries (a 100th win is one legend, not forty). */
+  function chronicle(icon, type, text, opts) {
+    const o = opts || {};
+    if (!state.chronicle) state.chronicle = [];
+    if (o.k && state.chronicle.some((e) => e.k === o.k)) return;
+    const e = { y: o.y != null ? o.y : state.clock.season, d: o.d != null ? o.d : state.clock.day, icon, type, text };
+    if (o.refs) e.refs = o.refs;
+    if (o.k) e.k = o.k;
+    state.chronicle.push(e);
+  }
+  const foundingEntry = (holdName) => ({ y: 1, d: 1, icon: "🏰", type: "founding", text: `<b>${holdName}</b> was founded.` });
+
   function listWorlds() { migrateLegacy(); return readIndex().worlds; }
   function boot() { migrateLegacy(); state.screen = "title"; emit(); }
 
   function save() {
     if (!state.worldId) return;
     try {
-      const blob = { player: state.player, npcs: state.npcs, lord: state.lord, stronghold: state.stronghold, household: state.household, defense: state.defense, board: state.board, departed: state.departed, clock: state.clock, lastSeason: state.lastSeason, challengeOpen: state.challengeOpen, throneRestUntil: state.throneRestUntil || 0, news: state.news, ledgerLog: state.ledgerLog, seedCounter: state.seedCounter };
+      const blob = { player: state.player, npcs: state.npcs, lord: state.lord, stronghold: state.stronghold, household: state.household, defense: state.defense, board: state.board, departed: state.departed, clock: state.clock, lastSeason: state.lastSeason, challengeOpen: state.challengeOpen, throneRestUntil: state.throneRestUntil || 0, news: state.news, ledgerLog: state.ledgerLog, chronicle: state.chronicle || [], seedCounter: state.seedCounter };
       G.store.set(worldKey(state.worldId), JSON.stringify(blob));
       const ix = readIndex();
       const i = ix.worlds.findIndex((w) => w.id === state.worldId);
@@ -195,6 +214,8 @@
       if (!state.stronghold.name) state.stronghold.name = defaultHoldName(state.player.worldSeed || 7); // pre-GUI-54 saves
       if (!state.stronghold.buildings) state.stronghold.buildings = { seating: 0, armory: 0, infirmary: 0, barracks: 0, yard: 0 };
       if (!state.stronghold.foundedOn) state.stronghold.foundedOn = 1; // pre-GUI-84 saves: the hold has stood since the world clock began
+      // Pre-GUI-87 saves: the chronicle opens with the founding it never wrote down.
+      state.chronicle = Array.isArray(data.chronicle) ? data.chronicle : [foundingEntry(state.stronghold.name)];
       state.household = Array.isArray(data.household) ? data.household : [];
       state.departed = Array.isArray(data.departed) ? data.departed : [];
       state.defense = data.defense || null;
@@ -253,6 +274,7 @@
     state.throneRestUntil = 0;
     state.news = [];
     state.ledgerLog = [];
+    state.chronicle = [foundingEntry(state.stronghold.name)]; // GUI-87: page one (GUI-86 writes the real founding story)
     state.lastThrone = null;
     state.screen = "home";
     save(); emit();
@@ -285,6 +307,7 @@
     if (lvl >= def.max || st.treasury < def.costs[lvl]) return false;
     st.treasury -= def.costs[lvl];
     st.buildings[id] = lvl + 1;
+    if (lvl === 0) chronicle("🏗️", "milestone", `The <b>${def.name}</b> was raised.`, { k: "built:" + id }); // first raising only — upgrades are upkeep, not history
     save(); emit();
     return true;
   }
@@ -617,6 +640,7 @@
             const seed = nextSeed();
             const res = G.tournament.autoBout(worn, lc, seed);
             recordBout({ a: worn, b: lc, winner: res.winnerId === worn.id ? worn.name : lc.name, rounds: res.rounds, spec: res.spec, hl: res.hl, seed, throne: true });
+            if (res.spec === 5) chronicle("🌟", "legend", `The throne duel of Year ${state.clock.season} — <b>${res.winnerId === worn.id ? worn.name : lc.name}</b> over <b>${res.winnerId === worn.id ? lc.name : worn.name}</b> — was a five-star classic the bards took up at once.`, { refs: [worn.name, lc.name] });
             if (res.winnerId === worn.id) {
               news.result = "usurped";
               state.lord = { name: npc.name, classId: npc.classId, wins: npc.wins, reignSeasons: 0, age: npc.age, personality: npc.personality };
@@ -682,6 +706,16 @@
       if (state.lastDay.mayChallenge) cry("👑", `The year was <b>yours</b> — the right to challenge the Lord awaits at home.`);
       else if (state.lastDay.seasonEnd && state.lastDay.seasonEnd.top[0]) cry("⭐", `Year ${state.lastDay.seasonEnd.season} closed with <b>${state.lastDay.seasonEnd.top[0].name}</b> atop the fame ladder (⭐${state.lastDay.seasonEnd.top[0].popularity}).`);
       while (state.news.length > 20) state.news.shift();
+      // ---- and the Chronicle keeps what matters in a hundred years (GUI-87) ----
+      const when = { y: rolled ? state.clock.season - 1 : state.clock.season, d: rolled ? G.data.SEASON.days : Math.max(1, state.clock.day - 1) };
+      if (nt && nt.result === "usurped") chronicle("👑", "regime", `<b>${nt.challenger}</b> stormed the keep and took the throne from <b>${nt.lordName}</b>.`, { d: 1, refs: [nt.challenger, nt.lordName] }); // dated with its 👑 parchment: the new year's day 1
+      else if (nt) chronicle("🛡️", "regime", `<b>${nt.challenger}</b> came for the throne — <b>${nt.by}</b> held it.`, { d: 1, refs: [nt.challenger, nt.by] });
+      for (const d2 of state.lastDay.departures || []) if (d2.reason === "found") chronicle("🐎", "child", `<b>${d2.name}</b> rode out to raise a banner of their own.`, { ...when, refs: [d2.name] });
+      if (state.lastDay.lordDied) chronicle("⚱️", "succession", `Lord <b>${state.lastDay.lordDied}</b> died on the throne; <b>${state.lastDay.newLord || state.player.name}</b> was raised in their place.`, { ...when, refs: [state.lastDay.lordDied, state.lastDay.newLord || state.player.name] });
+      // Legends: the hundredth career win, chronicled once per name.
+      for (const c of [state.player, ...state.npcs, ...(state.household || [])]) {
+        if (c && (c.wins || 0) >= 100) chronicle("💯", "legend", `<b>${c.name}</b> won their hundredth bout — a career for the ages.`, { ...when, k: "w100:" + c.name, refs: [c.name] });
+      }
     }
     return state.lastDay;
   }
@@ -893,6 +927,7 @@
         boutNote.result = "held";
         state.defenseRun.bouts.push(boutNote);
         state.lastDefense = { won: true, byServant: servant.name, challenger: npc.name, fate: challengerFate(npc, seed), bouts: state.defenseRun.bouts };
+        chronicle("🛡️", "regime", `<b>${npc.name}</b> came for the throne — <b>${servant.name}</b> held the wall.`, { refs: [npc.name, servant.name] });
         state.defense = null; state.defenseRun = null;
         state.screen = "defended";
         save(); emit();
@@ -986,8 +1021,11 @@
         // A fielded servant is rewarded with growth (the Serve loop's engine).
         if (CLASSES[p.classId].caster) { p.bonusHp += 1; p.bonusMp += 1; } else { p.bonusHp += POINTS_PER_WIN; }
         state.lastDefense = { won: true, fielded: true, challenger: npc.name, fate: (state.npcs = state.npcs.filter((x) => x.id !== npc.id), "exile"), bouts: [] };
+        chronicle("🛡️", "regime", `<b>${npc.name}</b> came for the throne — <b>${p.name}</b> held the wall for Lord <b>${state.lord.name}</b>.`, { refs: [npc.name, p.name, state.lord.name] });
       } else {
         state.lastDefense = { won: true, challenger: npc.name, fate: challengerFate(npc, state.battle.seed), bouts: state.defenseRun.bouts };
+        chronicle("🛡️", "regime", `<b>${npc.name}</b> came for the throne — Lord <b>${p.name}</b> held it.`, { refs: [npc.name, p.name] });
+        if (state.lastSpec && state.lastSpec.stars === 5) chronicle("🌟", "legend", `The throne duel of Year ${state.clock.season} — Lord <b>${p.name}</b> over <b>${npc.name}</b> — was a five-star classic the bards took up at once.`, { refs: [p.name, npc.name] });
       }
       state.defense = null; state.defenseRun = null; state.throneDefense = false;
       state.screen = "defended";
@@ -1008,6 +1046,7 @@
     state.household = [];
     state.player.role = "champion"; // dethroned — your fate is chosen next
     state.lastThrone = { won: false, uprising: false, deposed: true, lordName: npc.name };
+    chronicle("👑", "regime", `<b>${npc.name}</b> stormed the keep and took the throne from <b>${state.player.name}</b>.`, { refs: [npc.name, state.player.name] });
     state.defense = null; state.defenseRun = null; state.throneDefense = false;
     state.screen = "throne-fate";
     save();
@@ -1138,6 +1177,10 @@
       state.npcs.push({ id: "x" + state.clock.season + "_" + state.npcs.length, name: L.name, classId: L.classId, wins: L.wins, popularity: 0, age: L.age, personality: L.personality });
     }
     state.lastThrone = { won: true, uprising, lordName: L.name, lordStays: stays };
+    chronicle("👑", uprising ? "uprising" : "regime", uprising
+      ? `<b>${p.name}</b> rose against Lord <b>${L.name}</b> from within the household and seized the throne.`
+      : `<b>${p.name}</b> defeated Lord <b>${L.name}</b> and took the throne.`, { refs: [p.name, L.name] });
+    if (state.lastSpec && state.lastSpec.stars === 5) chronicle("🌟", "legend", `The throne duel of Year ${state.clock.season} — <b>${p.name}</b> over <b>${L.name}</b> — was a five-star classic the bards took up at once.`, { refs: [p.name, L.name] });
     p.role = "lord";
     p.crownedSeason = state.clock.season;
     state.lord = null; // the throne is YOURS
@@ -1155,6 +1198,7 @@
       return;
     }
     state.lastThrone = { won: false, uprising: false, lordName: state.lord.name };
+    chronicle("🛡️", "regime", `<b>${state.player.name}</b> challenged Lord <b>${state.lord.name}</b> for the throne — and fell.`, { refs: [state.player.name, state.lord.name] });
     state.screen = "throne-fate";
     save();
   }
@@ -1200,6 +1244,7 @@
     state.challengeOpen = false; state.throneFight = false; state.lastThrone = null;
     state.stronghold = null; state.household = []; state.defense = null; state.defenseRun = null;
     state.throneDefense = false; state.board = []; state.lastDefense = null; state.viewBout = null;
+    state.chronicle = [];
     state.allocPending = false; state.screen = "title";
     emit();
   }

@@ -669,6 +669,18 @@ cap (3) & per-bout replenish (50%)**, servant **upkeep/housing** cost, and **ser
   hold's founding; migration backfills old saves). NEW SUITE tools/test_calendar.js (16:
   epoch, year labels, roll, worldgen arrival year, backfill) → 404 green / 22 suites.
 
+- **GUI-87 The Hold Chronicle — v0.40.0** (Founding tranche 2/5). The permanent, curated
+  counterpart of the 20-cap news ring: `state.chronicle`, append-only, never trimmed, in
+  the save blob. Entries {y, d, icon, type, text, refs, k?}: **founding** 🏰 (page one of
+  every world; GUI-86 writes the real story) · **regime** 👑/🛡️ (every path: NPC rebellions,
+  player coronation, player deposed, walls held by lord/servant/fielded-you, failed player
+  challenges) · **uprising** · **succession** ⚱️ · **child** 🐎 (founders riding out) ·
+  **milestone** 🏗️ (each building's FIRST raising, k-deduped) · **legend** 💯/🌟 (100th win
+  once per name; 5★ throne duels). Refs name real records for GUI-88 tap-through; softfail/
+  conquest types reserved (Stewardship/Warfare). Migration: old saves open with the founding
+  they never wrote down. NEW SUITE tools/test_chronicle.js (16) → 429 green / 23 suites
+  (by direct sum — the old 388 figure undercounted).
+
 ### Build order (when the user says go)
 1. **Champion summit** — NPC population + Popularity ladder + Lord boss fight (finish
    the Rise). Small, self-contained, reuses combat entirely.
