@@ -194,6 +194,7 @@
       state.stronghold = data.stronghold || { ...ECONOMY.start };
       if (!state.stronghold.name) state.stronghold.name = defaultHoldName(state.player.worldSeed || 7); // pre-GUI-54 saves
       if (!state.stronghold.buildings) state.stronghold.buildings = { seating: 0, armory: 0, infirmary: 0, barracks: 0, yard: 0 };
+      if (!state.stronghold.foundedOn) state.stronghold.foundedOn = 1; // pre-GUI-84 saves: the hold has stood since the world clock began
       state.household = Array.isArray(data.household) ? data.household : [];
       state.departed = Array.isArray(data.departed) ? data.departed : [];
       state.defense = data.defense || null;
@@ -242,6 +243,7 @@
     state.lord = lordBox.lord;
     state.stronghold = { ...ECONOMY.start, buildings: { seating: 0, armory: 0, infirmary: 0, barracks: 0, yard: 0 } };
     state.stronghold.name = (holdName || "").trim().slice(0, 18) || defaultHoldName(seed);
+    state.stronghold.foundedOn = 1; // Year 1 — the world epoch IS this hold's founding (GUI-84)
     state.household = [];
     state.defense = null;
     state.board = history.board;
@@ -676,9 +678,9 @@
       for (const d2 of state.lastDay.departures || []) cry(d2.reason === "found" ? "🐎" : "🌄", `<b>${d2.name}</b> (${d2.wins}w) ${d2.reason === "found" ? "rode out to raise a banner of their own" : "left to seek adventure beyond the gates"}.`);
       for (const r of state.lastDay.retired || []) cry("🍂", `<b>${r}</b> hung up their blade — a young hopeful took the empty bed.`);
       if (state.lastDay.newLord) cry("⚱️", `The old Lord died on the throne. <b>${state.lastDay.newLord}</b>, most famed of the residents, was raised in their place.`);
-      if (state.lastDay.defenseComing) cry("⚠️", `<b>${state.lastDay.defenseComing}</b> eyes the throne — a challenge comes with the season.`);
-      if (state.lastDay.mayChallenge) cry("👑", `The season was <b>yours</b> — the right to challenge the Lord awaits at home.`);
-      else if (state.lastDay.seasonEnd && state.lastDay.seasonEnd.top[0]) cry("⭐", `Season ${state.lastDay.seasonEnd.season} closed with <b>${state.lastDay.seasonEnd.top[0].name}</b> atop the fame ladder (⭐${state.lastDay.seasonEnd.top[0].popularity}).`);
+      if (state.lastDay.defenseComing) cry("⚠️", `<b>${state.lastDay.defenseComing}</b> eyes the throne — a challenge comes with the new year.`);
+      if (state.lastDay.mayChallenge) cry("👑", `The year was <b>yours</b> — the right to challenge the Lord awaits at home.`);
+      else if (state.lastDay.seasonEnd && state.lastDay.seasonEnd.top[0]) cry("⭐", `Year ${state.lastDay.seasonEnd.season} closed with <b>${state.lastDay.seasonEnd.top[0].name}</b> atop the fame ladder (⭐${state.lastDay.seasonEnd.top[0].popularity}).`);
       while (state.news.length > 20) state.news.shift();
     }
     return state.lastDay;
