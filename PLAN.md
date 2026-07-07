@@ -879,6 +879,10 @@ real system** (one BUILDING_FX hook each, max 3 tiers, doubling costs). The cata
 - 🌾 **Granary** (GUI-76) — provision stock cap / tier.
 - 🌱 **Fields & Mill** — PRODUCES provisions daily (Fields fill, Granary stores); reduces
   market dependence; a raid target in Warfare.
+- 🐄 **Pastures & Barn** — LIVESTOCK (user-named 2026-07-07): a second provision stream
+  (meat) + **hides/wool as a second trade good** (armor-vendor synergy: leather prices ↓ a
+  touch). Historically baileys kept "poultry and livestock" + barns. Warfare: herds are
+  what raiders DRIVE OFF (a soft, recoverable raid loss vs. burned Fields).
 - 🔨 **Mason's Lodge** — slows ALL building decay + cuts repair costs / level (the
   maintenance meta-building).
 - 🪙 **Counting House** — better caravan prices / level + a small treasury interest tick
@@ -903,11 +907,17 @@ real system** (one BUILDING_FX hook each, max 3 tiers, doubling costs). The cata
   pre-battle); interim: a small provision trickle (the hunt).
 - 🌊 **Moat & Drawbridge** — siege defence: attackers pay a toll in time/casualties before
   walls; interim: +throne stability optics (Pull).
+- 🏹 **Arrow Towers** (user-named 2026-07-07) — the walls FIGHT BACK: garrison archers thin
+  an attacking force each siege round (casualties before the melee); requires Walls &
+  Gatehouse; interim: +1 further keepGuardWear step at max Walls (the towers cover the
+  gate). The Watchtower SEES, the Beacon WARNS, the Arrow Towers KILL.
 - 🔥 **Beacon Tower** — early warning of marching armies (reaction time); extends the
   Watchtower chain; crier drama ("the beacons are lit!").
 
-**Panel sizing:** Era 1 adds 6 → 11 visible with the existing 5; Era 2 adds 6 → 17; Era 3
-adds 7 → 24 total, but each era's panel groups by era with the older rows collapsed.
+**The food chain:** Fields (grain) + Pastures (meat/hides) → Granary (store) → daily
+consumption; hides open a second trade good (the provisions-only-v1 open question now has
+its v2 answer). **Panel sizing:** Era 1 adds 6 → 11 visible with the existing 5; Era 2
+adds 7 → 18; Era 3 adds 8 → 26 total, but each era's panel groups by era with the older rows collapsed.
 **NPC-lord builds are personality-flavoured** (Grasping → Counting House first; Steadfast →
 Chapel; Ferocious → Garrison) — scouting a hold's skyline becomes intel. All numbers sized
 in the GUI-74 design pass; Era 3 numbers wait for the warfare grand plan.
