@@ -705,6 +705,20 @@ cap (3) & per-bout replenish (50%)**, servant **upkeep/housing** cost, and **ser
   <b>names</b> become plinks) — champion profiles stack ON TOP of the hold card and
   close back to it. NEW SUITE tools/test_holdcard.js (20) → 467 green / 25 suites.
 
+- **GUI-89 Founder records: departures mint holds — v0.43.0** (Founding tranche 5/5 —
+  TRANCHE COMPLETE). When a veteran rides out to found (GUI-60), the ledger now MINTS
+  the hold: `mintHold` — seeded name from HOLD_NAMES (never this hold's, never a
+  sibling's) + archetype by their temperament (`worldgen.pickArchetype`, extracted from
+  the founding roll — same rng stream, worldgen determinism intact). Ledger rows carry
+  {holdName, archetype}; the chronicle's 🐎 child entry names the daughter hold and how
+  it stands; profile pills read "🐎 founder of Briargate". NEW: an **ambitious deposed
+  Lord** (amb ≥ 0.5) who rides out after losing the throne duel founds in **The Exile's
+  Spite** 🔥 — ledger row + defiant chronicle entry (the open question resolved:
+  personality-gated). Old ledgers backfill deterministically on load. The founders'
+  ledger is now a real map of daughter holds — GUI-25's expansion graph and Stewardship's
+  trade partners have identities waiting. NEW SUITE tools/test_founderrecords.js (14) →
+  481 green / 26 suites.
+
 ### Build order (when the user says go)
 1. **Champion summit** — NPC population + Popularity ladder + Lord boss fight (finish
    the Rise). Small, self-contained, reuses combat entirely.
