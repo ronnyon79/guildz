@@ -301,6 +301,8 @@ button { font-family: inherit; }
 }
 .profile-card { max-width: 420px; width: 100%; box-shadow: 0 12px 40px rgba(0,0,0,.5); border-color: var(--accent); }
 .profile-card .card-sub { user-select: text; -webkit-user-select: text; }
+/* The hold card's chronicle scrolls in its own box (GUI-88). */
+.chron-log { max-height: 45vh; overflow-y: auto; }
 .plink { text-decoration: underline dotted var(--muted); text-underline-offset: 3px; cursor: pointer; }
 .plink.you { color: var(--accent-2); font-weight: 700; }
 .fame-row { cursor: pointer; }

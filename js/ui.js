@@ -131,7 +131,7 @@
         <div class="card-sub"><b>${esc(s.defense.name)}</b> ended the year as the people's favourite and demands your throne. The challenge cannot be refused — your household fights first, then it is you.</div>
         <button class="btn block lg" style="margin-top:10px" data-act="begin-defense">🛡️ Answer the challenge</button></div>` : "";
       return `<div class="card"><div class="card-row"><div class="avatar">👑</div>
-        <div><div class="card-title"><span class="you">${esc(p.name)}</span> <span class="pill on">👑 Lord of ${esc((s.stronghold || {}).name || "the Stronghold")}</span> <button class="btn sm ghost" data-act="rename-hold" title="Rename your hold">✏️</button></div>
+        <div><div class="card-title"><span class="you">${esc(p.name)}</span> <span class="pill on plink" data-act="hold">👑 Lord of ${esc((s.stronghold || {}).name || "the Stronghold")}</span> <button class="btn sm ghost" data-act="rename-hold" title="Rename your hold">✏️</button></div>
         <div class="card-sub">${s.npcs.length} champions fight under your banner.</div>
         <div class="card-sub">🏚️ Household (${s.household.length}/${slots}): ${servants}</div></div></div></div>` + challenge;
     }
@@ -176,7 +176,7 @@
     if (!s.news || !s.news.length) return "";
     const rows = s.news.slice(-6).reverse().map((n) =>
       `<div class="card-sub crier-row">${n.icon} <span class="sys">D${n.d}·Y${n.s}</span> ${n.text}</div>`).join("");
-    return `<div class="card"><div class="card-title" style="font-size:14px">📯 The crier of ${esc((s.stronghold || {}).name || "the Stronghold")}</div>${rows}</div>`;
+    return `<div class="card"><div class="card-title" style="font-size:14px">📯 The crier of <span class="plink" data-act="hold">${esc((s.stronghold || {}).name || "the Stronghold")}</span></div>${rows}</div>`;
   }
 
   // 📒 The clerk's book (GUI-52): the last 7 presided days of treasury flow —
@@ -215,10 +215,10 @@
       ${decreesBlock(s)}
       ${buildingsBlock(s)}
       <button class="btn block lg gold" data-act="hold-games">👑 Hold the Day's Games</button>
-      <p class="card-sub center" style="margin-top:12px">🏰 <b>${esc((s.stronghold || {}).name || "The Stronghold")}</b> · Day ${s.clock.day} · Year ${s.clock.season}</p>
+      <p class="card-sub center" style="margin-top:12px"><span class="plink" data-act="hold">🏰 <b>${esc((s.stronghold || {}).name || "The Stronghold")}</b></span> · Day ${s.clock.day} · Year ${s.clock.season}</p>
       <p class="card-sub center" style="margin-top:6px">Every band fights while you watch from the high seat. Champions earn fame in your arena — and one day, the boldest of them will come for your throne.</p>`
         : `<button class="btn block lg gold" data-act="enter-arena">🌅 Enter the Day's Tournament</button>
-      <p class="card-sub center" style="margin-top:12px">🏰 <b>${esc((s.stronghold || {}).name || "The Stronghold")}</b> · Day ${s.clock.day} · Year ${s.clock.season}</p>
+      <p class="card-sub center" style="margin-top:12px"><span class="plink" data-act="hold">🏰 <b>${esc((s.stronghold || {}).name || "The Stronghold")}</b></span> · Day ${s.clock.day} · Year ${s.clock.season}</p>
       <p class="card-sub center" style="margin-top:6px">Each day is a knockout tournament in your win-band (${G.tournament.bandLabel(G.tournament.bandOf(p.wins))}). Every bout won earns gold and stats — lose once and your day ends, but you keep everything. Take the band to be <b>Champion of the Day</b> and earn ⭐ fame — the most famous at year's end may challenge the Lord.</p>`}
     </div>` + tabbar("home");
   }
@@ -366,6 +366,52 @@
   // A tappable name — anywhere prose mentions a champion (GUI-46).
   function plink(s, n) {
     return `<span class="plink${n === s.player.name ? " you" : ""}" data-act="profile" data-arg="${esc(n)}">${esc(n)}</span>`;
+  }
+
+  // Chronicle prose with its refs made tappable (GUI-88): the <b>names</b>
+  // the Scribe wrote become links into the champion profiles.
+  function chronText(s, e) {
+    let t = e.text;
+    for (const r of e.refs || []) t = t.split(`<b>${r}</b>`).join(`<b>${plink(s, r)}</b>`);
+    return t;
+  }
+
+  /* 🏰 The hold's own profile card (GUI-88) — the GUI-46 pattern extended
+   * from people to places. Tap the hold's name anywhere: its founding story,
+   * its age in years, its line of Lords, and the full chronicle. */
+  function holdOverlay(s) {
+    const st = s.stronghold || {};
+    const arch = st.archetype && G.data.ARCHETYPES[st.archetype];
+    const chron = s.chronicle || [];
+    const age = s.clock.season - (st.foundedOn || 1) + 1;
+    // The line of Lords, derived from the chronicle: the founder, then every
+    // hand that took the throne (👑 falls, uprisings, ⚱️ successions).
+    const lords = [];
+    if (st.founder) lords.push({ name: st.founder.name, y: st.foundedOn || 1 });
+    for (const e of chron) {
+      if (e.type === "regime" && e.icon === "👑" && e.refs && e.refs[0]) lords.push({ name: e.refs[0], y: e.y });
+      else if (e.type === "uprising" && e.refs && e.refs[0]) lords.push({ name: e.refs[0], y: e.y });
+      else if (e.type === "succession" && e.refs && e.refs[1]) lords.push({ name: e.refs[1], y: e.y });
+    }
+    const reigning = s.player && s.player.role === "lord" ? s.player.name : (s.lord || {}).name;
+    const nth = age === 1 ? "first" : age + (age % 10 === 2 && age % 100 !== 12 ? "nd" : age % 10 === 3 && age % 100 !== 13 ? "rd" : "th");
+    const lines = [];
+    if (arch) lines.push(`<div class="card-sub">${arch.emoji} <b>${arch.name}</b></div>`);
+    lines.push(`<div class="card-sub">founded in Year ${st.foundedOn || 1}${st.founder ? ` by ${plink(s, st.founder.name)}` : ""} — its ${nth} year</div>`);
+    if (lords.length) lines.push(`<div class="card-sub">👑 the line of Lords: ${lords.map((l) => `${plink(s, l.name)} <span class="sys">(Y${l.y})</span>`).join(" → ")}${reigning ? ` · <b>${esc(reigning)}</b> reigns today` : ""}</div>`);
+    const rows = chron.map((e) => `<div class="card-sub crier-row">${e.icon} <span class="sys">Y${e.y}·D${e.d}</span> ${chronText(s, e)}</div>`).join("")
+      || `<div class="card-sub">The chronicle's pages are still blank.</div>`;
+    return `<div class="overlay" data-act="hold-close">
+      <div class="card profile-card" data-act="hold-noop">
+        <div class="card-row">
+          <div class="avatar">🏰</div>
+          <div><div class="card-title">${esc(st.name || "The Stronghold")}</div>${lines.join("")}</div>
+          <div class="spacer"></div><button class="btn sm ghost" data-act="hold-close">✕</button>
+        </div>
+        <div class="card-sub" style="margin-top:8px"><b>📜 The Chronicle</b></div>
+        <div class="chron-log">${rows}</div>
+      </div>
+    </div>`;
   }
 
   function screenFame(s) {
@@ -1611,6 +1657,7 @@
       case "hero": html = screenHero(s); break;
       default: html = screenTitle();
     }
+    if (ui.holdOpen) html += holdOverlay(s); // beneath a champion profile, if both are open
     if (ui.profileName) html += profileOverlay(s);
     app.innerHTML = html;
     // The replay theater's clockwork runs only while a parchment plays (GUI-64).
@@ -1647,6 +1694,8 @@
       case "board-band": ui.boardBand = arg; render(game.state); break;
       case "profile": ui.profileName = arg; render(game.state); break;
       case "profile-close": ui.profileName = null; render(game.state); break;
+      case "hold": ui.holdOpen = true; render(game.state); break;
+      case "hold-close": ui.holdOpen = false; render(game.state); break;
       case "profile-noop": break;
       case "servant-move": { const [sid, dir] = arg.split(":"); game.moveServant(sid, parseInt(dir, 10)); break; }
       case "rename-hold": { const n = typeof prompt === "function" ? prompt("Name your Stronghold:", (game.state.stronghold || {}).name || "") : null; if (n) game.renameHold(n); break; }
