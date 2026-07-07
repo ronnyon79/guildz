@@ -673,14 +673,19 @@ cap (3) & per-bout replenish (50%)**, servant **upkeep/housing** cost, and **ser
    migration); design pass GUI-74 + sims GUI-80 first, then GUI-75→79. ← ADDED 2026-07-07
    (design done, build NOT yet greenlit). Slots before Guilds; Guilds later take over
    the same flows as middlemen.
-4. **Guilds** — the tithe→rent→lodging economy + guild AI (own planning pass first).
-5. **Economy balance sim** — headless multi-season sim; tune rents/tithes/purses/gate/
+4. **Founding Day & the Hold Chronicle** — origins/lore + the from-scratch world option.
+   ← ADDED 2026-07-07 (design done, build NOT yet greenlit). The retro-lore half
+   (worldgen Year-0 roll, chronicle, calendar years, NPC founder records, hold profile
+   card) can land **before** Stewardship; the playable from-scratch start leans on Pull
+   (Stewardship §4) for its growth curve — sequence within the era when greenlit.
+5. **Guilds** — the tithe→rent→lodging economy + guild AI (own planning pass first).
+6. **Economy balance sim** — headless multi-season sim; tune rents/tithes/purses/gate/
    sales-tax until the loop is stable *and* the Lord's choices swing the outcome (same
    rigor as the combat sims).
-6. **Defend / closed loop** — challengers rise in your arena and come for your throne.
-7. **Exile mode (#3)** — separate design + build (survive the wilds → found a new
+7. **Defend / closed loop** — challengers rise in your arena and come for your throne.
+8. **Exile mode (#3)** — separate design + build (survive the wilds → found a new
    Stronghold). Own pass.
-8. **(far future) Stronghold warfare** — many Strongholds in one world battling on a
+9. **(far future) Stronghold warfare** — many Strongholds in one world battling on a
    battlefield (tactics, siege engines, cavalry). Own grand plan later.
 
 ### Serve — mode (the household path) (STUB, plan separately)
@@ -935,6 +940,166 @@ in the GUI-74 design pass; Era 3 numbers wait for the warfare grand plan.
 - Trade goods beyond provisions (gear? luxuries for spectacle bonus?) — v1 provisions only?
 - Do empty beds affect the tournament (thinner bands = fewer bouts = smaller gate) —
   automatic via existing systems, verify in sim.
+
+## Founding Day & the Hold Chronicle (origins/lore, design v2)  ← PLANNED, not built
+
+**User direction (2026-07-07):** every Stronghold starts somewhere — plan **day 1 of a
+hold's life** (what a founder actually does when they create one) and give every hold a
+**history, lore and background** that tells the story of how it was created.
+**Core decisions LOCKED 2026-07-07:** archetype fingerprints **mechanical from the start** ·
+world creation offers **join a living hold OR found from scratch** · founding **treasury =
+the founder's purse** · calendar shows **plain years** · chronicle = **full curated event
+log**. **No code until a separate go.**
+
+### Principle — lore is DERIVED, never invented
+Same DNA as seed-replay and the facts store: a founding story is **assembled from real
+recorded data**, not random flavor text. Five ingredients, all already in (or planned for)
+the save:
+- **WHO** — the founder is a **real champion record**: class, career wins, age, temperament
+  (GUI-42), fame. The founders' ledger (GUI-60 `state.departed`) already captures exactly this.
+- **WHY** — the departure reason, already recorded: **rode out** (ambitious idle veteran) ·
+  **exiled** (one-way, Exile mode) · **adventured and stayed** (Adventure mode) · **deposed
+  Lord who fled** (a fallen dynasty seeds a rival hold — new, dramatic, cheap).
+- **WHENCE** — the **mother hold**. Every hold except the world's first has a parent →
+  the world is a **family tree of holds** (worldgen's first hold is the root; GUI-25's
+  expansion graph gets its edges for free, and trade routes gain ancestry flavor).
+- **WHEN** — an absolute date on the world clock (see Calendar below).
+- **HOW** — a seeded **founding archetype** (below), weighted by the founder's temperament.
+
+### Founding archetypes (seeded; temperament-weighted; 8 to start) — fingerprints DECIDED
+**DECIDED (2026-07-07): mechanical from the start.** Each archetype = a Scribe phrase-pool
+(HOLD_NAMES / death-theatre style) + exactly **ONE mechanical fingerprint** (the buildings
+house rule, applied to origins). Two fingerprint kinds: **free buildings** enter at tier 1
+and live normally afterwards (decay, upgrades); **site traits** are permanent and CANNOT be
+built — only an origin grants them (origins stay meaningful forever). Magnitudes sim-tuned.
+- 🏚️ **The Ruin Reclaimed** — an abandoned keep resettled (steadfast/loyal founders).
+  ⚙️ free **Walls & Gatehouse** tier 1 at **~40% condition** (the old stones stand, barely).
+- ⚔️ **Brigand's End** — an outlaw nest cleared by force (aggressive/brave).
+  ⚙️ the brigands' **hoard** — a one-time gold bonus to the founding treasury.
+- 🛤️ **The Crossroads Camp** — a trade camp that grew a palisade (cunning/grasping).
+  ⚙️ free **Marketplace** tier 1.
+- 🕳️ **The Quarry** — built where the stone was already cut (disciplined).
+  ⚙️ site trait: **build & repair costs −10%** (the stone is right there).
+- 🔥 **The Exile's Spite** — raised in defiance, within sight of the old hold's banners
+  (exile-founded only; the chronicle names the Lord who cast them out).
+  ⚙️ **+2 founding company** (loyalists followed you out).
+- 🌊 **The Ford** — commands a river crossing (trade/warfare geography hook).
+  ⚙️ site trait: **better caravan prices** (Stewardship §3); until trade lands, a small
+  gate bonus (travellers stop to watch the games).
+- ⛪ **The Pilgrim's Rest** — grew around a shrine (steadfast; Chapel affinity).
+  ⚙️ free **Chapel** tier 1.
+- 🐺 **The Hunter's Camp** — a wilderness camp that put down roots (restless/adventurers).
+  ⚙️ site trait: a small daily **provision trickle** (the hunt); pre-Stewardship, a small
+  upkeep discount.
+
+### World creation — the player CHOOSES their seat (DECIDED 2026-07-07)
+Creating a world now asks a second question after class/name:
+- **⚔️ Join a living hold** — today's experience, unchanged: worldgen pre-sims 3 seasons,
+  an established Lord reigns, you arrive as a hopeful champion and climb (Rise → Rule →
+  Defend). The hold's founding is generated as **retro-lore** (Year 0 rolled first, history
+  simmed on top — see context 1 below).
+- **🏰 Found from scratch** — **Year 0, Day 1 is playable.** YOU are the founder: pick your
+  class, roll/pick the archetype scene, name the hold — and begin as its **Lord (reign 0)**
+  with the founding company below. No pre-sim, no established anything; Lord mode from the
+  first sunrise, growing the hold from a fighting pit in the dirt. (PROPOSED: the founder
+  is a **veteran by definition** — mirroring GUI-60's 25-win rule — so a from-scratch
+  founder starts with a seeded ~25-win career, the matching age, and `totalGoldAt(25)`
+  minus a modelled career spend as the purse; sim-sized. Keeps the throne defensible and
+  the founding capital meaningful.)
+
+### The four founding contexts — ONE system
+1. **World genesis (retrofit).** Worldgen currently conjures a mature hold + Lord with a
+   bare `reignSeasons` backstory. Instead it first rolls the **founding** (Year 0: founder,
+   archetype, name), THEN pre-sims the 3 background seasons on top. The current Lord may
+   **be** the founder — or their successor, if pre-sim history toppled them (the chronicle
+   records the change; regime data already exists). Every world's origin becomes coherent:
+   chronicle, lords list and founders' ledger all agree.
+2. **From-scratch world creation (player-founded, above).** The same founding sequence,
+   played rather than generated.
+3. **NPC founders (GUI-60, live today).** When a veteran rides out, the departure roll now
+   ALSO mints the founding record: hold name (HOLD_NAMES pools), archetype, date, parent
+   hold. One tiny record — the full living hold still waits for GUI-25; but the trade
+   partners of Stewardship §3 stop being name-only ("Vex's hold") and get real identities.
+4. **Player founding via Exile/Adventure (future).** The second playable door: lose the
+   throne and be cast out, or ride out by choice — prosper in the wilds, then run the same
+   founding sequence with the career (and purse) you carried out.
+
+### Day 1 — what a newborn hold actually is
+The anti-worldgen: no pre-sim, no established anything. Proposed birth state:
+- **The founder IS the Lord** — reign 0, household empty, defend-by-recruiting from day 1.
+- **The founding company:** a seeded **6–10 souls** who followed the founder (novice
+  hopefuls; possibly one loyal companion — a veteran with loy ≥ 0.7 from the old hold —
+  arriving as the **first servant**). Growth from there = the **Pull score** (Stewardship
+  §4) — a newborn hold's rise IS the attraction system, reused not reinvented.
+- **Buildings:** a bare fighting pit, nothing else (archetype fingerprint may grant one).
+- **Treasury = the founder's career purse (DECIDED).** Your saved champion gold becomes
+  the founding capital — the exile who prospered in the wilds founds a richer hold, and
+  champion-mode hoarding finally has an endgame meaning. (NPC founders: a modelled purse
+  from their career, same math the roster uses for gear budgets.)
+- **The founding ceremony (the day-1 sequence):** arrive at the site → the Scribe narrates
+  the archetype scene → **name the hold** (player names it; NPCs draw from HOLD_NAMES) →
+  the **founding proclamation** is pinned as the Board's **parchment #0** — a permanent
+  chronicle entry that NEVER ring-buffers out → the first tiny games (a 6-man day: bands
+  0–4 only, small brackets — the engine already handles sparse days) → the Pull loop takes
+  over: purses, heralds, granary, condition draw the next hopefuls.
+
+### The Hold Chronicle — where the lore lives
+- **Per-hold chronicle record — the FULL curated event log (DECIDED).** Permanent,
+  append-only, one line per event; the 20-cap news ring stays the ticker, the chronicle is
+  its permanent counterpart. What enters (curated = major beats only, no daily noise):
+  the **founding** entry · every **regime change** (👑 fell / 🛡️ held, challenger named,
+  gauntlet toll) · **old-age successions** ⚱️ · **uprisings** · **soft-fails survived or
+  suffered** (bankruptcy, famine — Stewardship) · **children** 🐎 (a champion rides out —
+  the parent hold's chronicle records the daughter hold, with its name and archetype) ·
+  **building milestones** (each building's FIRST raising only, not upgrades) · **legends**
+  (a resident's 100th win; a 5★ throne duel) · later, **conquests** (Warfare). Entry =
+  {year, day, icon, type, refs, seeded phrase} — refs point at real records (champion ids,
+  fact rows), so every line is tappable and verifiable.
+- **UI:** tap a hold's name — home day-line 🏰, world cards, trade routes, the founders'
+  ledger — and a **hold profile card** overlays (the GUI-46 pattern, extended from people
+  to places): the founding story in Scribe prose, the founder (tappable → their champion
+  profile), the hold's age in years, the **lords list** (every reign and how it ended),
+  notable champions. "Founder of Wolfden Keep" likewise joins the founder's own profile card.
+- **Scribe prose:** seeded phrase pools per archetype; the numbers (dates, win counts,
+  reign lengths) come from the real records. Deterministic per worldSeed, as ever.
+
+### Calendar (small prerequisite) — DECIDED: plain years
+Aging is +1/season (GUI-17), so **1 season = 1 year de facto** — now official: seasons
+display as **plain-numbered Years** ("Year 12", i.e. years since the world's first
+founding = the world epoch). Each hold stores `foundedOn` (world season), so a hold's age
+and "founded in Year 8" derive directly. Cheap: the clock already persists {day, season};
+this is display + one field per hold. No era flavor names.
+
+### Hooks & compatibility
+- **Stewardship trade (§3):** routes to founders' holds gain identity, archetype and
+  ancestry ("your sister-hold, founded by Vex the Grim in Year 8").
+- **GUI-25 world growth:** this section defines a hold's **birth state** — the missing
+  half of expansion (GUI-60 supplies the founders; this supplies what they found).
+- **Warfare (far future):** the chronicle is where conquests get written; the family tree
+  makes "the old grudge between sister-holds" a real, derivable thing.
+- **Save schema:** hold gains {foundedOn, founderId/name, archetype, parentHold, chronicle[]};
+  departed-ledger rows gain {holdName, archetype}. Versioned migrations backfill old saves
+  (seeded from worldSeed, so existing worlds retro-gain a consistent origin story).
+
+### Resolved this pass (2026-07-07)
+Fingerprints **mechanical from the start** (one hook each; free buildings tier 1, site
+traits origin-only) · world creation = **join a living hold OR found from scratch** (both
+playable) · **treasury = founder's purse** · calendar = **plain years** · chronicle =
+**full curated event log** (curation list above).
+
+### Still open (sim/design-pass items)
+- Founding company size (6–10?) and the loyal-companion-as-first-servant rule.
+- From-scratch player-founder baseline: ~25-win veteran + modelled purse (PROPOSED above) —
+  wins/age/purse sized via sim; is the founder's class-kit throne-defensible alone at Y0?
+- Fingerprint magnitudes (hoard size, −10% quarry, Ford prices, Hunter trickle) — sim.
+- Deposed-Lord-founds-in-exile: always, or personality-gated (amb/grd high)?
+- Chronicle curation threshold — are building milestones/legends too chatty in practice?
+  (Watch in play; the type field makes filtering trivial.)
+- Newborn-hold economy: can a 6–10-soul hold's gate/tax income sustain purses + repairs
+  before Pull grows it, or does the founder's purse burn as designed runway? — the
+  founding sim (pairs with the Stewardship sims).
+
+---
 
 ## Architecture — the key decision
 
