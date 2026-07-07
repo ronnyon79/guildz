@@ -143,7 +143,7 @@
       <button class="btn block lg" style="margin-top:10px" data-act="begin-defense">⚔️ Stand and fight</button></div>` : "";
     const lordCard = fielded + `<div class="card"><div class="card-row"><div class="avatar">👑</div>
       <div><div class="card-title">Lord ${esc(L.name)} <span class="pill">${CLASSES[L.classId].name}</span></div>
-      <div class="card-sub">${L.wins}-win champion of old · reigning ${L.reignSeasons} year${L.reignSeasons === 1 ? "" : "s"}${p.role === "servant" ? " · <b>you serve his household</b>" : ""}</div></div></div></div>`;
+      <div class="card-sub">${L.wins}-win champion of old · ${L.reignSeasons >= 1 ? `reigning ${L.reignSeasons} year${L.reignSeasons === 1 ? "" : "s"}` : "crowned this year"}${p.role === "servant" ? " · <b>you serve his household</b>" : ""}</div></div></div></div>`;
     if (!s.challengeOpen) return lordCard;
     const uprising = p.role === "servant";
     return lordCard + `<div class="card" style="border-color:#b9a06a">
@@ -338,7 +338,7 @@
     const temper = rec && rec.personality ? G.data.PERSONALITY.label(rec.personality) : "";
     const fade = rec && rec.age != null ? G.data.AGE.mult(rec.age) : 1;
     const lines = [];
-    if (cls) lines.push(`<div class="card-sub">${cls.name}${rec.wins != null ? ` · <b>${rec.wins}</b> career wins` : ""}${rec.reignSeasons ? ` · ${rec.reignSeasons} year${rec.reignSeasons === 1 ? "" : "s"} on the throne` : ""}</div>`);
+    if (cls) lines.push(`<div class="card-sub">${cls.name}${rec.wins != null ? ` · <b>${rec.wins}</b> career wins` : ""}${rec.reignSeasons != null ? (rec.reignSeasons >= 1 ? ` · ${rec.reignSeasons} year${rec.reignSeasons === 1 ? "" : "s"} on the throne` : " · crowned this year") : ""}</div>`);
     if (rec && rec.age != null) lines.push(`<div class="card-sub">age ${rec.age}${fade < 1 ? ` 🍂 <span class="sys">past peak (${Math.round(fade * 100)}% strength)</span>` : ""}</div>`);
     if (temper) lines.push(`<div class="card-sub">temperament: <b>${temper}</b></div>`);
     if (rec && rec.popularity != null) lines.push(`<div class="card-sub">⭐ <b>${rec.popularity}</b> fame</div>`);

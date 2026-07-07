@@ -45,7 +45,7 @@ let usurped = 0;
 for (let seed = 1; seed <= 8; seed++) {
   game.resetGame();
   game.createCharacter("mage", "Probe", 8800 + seed);
-  if (S.lord.reignSeasons < W.seasons + 1) usurped++; // a young reign = the throne changed hands
+  if (S.lord.reignSeasons < W.seasons) usurped++; // a young reign = the throne changed hands (GUI-86: the founder reigns from Year 1, no backstory padding)
 }
 ok(usurped >= 1, `in 8 worlds, ${usurped} had their throne change hands during history`);
 

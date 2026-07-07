@@ -681,6 +681,20 @@ cap (3) & per-bout replenish (50%)**, servant **upkeep/housing** cost, and **ser
   they never wrote down. NEW SUITE tools/test_chronicle.js (16) → 429 green / 23 suites
   (by direct sum — the old 388 figure undercounted).
 
+- **GUI-86 Worldgen Year-0: the founding comes first — v0.41.0** (Founding tranche 3/5).
+  `worldgen.rollFounding(seed)`: a veteran founder (LORD.wins 40–60 — root founders are
+  legend; throne difficulty unchanged) + a seeded **archetype** weighted by their loudest
+  trait (data.ARCHETYPES ×8, lore-only lines; fingerprints await GUI-85's Era-1 buildings;
+  `spite` reserved for exile-founded holds). The founder TAKES THE FIRST THRONE, then the
+  3 pre-sim seasons fight on top — `simulateHistory` now returns chronicle-ready `events`
+  (👑 usurped / 🛡️ held per history challenge), so on arrival **chronicle, lords line and
+  worldgen agree** (probe: 6/6 worlds coherent — the Lord is the founder or the last
+  recorded usurper; 5/6 thrones fell — the single-duel era stays brutal, cf. GUI-33).
+  The fake reignSeasons 1–4 backstory is RETIRED (real years now; "crowned this year" copy
+  for reign 0 on home + profile cards). stronghold.{founder, archetype} persisted; old
+  saves retro-roll a coherent origin seeded from worldSeed and their plain founding line
+  is enriched. NEW SUITE tools/test_founding.js (18) → 447 green / 24 suites.
+
 ### Build order (when the user says go)
 1. **Champion summit** — NPC population + Popularity ladder + Lord boss fight (finish
    the Rise). Small, self-contained, reuses combat entirely.
