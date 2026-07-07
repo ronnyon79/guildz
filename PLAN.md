@@ -695,6 +695,16 @@ cap (3) & per-bout replenish (50%)**, servant **upkeep/housing** cost, and **ser
   saves retro-roll a coherent origin seeded from worldSeed and their plain founding line
   is enriched. NEW SUITE tools/test_founding.js (18) → 447 green / 24 suites.
 
+- **GUI-88 The hold profile card — v0.42.0** (Founding tranche 4/5). The GUI-46 pattern
+  extended from people to PLACES: tap the hold's name — home day-line 🏰, the crier's
+  header, the Lord's own title pill — and the hold's card overlays: archetype + founding
+  story, "founded in Year 1 by <founder> — its Nth year", the **line of Lords** derived
+  from the chronicle (founder → every 👑 usurper/uprising/⚱️ heir, with years; "<name>
+  reigns today"), and the full **📜 Chronicle** in its own scrolling box (.chron-log),
+  every entry date-stamped Y·D with its **refs tappable** (chronText: the Scribe's
+  <b>names</b> become plinks) — champion profiles stack ON TOP of the hold card and
+  close back to it. NEW SUITE tools/test_holdcard.js (20) → 467 green / 25 suites.
+
 ### Build order (when the user says go)
 1. **Champion summit** — NPC population + Popularity ladder + Lord boss fight (finish
    the Rise). Small, self-contained, reuses combat entirely.
