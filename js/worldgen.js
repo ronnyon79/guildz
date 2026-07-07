@@ -29,12 +29,19 @@
       age: AGE.start + Math.round(wins / 3) + G.engine.randInt(rng, 4, 10),
       personality,
     };
-    const keys = Object.keys(ARCHETYPES).filter((k) => !ARCHETYPES[k].exileOnly);
-    let loudest = null, max = 0.65; // an archetype follows a trait only when one truly stands out
-    for (const t of Object.keys(personality)) if (personality[t] >= max) { max = personality[t]; loudest = t; }
-    const leaning = loudest ? keys.filter((k) => (ARCHETYPES[k].traits || []).includes(loudest)) : [];
-    const archetype = leaning.length ? G.engine.pick(rng, leaning) : G.engine.pick(rng, keys);
+    const archetype = pickArchetype(rng, personality);
     return { founder, archetype };
+  }
+
+  // How a hold came to be: seeded, leaning toward the founder's loudest trait
+  // (only when one truly stands out). Shared by world-gen roots and the
+  // founder records GUI-89 mints when veterans ride out. ONE rng call.
+  function pickArchetype(rng, personality) {
+    const keys = Object.keys(ARCHETYPES).filter((k) => !ARCHETYPES[k].exileOnly);
+    let loudest = null, max = 0.65;
+    for (const t of Object.keys(personality || {})) if (personality[t] >= max) { max = personality[t]; loudest = t; }
+    const leaning = loudest ? keys.filter((k) => (ARCHETYPES[k].traits || []).includes(loudest)) : [];
+    return leaning.length ? G.engine.pick(rng, leaning) : G.engine.pick(rng, keys);
   }
 
   // A plain throne-duel kit for a HISTORY lord (no buildings in the past).
@@ -146,5 +153,5 @@
     return { clock: { day: 1, season: seasons + 1 }, lastSeason, board, events };
   }
 
-  G.worldgen = { simulateHistory, rollFounding };
+  G.worldgen = { simulateHistory, rollFounding, pickArchetype };
 })(typeof window !== "undefined" ? window : globalThis);

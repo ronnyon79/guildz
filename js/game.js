@@ -148,6 +148,22 @@
     };
   }
 
+  /* GUI-89: a founder's record — when a champion rides out to raise a banner,
+   * the ledger mints the hold they go on to found: a seeded name (never this
+   * hold's, never a sibling's) + an archetype by their temperament (exiles
+   * always build in Spite). One tiny record; the living hold waits for the
+   * multi-stronghold world (GUI-25), but trade and lore get real identities. */
+  function mintHold(seed, personality, exile) {
+    const rng = G.engine.makeRng(seed >>> 0);
+    const H = G.data.HOLD_NAMES;
+    const taken = new Set([(state.stronghold || {}).name].concat((state.departed || []).map((d) => d.holdName).filter(Boolean)));
+    let holdName = G.engine.pick(rng, H.prefixes) + G.engine.pick(rng, H.suffixes);
+    let guard = 0;
+    while (taken.has(holdName) && guard++ < 24) holdName = G.engine.pick(rng, H.prefixes) + G.engine.pick(rng, H.suffixes);
+    return { holdName, archetype: exile ? "spite" : G.worldgen.pickArchetype(rng, personality || {}) };
+  }
+  const nameHash = (s) => { let h = 0; for (const c of String(s)) h = (h * 31 + c.charCodeAt(0)) >>> 0; return h; };
+
   function listWorlds() { migrateLegacy(); return readIndex().worlds; }
   function boot() { migrateLegacy(); state.screen = "title"; emit(); }
 
@@ -237,6 +253,13 @@
       }
       state.household = Array.isArray(data.household) ? data.household : [];
       state.departed = Array.isArray(data.departed) ? data.departed : [];
+      // Pre-GUI-89 ledgers: founders who rode out before holds were minted.
+      for (const d of state.departed) {
+        if (d.reason === "found" && !d.holdName) {
+          const m = mintHold(((state.player.worldSeed || 7) ^ nameHash(d.name) ^ ((d.season || 1) * 2654435761)) >>> 0, null, false);
+          d.holdName = m.holdName; d.archetype = m.archetype;
+        }
+      }
       state.defense = data.defense || null;
       state.board = Array.isArray(data.board) ? data.board : [];
       state.screen = "home";
@@ -616,7 +639,12 @@
             const reason = (P.amb != null ? P.amb : 0.5) >= 0.5 ? "found"
               : (P.brv != null ? P.brv : 0.5) >= 0.4 ? "adventure" : null;
             if (!reason) continue; // the steadfast wait for a worthy rival
-            departures.push({ name: n.name, classId: n.classId, wins: n.wins, age: n.age, reason, season: closing });
+            const dep = { name: n.name, classId: n.classId, wins: n.wins, age: n.age, reason, season: closing };
+            if (reason === "found") { // GUI-89: the ledger mints the hold they ride out to raise
+              const m = mintHold(((state.player.worldSeed || 1) ^ nameHash(n.name) ^ (closing * 2654435761)) >>> 0, P, false);
+              dep.holdName = m.holdName; dep.archetype = m.archetype;
+            }
+            departures.push(dep);
             state.npcs = state.npcs.filter((x) => x.id !== n.id);
           }
           if (departures.length) {
@@ -736,7 +764,12 @@
       const when = { y: rolled ? state.clock.season - 1 : state.clock.season, d: rolled ? G.data.SEASON.days : Math.max(1, state.clock.day - 1) };
       if (nt && nt.result === "usurped") chronicle("👑", "regime", `<b>${nt.challenger}</b> stormed the keep and took the throne from <b>${nt.lordName}</b>.`, { d: 1, refs: [nt.challenger, nt.lordName] }); // dated with its 👑 parchment: the new year's day 1
       else if (nt) chronicle("🛡️", "regime", `<b>${nt.challenger}</b> came for the throne — <b>${nt.by}</b> held it.`, { d: 1, refs: [nt.challenger, nt.by] });
-      for (const d2 of state.lastDay.departures || []) if (d2.reason === "found") chronicle("🐎", "child", `<b>${d2.name}</b> rode out to raise a banner of their own.`, { ...when, refs: [d2.name] });
+      for (const d2 of state.lastDay.departures || []) if (d2.reason === "found") {
+        const a2 = d2.archetype && G.data.ARCHETYPES[d2.archetype];
+        chronicle("🐎", "child", d2.holdName
+          ? `<b>${d2.name}</b> rode out and founded <b>${d2.holdName}</b>${a2 ? ` — ${a2.line}` : ""}.`
+          : `<b>${d2.name}</b> rode out to raise a banner of their own.`, { ...when, refs: [d2.name] });
+      }
       if (state.lastDay.lordDied) chronicle("⚱️", "succession", `Lord <b>${state.lastDay.lordDied}</b> died on the throne; <b>${state.lastDay.newLord || state.player.name}</b> was raised in their place.`, { ...when, refs: [state.lastDay.lordDied, state.lastDay.newLord || state.player.name] });
       // Legends: the hundredth career win, chronicled once per name.
       for (const c of [state.player, ...state.npcs, ...(state.household || [])]) {
@@ -1201,6 +1234,12 @@
     const stays = rng() < 0.25 + 0.7 * ((L.personality || {}).loy != null ? L.personality.loy : 0.5);
     if (stays) {
       state.npcs.push({ id: "x" + state.clock.season + "_" + state.npcs.length, name: L.name, classId: L.classId, wins: L.wins, popularity: 0, age: L.age, personality: L.personality });
+    } else if (((L.personality || {}).amb != null ? L.personality.amb : 0.5) >= 0.5) {
+      // GUI-89: an AMBITIOUS deposed Lord doesn't fade into the wilds — they
+      // build again, in sight of your banners. The Exile's Spite, always.
+      const m = mintHold(((p.worldSeed || 1) ^ nameHash(L.name) ^ (state.clock.season * 7919)) >>> 0, L.personality, true);
+      state.departed = (state.departed || []).concat([{ name: L.name, classId: L.classId, wins: L.wins, age: L.age, reason: "found", holdName: m.holdName, archetype: m.archetype, season: state.clock.season }]).slice(-12);
+      chronicle("🔥", "child", `Deposed Lord <b>${L.name}</b> rode into exile and raised <b>${m.holdName}</b> in defiance — ${G.data.ARCHETYPES.spite.line}.`, { refs: [L.name] });
     }
     state.lastThrone = { won: true, uprising, lordName: L.name, lordStays: stays };
     chronicle("👑", uprising ? "uprising" : "regime", uprising

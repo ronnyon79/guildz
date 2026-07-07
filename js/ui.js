@@ -259,7 +259,7 @@
     const n = s.npcs.find((x) => x.name === name);
     if (n) return { rec: n, status: `<span class="pill">resident champion</span>` };
     const d = (s.departed || []).find((x) => x.name === name);
-    if (d) return { rec: d, status: `<span class="pill">${d.reason === "found" ? "🐎 founded their own hold" : "🌄 rode out for adventure"}</span>` };
+    if (d) return { rec: d, status: `<span class="pill">${d.reason === "found" ? (d.holdName ? `${d.archetype === "spite" ? "🔥" : "🐎"} founder of ${esc(d.holdName)}` : "🐎 founded their own hold") : "🌄 rode out for adventure"}</span>` };
     return { rec: null, status: "" };
   }
 
