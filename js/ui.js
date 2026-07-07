@@ -36,7 +36,7 @@
     "A scattering of polite applause.",
     "A solid showing — the stands approve.",
     "The crowd roars!",
-    "The crowd is ECSTATIC — they'll sing of this bout for seasons!",
+    "The crowd is ECSTATIC — they'll sing of this bout for years!",
   ];
   function crowdBlock(spec) {
     if (!spec || !spec.stars) return "";
@@ -80,7 +80,7 @@
     const cards = worlds.map((w) => `<div class="card class-card" data-act="load-world" data-arg="${w.id}">
       <div class="card-row"><div class="avatar">${CLASSES[w.classId] ? CLASSES[w.classId].emoji : "⚔️"}</div>
         <div><div class="card-title">${esc(w.name)} <span class="pill">${roleBadge(w)}</span>${w.hold ? ` <span class="pill">🏰 ${esc(w.hold)}</span>` : ""}</div>
-        <div class="card-sub">${CLASSES[w.classId] ? CLASSES[w.classId].name : ""} · ${w.wins} wins · Season ${w.season}, Day ${w.day}</div></div>
+        <div class="card-sub">${CLASSES[w.classId] ? CLASSES[w.classId].name : ""} · ${w.wins} wins · Year ${w.season}, Day ${w.day}</div></div>
         <div class="spacer"></div>
         <button class="btn sm ghost" data-act="delete-world" data-arg="${w.id}">🗑</button></div></div>`).join("");
     return `<div class="title-wrap">
@@ -128,7 +128,7 @@
         : slots ? "empty — beaten challengers may kneel" : "build the Barracks to house defenders";
       const challenge = s.defense && !s.defense.fielded ? `<div class="card" style="border-color:#c0392b">
         <div class="card-title">⚔️ A CHALLENGER COMES</div>
-        <div class="card-sub"><b>${esc(s.defense.name)}</b> ended the season as the people's favourite and demands your throne. The challenge cannot be refused — your household fights first, then it is you.</div>
+        <div class="card-sub"><b>${esc(s.defense.name)}</b> ended the year as the people's favourite and demands your throne. The challenge cannot be refused — your household fights first, then it is you.</div>
         <button class="btn block lg" style="margin-top:10px" data-act="begin-defense">🛡️ Answer the challenge</button></div>` : "";
       return `<div class="card"><div class="card-row"><div class="avatar">👑</div>
         <div><div class="card-title"><span class="you">${esc(p.name)}</span> <span class="pill on">👑 Lord of ${esc((s.stronghold || {}).name || "the Stronghold")}</span> <button class="btn sm ghost" data-act="rename-hold" title="Rename your hold">✏️</button></div>
@@ -143,14 +143,14 @@
       <button class="btn block lg" style="margin-top:10px" data-act="begin-defense">⚔️ Stand and fight</button></div>` : "";
     const lordCard = fielded + `<div class="card"><div class="card-row"><div class="avatar">👑</div>
       <div><div class="card-title">Lord ${esc(L.name)} <span class="pill">${CLASSES[L.classId].name}</span></div>
-      <div class="card-sub">${L.wins}-win champion of old · reigning ${L.reignSeasons} season${L.reignSeasons === 1 ? "" : "s"}${p.role === "servant" ? " · <b>you serve his household</b>" : ""}</div></div></div></div>`;
+      <div class="card-sub">${L.wins}-win champion of old · reigning ${L.reignSeasons} year${L.reignSeasons === 1 ? "" : "s"}${p.role === "servant" ? " · <b>you serve his household</b>" : ""}</div></div></div></div>`;
     if (!s.challengeOpen) return lordCard;
     const uprising = p.role === "servant";
     return lordCard + `<div class="card" style="border-color:#b9a06a">
       <div class="card-title">${uprising ? "🗡️ RISE AGAINST YOUR LORD" : "⚔️ The throne can be YOURS"}</div>
       <div class="card-sub">${uprising
         ? "You top the fame ladder — even in servitude. An uprising is a fight <b>to the death</b>: win and the throne is yours; lose and there is no mercy."
-        : `You ended the season as the most famous in the Stronghold. Challenge Lord ${esc(L.name)} for the throne — he'll be fresh, on his own sand, with the crowd at his back. Or enter the day's tournament and let the moment pass.`}</div>
+        : `You ended the year as the most famous in the Stronghold. Challenge Lord ${esc(L.name)} for the throne — he'll be fresh, on his own sand, with the crowd at his back. Or enter the day's tournament and let the moment pass.`}</div>
       <button class="btn block lg" style="margin-top:10px" data-act="challenge-lord">${uprising ? "🗡️ Rise — to the death" : "👑 Challenge the Lord"}</button>
     </div>`;
   }
@@ -175,7 +175,7 @@
   function crierBlock(s) {
     if (!s.news || !s.news.length) return "";
     const rows = s.news.slice(-6).reverse().map((n) =>
-      `<div class="card-sub crier-row">${n.icon} <span class="sys">D${n.d}·S${n.s}</span> ${n.text}</div>`).join("");
+      `<div class="card-sub crier-row">${n.icon} <span class="sys">D${n.d}·Y${n.s}</span> ${n.text}</div>`).join("");
     return `<div class="card"><div class="card-title" style="font-size:14px">📯 The crier of ${esc((s.stronghold || {}).name || "the Stronghold")}</div>${rows}</div>`;
   }
 
@@ -215,11 +215,11 @@
       ${decreesBlock(s)}
       ${buildingsBlock(s)}
       <button class="btn block lg gold" data-act="hold-games">👑 Hold the Day's Games</button>
-      <p class="card-sub center" style="margin-top:12px">🏰 <b>${esc((s.stronghold || {}).name || "The Stronghold")}</b> · Day ${s.clock.day} · Season ${s.clock.season}</p>
+      <p class="card-sub center" style="margin-top:12px">🏰 <b>${esc((s.stronghold || {}).name || "The Stronghold")}</b> · Day ${s.clock.day} · Year ${s.clock.season}</p>
       <p class="card-sub center" style="margin-top:6px">Every band fights while you watch from the high seat. Champions earn fame in your arena — and one day, the boldest of them will come for your throne.</p>`
         : `<button class="btn block lg gold" data-act="enter-arena">🌅 Enter the Day's Tournament</button>
-      <p class="card-sub center" style="margin-top:12px">🏰 <b>${esc((s.stronghold || {}).name || "The Stronghold")}</b> · Day ${s.clock.day} · Season ${s.clock.season}</p>
-      <p class="card-sub center" style="margin-top:6px">Each day is a knockout tournament in your win-band (${G.tournament.bandLabel(G.tournament.bandOf(p.wins))}). Every bout won earns gold and stats — lose once and your day ends, but you keep everything. Take the band to be <b>Champion of the Day</b> and earn ⭐ fame — the most famous at season's end may challenge the Lord.</p>`}
+      <p class="card-sub center" style="margin-top:12px">🏰 <b>${esc((s.stronghold || {}).name || "The Stronghold")}</b> · Day ${s.clock.day} · Year ${s.clock.season}</p>
+      <p class="card-sub center" style="margin-top:6px">Each day is a knockout tournament in your win-band (${G.tournament.bandLabel(G.tournament.bandOf(p.wins))}). Every bout won earns gold and stats — lose once and your day ends, but you keep everything. Take the band to be <b>Champion of the Day</b> and earn ⭐ fame — the most famous at year's end may challenge the Lord.</p>`}
     </div>` + tabbar("home");
   }
 
@@ -243,7 +243,7 @@
       const throne = nt ? (nt.result === "usurped"
         ? `👑 <b>${esc(nt.challenger)}</b> stormed the keep — <b>the throne FELL</b>. ${esc(nt.lordName)}'s reign is ended; a new Lord rules the Stronghold.${nt.sworn && nt.sworn.length ? ` The keep's guard — ${nt.sworn.map(esc).join(" and ")} — knelt and swore to the victor.` : ""}`
         : `👑 <b>${esc(nt.challenger)}</b> came for the throne — <b>${esc(nt.by)}</b> ${nt.by === nt.lordName ? "cut them down" : "held the wall"}${nt.fate === "exile" ? "; the beaten challenger rode into exile" : nt.fate === "die" ? "; the challenger lies dead" : ""}. The parchments hang on the board.`) : "";
-      season = `<div class="levelup">🍂 Season ${lastDay.seasonEnd.season} ends! ${t ? `${t.isPlayer ? "<b>You</b>" : `<b>${esc(t.name)}</b>`} top${t.isPlayer ? "" : "s"} the fame ladder with ⭐ ${t.popularity}.` : ""} All fame fades by half as the new season dawns.${lastDay.mayChallenge ? " <b>👑 The right to challenge the Lord is yours — it awaits you at home.</b>" : ""}${throne ? `<br>${throne}` : ""}${gone ? `<br>${gone}` : ""}</div>`;
+      season = `<div class="levelup">🍂 Year ${lastDay.seasonEnd.season} ends! ${t ? `${t.isPlayer ? "<b>You</b>" : `<b>${esc(t.name)}</b>`} top${t.isPlayer ? "" : "s"} the fame ladder with ⭐ ${t.popularity}.` : ""} All fame fades by half as the new year dawns.${lastDay.mayChallenge ? " <b>👑 The right to challenge the Lord is yours — it awaits you at home.</b>" : ""}${throne ? `<br>${throne}` : ""}${gone ? `<br>${gone}` : ""}</div>`;
     }
     return `<div class="screen-title">🌇 Sunset — champions of the day</div>${rows}${season}`;
   }
@@ -338,7 +338,7 @@
     const temper = rec && rec.personality ? G.data.PERSONALITY.label(rec.personality) : "";
     const fade = rec && rec.age != null ? G.data.AGE.mult(rec.age) : 1;
     const lines = [];
-    if (cls) lines.push(`<div class="card-sub">${cls.name}${rec.wins != null ? ` · <b>${rec.wins}</b> career wins` : ""}${rec.reignSeasons ? ` · ${rec.reignSeasons} season${rec.reignSeasons === 1 ? "" : "s"} on the throne` : ""}</div>`);
+    if (cls) lines.push(`<div class="card-sub">${cls.name}${rec.wins != null ? ` · <b>${rec.wins}</b> career wins` : ""}${rec.reignSeasons ? ` · ${rec.reignSeasons} year${rec.reignSeasons === 1 ? "" : "s"} on the throne` : ""}</div>`);
     if (rec && rec.age != null) lines.push(`<div class="card-sub">age ${rec.age}${fade < 1 ? ` 🍂 <span class="sys">past peak (${Math.round(fade * 100)}% strength)</span>` : ""}</div>`);
     if (temper) lines.push(`<div class="card-sub">temperament: <b>${temper}</b></div>`);
     if (rec && rec.popularity != null) lines.push(`<div class="card-sub">⭐ <b>${rec.popularity}</b> fame</div>`);
@@ -384,10 +384,10 @@
         <div class="spacer"></div><span class="pill">⭐ ${r.popularity}</span></div></div>`;
     }).join("");
     const last = s.lastSeason && s.lastSeason.top[0]
-      ? `<p class="card-sub center" style="margin-top:10px">Last season's most famous: <b>${esc(s.lastSeason.top[0].name)}</b> (⭐ ${s.lastSeason.top[0].popularity})</p>` : "";
+      ? `<p class="card-sub center" style="margin-top:10px">Last year's most famous: <b>${esc(s.lastSeason.top[0].name)}</b> (⭐ ${s.lastSeason.top[0].popularity})</p>` : "";
     return topbar(s.player) + `<div class="screen">
-      <div class="screen-title">⭐ Fame — Day ${s.clock.day}, Season ${s.clock.season}</div>
-      <p class="card-sub center" style="margin-bottom:10px">Day champions earn fame by band and bouts won. Fame fades by half each season — the most famous at season's end may challenge the Lord.</p>
+      <div class="screen-title">⭐ Fame — Day ${s.clock.day}, Year ${s.clock.season}</div>
+      <p class="card-sub center" style="margin-bottom:10px">Day champions earn fame by band and bouts won. Fame fades by half each year — the most famous at year's end may challenge the Lord.</p>
       ${rows}${last}
     </div>` + tabbar("fame");
   }
@@ -528,7 +528,7 @@
     const si = seasons.indexOf(ui.boardSeason);
     const pager = `<div class="alloc-row" style="align-items:center;justify-content:center;gap:14px;margin-bottom:8px">
       <button class="btn sm ghost" data-act="board-season" data-arg="-1" ${si === 0 ? "disabled" : ""}>◀</button>
-      <b>Season ${ui.boardSeason}</b>
+      <b>Year ${ui.boardSeason}</b>
       <button class="btn sm ghost" data-act="board-season" data-arg="1" ${si === seasons.length - 1 ? "disabled" : ""}>▶</button>
     </div>`;
     const cells = [];
@@ -929,7 +929,7 @@
     let seasonNote = "";
     if (d.seasonEnd) {
       const t = d.seasonEnd.top[0];
-      seasonNote = `<div class="levelup">🍂 Season ${d.seasonEnd.season} closes under your reign. ${t ? `<b>${esc(t.name)}</b> is the people's favourite (⭐ ${t.popularity}).` : ""} None dare challenge you… yet.</div>`;
+      seasonNote = `<div class="levelup">🍂 Year ${d.seasonEnd.season} closes under your reign. ${t ? `<b>${esc(t.name)}</b> is the people's favourite (⭐ ${t.popularity}).` : ""} None dare challenge you… yet.</div>`;
     }
     const L = d.ledger;
     const money = L ? `<div class="card"><div class="card-title">🏛️ The day's ledger <span class="pill">${L.attendance} spectators · avg ${L.avgSpec}★</span></div>
@@ -938,7 +938,7 @@
       <div class="card-title" style="margin-top:6px">${L.net >= 0 ? "Net +" : "Net "}${L.net} 🪙 → treasury <b>${s.stronghold.treasury}</b>${s.stronghold.treasury < 0 ? ' <span class="pill">⚠️ the coffers run dry</span>' : ""}</div>
     </div>` : "";
     return topbar(s.player) + `<div class="screen">
-      <div class="screen-title">👑 The games conclude — Day ${d.seasonEnd ? G.data.SEASON.days : s.clock.day - 1}, Season ${d.seasonEnd ? d.seasonEnd.season : s.clock.season}</div>
+      <div class="screen-title">👑 The games conclude — Day ${d.seasonEnd ? G.data.SEASON.days : s.clock.day - 1}, Year ${d.seasonEnd ? d.seasonEnd.season : s.clock.season}</div>
       ${money}
       ${sunsetBoard(d)}
       ${seasonNote}
@@ -1040,7 +1040,7 @@
         : t.fate === "defense"
         ? `Fielded for a throne not your own, ${esc((s.player || {}).name || "the servant")} fell to ${esc(t.lordName)} on the sand. A defender gets no choice.`
         : t.fate === "throne-age"
-        ? `After <b>${t.reignSeasons || "?"}</b> season${t.reignSeasons === 1 ? "" : "s"} of rule, Lord ${esc((s.player || {}).name || "?")} passes in the high seat at a great age, crown untaken. The rarest of endings — the bards will sing of it for a hundred years.`
+        ? `After <b>${t.reignSeasons || "?"}</b> year${t.reignSeasons === 1 ? "" : "s"} of rule, Lord ${esc((s.player || {}).name || "?")} passes in the high seat at a great age, crown untaken. The rarest of endings — the bards will sing of it for a hundred years.`
         : `${esc((s.player || {}).name || "The champion")} chose to meet the end unbowed.`}</p>
       <p class="card-sub center">The save is gone — as permanent as the grave. The Stronghold will remember.</p>
       <div class="result-actions"><button class="btn block" data-act="reset-hard">⚔️ A new champion rises</button></div>

@@ -661,6 +661,14 @@ cap (3) & per-bout replenish (50%)**, servant **upkeep/housing** cost, and **ser
   NEW SUITE test_pwa (15: manifest, PNG signatures/dimensions, strategy, shell-asset
   existence, wiring) → 388 green / 21 suites. Add to Home Screen away. 📱
 
+- **GUI-84 Calendar: plain years — v0.39.0** (Founding tranche 1/5, BUILD GREENLIT
+  2026-07-07). 1 season = 1 year is now OFFICIAL: every player-facing date reads in
+  **Years** (home day-line, fame ladder, sunset banners, board pager, world cards, crier
+  stamps D·Y, reign lengths "N years on the throne") — internal state keys stay `season`
+  (no schema churn). `stronghold.foundedOn` persisted (=1: the world epoch IS the first
+  hold's founding; migration backfills old saves). NEW SUITE tools/test_calendar.js (16:
+  epoch, year labels, roll, worldgen arrival year, backfill) → 404 green / 22 suites.
+
 ### Build order (when the user says go)
 1. **Champion summit** — NPC population + Popularity ladder + Lord boss fight (finish
    the Rise). Small, self-contained, reuses combat entirely.
