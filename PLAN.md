@@ -676,8 +676,9 @@ cap (3) & per-bout replenish (50%)**, servant **upkeep/housing** cost, and **ser
 4. **Founding Day & the Hold Chronicle** — origins/lore + the from-scratch world option.
    ← ADDED 2026-07-07 (design done, build NOT yet greenlit). The retro-lore half
    (worldgen Year-0 roll, chronicle, calendar years, NPC founder records, hold profile
-   card) can land **before** Stewardship; the playable from-scratch start leans on Pull
-   (Stewardship §4) for its growth curve — sequence within the era when greenlit.
+   card) can land **before** Stewardship; the playable from-scratch start now **requires**
+   Stewardship — its settlement act IS city-management gameplay (Pull, granary, condition,
+   trade) with no arena income — so it ships with or after that pillar.
 5. **Guilds** — the tithe→rent→lodging economy + guild AI (own planning pass first).
 6. **Economy balance sim** — headless multi-season sim; tune rents/tithes/purses/gate/
    sales-tax until the loop is stable *and* the Lord's choices swing the outcome (same
@@ -941,15 +942,19 @@ in the GUI-74 design pass; Era 3 numbers wait for the warfare grand plan.
 - Do empty beds affect the tournament (thinner bands = fewer bouts = smaller gate) —
   automatic via existing systems, verify in sim.
 
-## Founding Day & the Hold Chronicle (origins/lore, design v2)  ← PLANNED, not built
+## Founding Day & the Hold Chronicle (origins/lore, design v3)  ← PLANNED, not built
 
 **User direction (2026-07-07):** every Stronghold starts somewhere — plan **day 1 of a
 hold's life** (what a founder actually does when they create one) and give every hold a
 **history, lore and background** that tells the story of how it was created.
 **Core decisions LOCKED 2026-07-07:** archetype fingerprints **mechanical from the start** ·
 world creation offers **join a living hold OR found from scratch** · founding **treasury =
-the founder's purse** · calendar shows **plain years** · chronicle = **full curated event
-log**. **No code until a separate go.**
+the founders' purse** · calendar shows **plain years** · chronicle = **full curated event
+log**. **REVISED same day (user):** found-from-scratch is **settlement-first** — a group
+of adventurers builds the place; the beginning plays as **city management**; only once it
+attracts enough people is the **Arena raised** and a **Lord chosen from the founders** —
+and the player may decline the crown (fight as a champion instead, or leave the city).
+**No code until a separate go.**
 
 ### Principle — lore is DERIVED, never invented
 Same DNA as seed-replay and the facts store: a founding story is **assembled from real
@@ -998,14 +1003,17 @@ Creating a world now asks a second question after class/name:
   an established Lord reigns, you arrive as a hopeful champion and climb (Rise → Rule →
   Defend). The hold's founding is generated as **retro-lore** (Year 0 rolled first, history
   simmed on top — see context 1 below).
-- **🏰 Found from scratch** — **Year 0, Day 1 is playable.** YOU are the founder: pick your
-  class, roll/pick the archetype scene, name the hold — and begin as its **Lord (reign 0)**
-  with the founding company below. No pre-sim, no established anything; Lord mode from the
-  first sunrise, growing the hold from a fighting pit in the dirt. (PROPOSED: the founder
-  is a **veteran by definition** — mirroring GUI-60's 25-win rule — so a from-scratch
-  founder starts with a seeded ~25-win career, the matching age, and `totalGoldAt(25)`
-  minus a modelled career spend as the purse; sim-sized. Keeps the throne defensible and
-  the founding capital meaningful.)
+- **🏰 Found from scratch (REVISED — settlement-first)** — **Year 0, Day 1 is playable**,
+  but there is **no arena and no Lord yet**: a **group of adventurers** (you among them,
+  leading the expedition) decides to build a Stronghold. **Act 1 plays as city management**
+  (the Settlement, below) — provisions, construction, trade, attracting settlers. Only when
+  the place has drawn enough people is the **Arena raised** — the moment a camp becomes a
+  STRONGHOLD — and a **Lord is chosen from among the founders**. The player holds first
+  claim (they led the raising) and may **take the crown** (→ Lord mode), **step aside**
+  (an NPC founder is acclaimed; you fight as a **champion** in the arena you built), or
+  **leave the city** (the adventure/exile door) — the familiar seat / sword / road pattern.
+  A tidy side effect: the fragile-Year-0-throne problem dissolves — by the time a throne
+  exists, the hold has people to recruit from and a treasury that earned it.
 
 ### The four founding contexts — ONE system
 1. **World genesis (retrofit).** Worldgen currently conjures a mature hold + Lord with a
@@ -1024,24 +1032,49 @@ Creating a world now asks a second question after class/name:
    throne and be cast out, or ride out by choice — prosper in the wilds, then run the same
    founding sequence with the career (and purse) you carried out.
 
-### Day 1 — what a newborn hold actually is
-The anti-worldgen: no pre-sim, no established anything. Proposed birth state:
-- **The founder IS the Lord** — reign 0, household empty, defend-by-recruiting from day 1.
-- **The founding company:** a seeded **6–10 souls** who followed the founder (novice
-  hopefuls; possibly one loyal companion — a veteran with loy ≥ 0.7 from the old hold —
-  arriving as the **first servant**). Growth from there = the **Pull score** (Stewardship
-  §4) — a newborn hold's rise IS the attraction system, reused not reinvented.
-- **Buildings:** a bare fighting pit, nothing else (archetype fingerprint may grant one).
-- **Treasury = the founder's career purse (DECIDED).** Your saved champion gold becomes
-  the founding capital — the exile who prospered in the wilds founds a richer hold, and
-  champion-mode hoarding finally has an endgame meaning. (NPC founders: a modelled purse
-  from their career, same math the roster uses for gear budgets.)
-- **The founding ceremony (the day-1 sequence):** arrive at the site → the Scribe narrates
-  the archetype scene → **name the hold** (player names it; NPCs draw from HOLD_NAMES) →
-  the **founding proclamation** is pinned as the Board's **parchment #0** — a permanent
-  chronicle entry that NEVER ring-buffers out → the first tiny games (a 6-man day: bands
-  0–4 only, small brackets — the engine already handles sparse days) → the Pull loop takes
-  over: purses, heralds, granary, condition draw the next hopefuls.
+### Day 1 — the camp, not the throne (REVISED 2026-07-07, user)
+**A hold is not born with an arena.** Every founding passes through TWO ACTS; the player
+plays them in a from-scratch world (and later via Exile/Adventure founding), NPC foundings
+run the same arc compressed off-screen and RECORDED (chronicle: "founded Year N · the Arena
+raised Year N+k · first Lord acclaimed").
+
+**Act 1 — the Settlement (city management first):**
+- **The founding party:** a seeded **6–10 adventurers** (the player among them in a
+  from-scratch world; classes mixed, modest careers). No Lord — the founders' council
+  holds the reins, and the player, having led the expedition, **makes the decisions**:
+  pure Stewardship play (provisions, construction, repair, trade stance, heralds) with
+  **no arena income** — the settlement lives on production + trade + the founding purse.
+- **Treasury = the founders' pooled purse (DECIDED, amended):** the party pools its gold
+  as founding capital (exile/adventure founding: YOUR career purse leads the pool — the
+  champion who prospered founds a richer hold). NPC founders: modelled purses, the same
+  math the roster uses for gear budgets.
+- **Buildings:** a palisaded camp, nothing else — plus the archetype's fingerprint. The
+  settlement act leans on Era-2 production buildings (Fields, Pastures, Granary, Well):
+  from-scratch is **a Stewardship game in its first act**.
+- **Growth = the Pull score** (Stewardship §4) — a settlement's rise IS the attraction
+  system, reused not reinvented. Heralds spread word; condition, stock and safety draw
+  settlers.
+- **PROPOSED — settlement events:** seeded dangers keep the party's swords relevant
+  pre-arena (brigands test the palisade → resolved through the real combat engine as a
+  party defense; a bad harvest; a passing caravan). Marked for the design pass — the act
+  needs *texture*, not just decrees.
+- **The day-1 ceremony:** arrive at the site → the Scribe narrates the archetype scene →
+  **name the hold** (player names it; NPCs draw from HOLD_NAMES) → the **founding
+  proclamation** pins as the Board's **parchment #0** — permanent, never ring-buffers.
+
+**Act 2 — the Raising of the Arena (the hinge):**
+- When the settlement has attracted **enough people** (population threshold, sim-sized)
+  and can **afford it**, the founders raise the **ARENA** — the moment a camp becomes a
+  Stronghold. The Arena becomes a real, built thing with a date in the chronicle (today's
+  game implicitly assumed it always existed).
+- **The first games are held, and a Lord is chosen from among the founders.** The player
+  holds first claim; declining passes the crown to the most ambitious/esteemed founder
+  (amb-weighted seeded acclaim). The player's three doors — **crown / champion / road** —
+  mirror the die/serve/exile pattern: every hinge in this game offers seat, sword, or the
+  open road.
+- From here the existing game takes over ENTIRE: tournaments, fame, decrees, challenges —
+  a from-scratch world simply arrives at the same state a join-a-living-hold world starts
+  in, having *earned* it.
 
 ### The Hold Chronicle — where the lore lives
 - **Per-hold chronicle record — the FULL curated event log (DECIDED).** Permanent,
@@ -1077,27 +1110,35 @@ this is display + one field per hold. No era flavor names.
   half of expansion (GUI-60 supplies the founders; this supplies what they found).
 - **Warfare (far future):** the chronicle is where conquests get written; the family tree
   makes "the old grudge between sister-holds" a real, derivable thing.
-- **Save schema:** hold gains {foundedOn, founderId/name, archetype, parentHold, chronicle[]};
-  departed-ledger rows gain {holdName, archetype}. Versioned migrations backfill old saves
-  (seeded from worldSeed, so existing worlds retro-gain a consistent origin story).
+- **Save schema:** hold gains {foundedOn, arenaRaisedOn, founders[], archetype, parentHold,
+  chronicle[]}; departed-ledger rows gain {holdName, archetype}. Versioned migrations
+  backfill old saves (seeded from worldSeed, so existing worlds retro-gain a consistent
+  origin story — including a plausible arena-raising date before their pre-sim history).
 
 ### Resolved this pass (2026-07-07)
 Fingerprints **mechanical from the start** (one hook each; free buildings tier 1, site
 traits origin-only) · world creation = **join a living hold OR found from scratch** (both
-playable) · **treasury = founder's purse** · calendar = **plain years** · chronicle =
-**full curated event log** (curation list above).
+playable) · **treasury = the founders' pooled purse** · calendar = **plain years** ·
+chronicle = **full curated event log** (curation list above) · from-scratch is
+**settlement-first** (a group of adventurers · Act 1 = city management, no arena/Lord ·
+Arena raised at a population threshold · **Lord chosen from the founders**, player holds
+first claim and may decline — **crown / champion / road**).
 
 ### Still open (sim/design-pass items)
-- Founding company size (6–10?) and the loyal-companion-as-first-servant rule.
-- From-scratch player-founder baseline: ~25-win veteran + modelled purse (PROPOSED above) —
-  wins/age/purse sized via sim; is the founder's class-kit throne-defensible alone at Y0?
+- Founding party: size (6–10?), class/career mix, and the player-founder's own starting
+  career (novice or modest veteran? their wins matter if they later choose the champion
+  door) — sim/design.
+- **Arena-raising threshold** — population count + arena cost; how many seasons should
+  Act 1 take at competent play (2–4?) — the founding sim.
+- Settlement runway: production + trade + pooled purse vs. consumption and construction —
+  can a well-run camp reach the arena before the purse dies? (pairs with Stewardship sims).
+- **Settlement events** (PROPOSED above): the Act-1 texture set — brigand raids as real
+  party-defense combats, harvests, caravans — own mini design list.
+- Election acclaim: amb/esteem weights when the player declines (and for NPC foundings).
 - Fingerprint magnitudes (hoard size, −10% quarry, Ford prices, Hunter trickle) — sim.
 - Deposed-Lord-founds-in-exile: always, or personality-gated (amb/grd high)?
 - Chronicle curation threshold — are building milestones/legends too chatty in practice?
   (Watch in play; the type field makes filtering trivial.)
-- Newborn-hold economy: can a 6–10-soul hold's gate/tax income sustain purses + repairs
-  before Pull grows it, or does the founder's purse burn as designed runway? — the
-  founding sim (pairs with the Stewardship sims).
 
 ---
 
