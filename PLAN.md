@@ -728,6 +728,8 @@ Also the NPC-departure flavor of D2.3 ("champions leave to find other adventures
 planning pass (what a round-trip yields, its cost/risk, and the founding path).
 
 ### Stronghold / Region / Kingdom warfare — far future (STUB)
+*(Building support designed 2026-07-07: see "The building catalogue (eras)" → Era 3 —
+Stables/cavalry, Smithy, Siege Workshop, Garrison Hall, Kennels & Mews, Moat, Beacon.)*
 Long-term vision: one persistent world with a **Kingdom → Region → Stronghold** hierarchy
 (Kings, Barons, Lords) where **Strongholds, Regions, and Kingdoms wage war** to conquer
 territory — army tactics, siege engines ("heavy machines"), cavalry. A grand-strategy layer
@@ -852,6 +854,63 @@ emptiness — and their visible warnings (clerk's book lines, crier cries, condi
   world needs; founders' holds gain their first mechanical meaning.
 - Save-schema: stronghold gains condition map, granary stock, routes, pull cache — all
   versioned migrations as usual.
+
+### The building catalogue (eras) — ← user-locked 2026-07-07, design only
+**Direction:** plan ALL proposed buildings + a far-future warfare set (user: "Stables for
+horses?" — yes). Grounded in the historical record: bailey castles held halls, kitchens,
+chapels, barracks, stores, stables, forges/workshops, granaries, dovecotes, kennels & mews;
+towns added guildhalls, mills, breweries, markets, inns, wells; sieges ran on provisions,
+garrisons and carpenter-built engines. House rule unchanged: **every building re-weights a
+real system** (one BUILDING_FX hook each, max 3 tiers, doubling costs). The catalogue is
+**era-gated** so the 🏗️ panel stays a handful of real decisions per era.
+
+**Era 1 — Arena (hooks LIVE systems; buildable pre-Stewardship):**
+- 🍺 **Tavern** — +attendance % / level; +wager stake (drunk bettors bet bigger).
+- 🏪 **Marketplace** — +1 vendor licence line / level; widens the sales-tax base.
+- 👑 **Royal Box** — presided days: +crowd-rating bias and a flat noble-seats gate line.
+- 🧱 **Walls & Gatehouse** — keepGuardWear −5pp / level (challengers arrive MORE worn:
+  75→70→65→60%); later a Pull factor ("a safe hold") and siege HP in Warfare.
+- ⛪ **Chapel** — loyalty culture: idle-veteran departures less likely; beaten challengers
+  kneel more often; tiny fame bonus to Steadfast residents.
+- 🗼 **Watchtower** — scout card gains exact HP/MP + arsenal / level; max tier: the crier
+  warns of a brewing throne claim a season early.
+
+**Era 2 — Stewardship (gated on GUI-74..78):**
+- 🌾 **Granary** (GUI-76) — provision stock cap / tier.
+- 🌱 **Fields & Mill** — PRODUCES provisions daily (Fields fill, Granary stores); reduces
+  market dependence; a raid target in Warfare.
+- 🔨 **Mason's Lodge** — slows ALL building decay + cuts repair costs / level (the
+  maintenance meta-building).
+- 🪙 **Counting House** — better caravan prices / level + a small treasury interest tick
+  (the trade meta-building).
+- 💧 **Deep Well & Cistern** — shortage resilience: hunger/thirst penalties bite later and
+  softer (historical siege endurance); small infirmary synergy.
+- 🕊️ **Dovecote** — word flies ahead: heralds budget more effective (Pull), caravan price
+  quotes visible a day early, crier reach (flavour).
+
+**Era 3 — Warfare (far-future set; designed WITH the warfare grand plan, parked with it):**
+- 🐎 **Stables** — user-named. Interim value at Stewardship: caravan range/speed (+routes,
+  better margins). Warfare: CAVALRY units, speed on the campaign map.
+- ⚒️ **Smithy & Forge** — the armory's big brother: gear quality tier for residents;
+  Warfare: forges arms & maintains siege engines (historically carpenters + smiths kept
+  the engines working).
+- 🏗️ **Siege Workshop** — builds the "heavy machines" already stubbed in the warfare plan
+  (trebuchet, mangonel, ram, tower); engines are EXPENSIVE, stored, and lost if the hold
+  falls.
+- 🎖️ **Garrison Hall** — the barracks' big brother: houses a standing WAR company beyond
+  the throne household (soldiers ≠ champions; champions are heroes ON the field).
+- 🐕 **Kennels & Mews** — hounds + hunting birds: campaign scouting (see enemy composition
+  pre-battle); interim: a small provision trickle (the hunt).
+- 🌊 **Moat & Drawbridge** — siege defence: attackers pay a toll in time/casualties before
+  walls; interim: +throne stability optics (Pull).
+- 🔥 **Beacon Tower** — early warning of marching armies (reaction time); extends the
+  Watchtower chain; crier drama ("the beacons are lit!").
+
+**Panel sizing:** Era 1 adds 6 → 11 visible with the existing 5; Era 2 adds 6 → 17; Era 3
+adds 7 → 24 total, but each era's panel groups by era with the older rows collapsed.
+**NPC-lord builds are personality-flavoured** (Grasping → Counting House first; Steadfast →
+Chapel; Ferocious → Garrison) — scouting a hold's skyline becomes intel. All numbers sized
+in the GUI-74 design pass; Era 3 numbers wait for the warfare grand plan.
 
 ### Sim requirements (before any code)
 - Provisioning/repair cost curves vs. income at current ECONOMY constants (no death spirals
