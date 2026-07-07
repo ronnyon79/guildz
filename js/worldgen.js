@@ -9,9 +9,33 @@
  */
 (function (root) {
   const G = (root.G = root.G || {});
-  const { POPULARITY, SEASON, AGE, WORLDGEN, ARMOR, CLASSES } = G.data;
+  const { POPULARITY, SEASON, AGE, WORLDGEN, ARMOR, CLASSES, LORD, ARCHETYPES, FOE_NAMES, EPITHETS } = G.data;
 
   const hash = (s) => { let h = 0; for (const c of String(s)) h = (h * 31 + c.charCodeAt(0)) >>> 0; return h; };
+
+  /* GUI-86: every world begins with a FOUNDING, rolled BEFORE its history.
+   * The founder is a veteran champion of elsewhere (LORD.wins — root founders
+   * are the stuff of legend) who raised the hold and took its first throne;
+   * the archetype leans toward their loudest trait. Deterministic per seed. */
+  function rollFounding(seed) {
+    const rng = G.engine.makeRng(seed >>> 0);
+    const name = G.engine.pick(rng, FOE_NAMES) + " " + G.engine.pick(rng, EPITHETS);
+    const classId = G.engine.pick(rng, Object.keys(CLASSES));
+    const wins = G.engine.randInt(rng, LORD.wins[0], LORD.wins[1]);
+    const personality = G.roster.rollPersonality(rng);
+    const founder = {
+      name, classId, wins,
+      reignSeasons: 0, // real years now — history counts them (the 1–4 backstory is retired)
+      age: AGE.start + Math.round(wins / 3) + G.engine.randInt(rng, 4, 10),
+      personality,
+    };
+    const keys = Object.keys(ARCHETYPES).filter((k) => !ARCHETYPES[k].exileOnly);
+    let loudest = null, max = 0.65; // an archetype follows a trait only when one truly stands out
+    for (const t of Object.keys(personality)) if (personality[t] >= max) { max = personality[t]; loudest = t; }
+    const leaning = loudest ? keys.filter((k) => (ARCHETYPES[k].traits || []).includes(loudest)) : [];
+    const archetype = leaning.length ? G.engine.pick(rng, leaning) : G.engine.pick(rng, keys);
+    return { founder, archetype };
+  }
 
   // A plain throne-duel kit for a HISTORY lord (no buildings in the past).
   function lordChar(L) {
@@ -29,12 +53,15 @@
     };
   }
 
-  /* Mutates `npcs` and `lordBox.lord`; returns { clock, lastSeason, board }. */
+  /* Mutates `npcs` and `lordBox.lord`; returns { clock, lastSeason, board, events }.
+   * `events` (GUI-86) are chronicle-ready regime entries: history's throne
+   * fights are no longer silent — the chronicle remembers them. */
   function simulateHistory(npcs, lordBox, playerName, seed, seasons) {
     seasons = seasons == null ? WORLDGEN.seasons : seasons;
-    if (seasons <= 0) return { clock: { day: 1, season: 1 }, lastSeason: null, board: [] }; // a world born today
+    if (seasons <= 0) return { clock: { day: 1, season: 1 }, lastSeason: null, board: [], events: [] }; // a world born today
     const rng = G.engine.makeRng(seed >>> 0);
     let board = [], lastSeason = null;
+    const events = [];
 
     for (let season = 1; season <= seasons; season++) {
       for (let day = 1; day <= SEASON.days; day++) {
@@ -78,9 +105,11 @@
           const stays = rng() < 0.25 + 0.7 * ((L.personality || {}).loy != null ? L.personality.loy : 0.5);
           if (stays) npcs.push({ id: "x" + season + "h", name: L.name, classId: L.classId, wins: L.wins, popularity: 0, age: L.age, personality: L.personality });
           lordBox.lord = { name: bold.name, classId: bold.classId, wins: bold.wins + 1, reignSeasons: 0, age: bold.age, personality: bold.personality };
+          events.push({ y: season, d: SEASON.days, icon: "👑", type: "regime", text: `<b>${bold.name}</b> stormed the keep and took the throne from <b>${L.name}</b>.`, refs: [bold.name, L.name] });
         } else {
           bold.wins = Math.max(0, bold.wins); // the Lord holds; the challenger licks their wounds among the residents
           L.wins += 1;
+          events.push({ y: season, d: SEASON.days, icon: "🛡️", type: "regime", text: `<b>${bold.name}</b> came for the throne — Lord <b>${L.name}</b> held it.`, refs: [bold.name, L.name] });
         }
       }
 
@@ -114,8 +143,8 @@
       npcs.push(f);
     }
 
-    return { clock: { day: 1, season: seasons + 1 }, lastSeason, board };
+    return { clock: { day: 1, season: seasons + 1 }, lastSeason, board, events };
   }
 
-  G.worldgen = { simulateHistory };
+  G.worldgen = { simulateHistory, rollFounding };
 })(typeof window !== "undefined" ? window : globalThis);

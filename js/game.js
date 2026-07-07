@@ -136,7 +136,17 @@
     if (o.k) e.k = o.k;
     state.chronicle.push(e);
   }
-  const foundingEntry = (holdName) => ({ y: 1, d: 1, icon: "🏰", type: "founding", text: `<b>${holdName}</b> was founded.` });
+  // Page one of the chronicle. With a founder + archetype (GUI-86) it tells
+  // the real story; without (very old saves mid-migration) a plain line.
+  function foundingEntry(holdName, founder, archetypeId) {
+    const a = archetypeId && G.data.ARCHETYPES[archetypeId];
+    if (!founder || !a) return { y: 1, d: 1, icon: "🏰", type: "founding", text: `<b>${holdName}</b> was founded.` };
+    return {
+      y: 1, d: 1, icon: a.emoji, type: "founding",
+      text: `<b>${holdName}</b> was founded by <b>${founder.name}</b> the ${CLASSES[founder.classId].name} — ${a.line}. The founder took the hold's first throne.`,
+      refs: [founder.name],
+    };
+  }
 
   function listWorlds() { migrateLegacy(); return readIndex().worlds; }
   function boot() { migrateLegacy(); state.screen = "title"; emit(); }
@@ -216,6 +226,15 @@
       if (!state.stronghold.foundedOn) state.stronghold.foundedOn = 1; // pre-GUI-84 saves: the hold has stood since the world clock began
       // Pre-GUI-87 saves: the chronicle opens with the founding it never wrote down.
       state.chronicle = Array.isArray(data.chronicle) ? data.chronicle : [foundingEntry(state.stronghold.name)];
+      // Pre-GUI-86 saves: retro-roll a coherent origin (seeded — the same world
+      // always remembers the same founder), and enrich the plain founding line.
+      if (!state.stronghold.archetype) {
+        const f = G.worldgen.rollFounding((state.player.worldSeed || 7) + 1);
+        state.stronghold.archetype = f.archetype;
+        state.stronghold.founder = { name: f.founder.name, classId: f.founder.classId };
+        const first = state.chronicle[0];
+        if (first && first.type === "founding" && !first.refs) state.chronicle[0] = foundingEntry(state.stronghold.name, f.founder, f.archetype);
+      }
       state.household = Array.isArray(data.household) ? data.household : [];
       state.departed = Array.isArray(data.departed) ? data.departed : [];
       state.defense = data.defense || null;
@@ -257,14 +276,19 @@
       worldSeed: seed, // seeds this world's population (deterministic world-gen)
     };
     state.npcs = G.roster.generateRoster(seed, state.player.name);
-    state.lord = generateLord(seed + 1);
-    // The world was alive before you: pre-simulate its history (GUI-33).
+    // The founding comes FIRST (GUI-86): a veteran founder raises the hold and
+    // takes its first throne — THEN history is fought on top of it, so the
+    // reigning Lord on arrival is the founder or whoever toppled the line.
+    const founding = G.worldgen.rollFounding(seed + 1);
+    state.lord = founding.founder;
     const lordBox = { lord: state.lord };
     const history = G.worldgen.simulateHistory(state.npcs, lordBox, state.player.name, seed + 99);
     state.lord = lordBox.lord;
     state.stronghold = { ...ECONOMY.start, buildings: { seating: 0, armory: 0, infirmary: 0, barracks: 0, yard: 0 } };
     state.stronghold.name = (holdName || "").trim().slice(0, 18) || defaultHoldName(seed);
     state.stronghold.foundedOn = 1; // Year 1 — the world epoch IS this hold's founding (GUI-84)
+    state.stronghold.founder = { name: founding.founder.name, classId: founding.founder.classId };
+    state.stronghold.archetype = founding.archetype;
     state.household = [];
     state.defense = null;
     state.board = history.board;
@@ -274,7 +298,9 @@
     state.throneRestUntil = 0;
     state.news = [];
     state.ledgerLog = [];
-    state.chronicle = [foundingEntry(state.stronghold.name)]; // GUI-87: page one (GUI-86 writes the real founding story)
+    // The chronicle opens with the founding, then history's own regime fights
+    // (GUI-86/87) — chronicle, lords line and worldgen finally agree.
+    state.chronicle = [foundingEntry(state.stronghold.name, founding.founder, founding.archetype), ...(history.events || [])];
     state.lastThrone = null;
     state.screen = "home";
     save(); emit();

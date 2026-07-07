@@ -261,6 +261,22 @@
    * lived-in without noticeable generation time (measured; see PLAN). */
   const WORLDGEN = { seasons: 3 };
 
+  /* Founding archetypes (GUI-86): HOW a hold came to be — rolled at every
+   * founding, weighted by the founder's loudest trait. Lore-only for now;
+   * each gains ONE mechanical fingerprint with GUI-85 (free buildings need
+   * the Era-1 catalogue first). `line` is the chronicle's founding phrase;
+   * `spite` is exile-founded only and never rolls at world-gen. */
+  const ARCHETYPES = {
+    ruin:       { name: "The Ruin Reclaimed", emoji: "🏚️", traits: ["loy"], line: "raised over the bones of an abandoned keep, its old stones set straight again" },
+    brigand:    { name: "Brigand's End", emoji: "⚔️", traits: ["agg", "cru"], line: "built where an outlaw nest was put to the sword, on ground cleared by force" },
+    crossroads: { name: "The Crossroads Camp", emoji: "🛤️", traits: ["cun", "grd"], line: "grown from a trade camp at the meeting of roads, palisade by palisade" },
+    quarry:     { name: "The Quarry", emoji: "🕳️", traits: ["dis"], line: "cut from the living rock of an old quarry, stone already to hand" },
+    spite:      { name: "The Exile's Spite", emoji: "🔥", traits: [], exileOnly: true, line: "raised in defiance, within sight of the banners that cast its founder out" },
+    ford:       { name: "The Ford", emoji: "🌊", traits: ["amb"], line: "commanding the river crossing where every road must slow and pay" },
+    pilgrim:    { name: "The Pilgrim's Rest", emoji: "⛪", traits: ["loy", "dis"], line: "grown around a wayside shrine and the beds that pilgrims paid for" },
+    hunter:     { name: "The Hunter's Camp", emoji: "🐺", traits: ["brv"], line: "a hunters' camp in wild country that put down roots and never struck them" },
+  };
+
   const PERSONALITY = {
     traits: ["agg", "brv", "amb", "cun", "dis", "cru", "loy", "grd"],
     // The loudest trait names the temperament (flavour only).
@@ -281,5 +297,5 @@
   };
   const SEASON = { days: 10 }; // days per season — first guess, tune via sim (GUI-30)
 
-  G.data = { CLASSES, WEAPONS, ARMOR, ARMOR_MAXTIER, VENDORS, ITEMS, ARROWS, GOLD_PER_WIN, goldForWin, totalGoldAt, POINTS_PER_WIN, CRIT_MULT, FOE_NAMES, EPITHETS, HOLD_NAMES, ROSTER, POPULARITY, SEASON, LORD, ECONOMY, BOARD, BUILDINGS, BUILDING_FX, AGE, PERSONALITY, WORLDGEN };
+  G.data = { CLASSES, WEAPONS, ARMOR, ARMOR_MAXTIER, VENDORS, ITEMS, ARROWS, GOLD_PER_WIN, goldForWin, totalGoldAt, POINTS_PER_WIN, CRIT_MULT, FOE_NAMES, EPITHETS, HOLD_NAMES, ROSTER, POPULARITY, SEASON, LORD, ECONOMY, BOARD, BUILDINGS, BUILDING_FX, AGE, PERSONALITY, WORLDGEN, ARCHETYPES };
 })(typeof window !== "undefined" ? window : globalThis);

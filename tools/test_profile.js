@@ -28,7 +28,7 @@ ok(app().includes("resident champion"), "NPC status is resident champion");
 ok(/The Scribe records <b>\d+<\/b> bout/.test(app()) || app().includes("No bouts in the Scribe records"), "career line renders");
 click("profile", S.lord.name);
 ok(app().includes("Lord of the Stronghold"), "the Lord resolves with throne status");
-ok(app().includes("year") && /on the throne/.test(app()), "reign years shown (GUI-84: the calendar speaks in years)");
+ok(/year[s]? on the throne/.test(app()) || app().includes("crowned this year"), "reign years shown (GUI-86: real years — a fresh crown reads 'crowned this year')");
 click("profile", "Prof Tester");
 ok(app().includes('pill on">you'), "the player resolves as you");
 click("profile", "Nobody Anyone Knows");
