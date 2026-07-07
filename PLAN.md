@@ -719,6 +719,17 @@ cap (3) & per-bout replenish (50%)**, servant **upkeep/housing** cost, and **ser
   trade partners have identities waiting. NEW SUITE tools/test_founderrecords.js (14) →
   481 green / 26 suites.
 
+- **GUI-74 + GUI-80 Stewardship numbers pass + stability sims — v0.44.0** (STEWARDSHIP
+  BUILD GREENLIT 2026-07-07; sims-before-code honoured). `tools/sim_stewardship.js`:
+  the four systems as a modeled overlay on REAL presided days. Population baseline
+  re-anchored to the live truth (**50** = 40 roster + 10 intake → band 40–60, cap ~60,
+  floor 30, dying <24). All four plan targets PASS: T1 default +502/day no spiral ·
+  T2 greedy neglect dies of starvation exodus in reign season 3 (hoard fat, hold empty)
+  · T3 showman grows to the crowding cap 60 / threadbare sags to the floor 30 and holds
+  (20-season proof) · T4 4/4 NPC personality policies stay in band. Full sized-constants
+  table in the Stewardship section ("Sim requirements — VERIFIED"). No game code —
+  GUI-75..79 move the STEW constants into data.js as they build.
+
 ### Build order (when the user says go)
 1. **Champion summit** — NPC population + Popularity ladder + Lord boss fight (finish
    the Rise). Small, self-contained, reuses combat entirely.
@@ -986,12 +997,35 @@ adds 7 → 18; Era 3 adds 8 → 26 total, but each era's panel groups by era wit
 Chapel; Ferocious → Garrison) — scouting a hold's skyline becomes intel. All numbers sized
 in the GUI-74 design pass; Era 3 numbers wait for the warfare grand plan.
 
-### Sim requirements (before any code)
-- Provisioning/repair cost curves vs. income at current ECONOMY constants (no death spirals
-  at default decrees; greedy neglect must fail in ~2–3 seasons, not instantly).
-- Pull weights: a well-run hold grows to a soft cap (~48 residents?); a neglected one decays
-  to a floor (~24?) without extinction.
-- NPC-lord policies: commoner-world holds stay within ±20% of design population long-run.
+### Sim requirements — ✅ VERIFIED 2026-07-07 (GUI-74 numbers + GUI-80 sim)
+`tools/sim_stewardship.js`: the four systems run as a modeled overlay on REAL presided
+days (lord.holdGames → actual combat/economy). Baseline re-anchored to the true live
+population: **50** (40 roster + 10 intake), so the plan's "~40" targets became 40–60
+band / soft cap ~60 / floor ~30 / dying < 24. All four targets pass:
+- **T1 no death spiral** ✓ default steward (repair+provision+trade): **+502/day** net
+  (stewardship costs −69/day of the old +540), population drifts gently up 49→57.
+- **T2 greedy neglect fails in reign season 3** ✓ (tax 25 · ticket 15 · purse 0 · no
+  repairs, no provisions): starvation exodus 49→36→25→18 — dying (<24) in season 3,
+  "not instantly" honoured (seasons 1–2 are survivable warnings). The hoard stays fat
+  (+253/day) while the hold empties — you can strip the asset, and it visibly dies.
+- **T3 cap & floor** ✓ showman+heralds grows 49→60 (soft cap, crowding-choked); a
+  threadbare-but-FED hold sags 8 grace seasons then −2/season to the **floor 30** and
+  stabilizes — never extinct (20-season run).
+- **T4 NPC policies** ✓ 4/4 personality policies (grasping/disciplined/steadfast/
+  ferocious) hold population in the 40–60 band across 8 seasons.
+
+**The sized numbers (STEW constants — GUI-75..79 move these into data.js):**
+provisions **1 unit/head/day** (residents + household + Lord) · grain **1g/unit**,
+seeded seasonal swing **0.7–1.5** · bare larder cap **80** (Granary tiers raise) ·
+starving days: gate+wagers **−25%**, a fully starving season drives out **25% of
+residents** (the exodus IS the failure mode) + immigration freezes · decay **10
+condition/season/building** (+1 seating wear per 40 avg crowd) · repair **2g/point**
+(×tier) · a rotten hold keeps only **75%→100%** of its crowd by avg condition ·
+caravans **1/route/season**, cap **120 units**, margin **15%** (routes = founders'
+ledger + 1 seeded neighbour — GUI-89's records feed straight in) · **Pull weights**
+purse 25 · condition 25 · taxInv 15 · stability 15 · fame 10 · granary 10 · heralds
++15 max for **100g/season** (sqrt curve) · net migration **(Pull−50)/6 per season** ×
+crowding (1 − pop/64) · fed-hold floor **30** · dying **<24** = deposition-grade fail.
 
 ### Open questions (for the design pass)
 - Does plenty slow aging fade, or is that scope creep? (leaning: cosmetic only)
