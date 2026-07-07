@@ -669,14 +669,18 @@ cap (3) & per-bout replenish (50%)**, servant **upkeep/housing** cost, and **ser
    Champion/Lord/Exile, roles change in place), `lord.js`
    store beside `game.js`, treasury + Renown + Scribe/Bulletin-Board + core day-organizer
    loop; coronation handoff from Champion mode.
-3. **Guilds** — the tithe→rent→lodging economy + guild AI (own planning pass first).
-4. **Economy balance sim** — headless multi-season sim; tune rents/tithes/purses/gate/
+3. **Stronghold Stewardship** — the SimCity layer (maintenance / supplies / trade /
+   migration); design pass GUI-74 + sims GUI-80 first, then GUI-75→79. ← ADDED 2026-07-07
+   (design done, build NOT yet greenlit). Slots before Guilds; Guilds later take over
+   the same flows as middlemen.
+4. **Guilds** — the tithe→rent→lodging economy + guild AI (own planning pass first).
+5. **Economy balance sim** — headless multi-season sim; tune rents/tithes/purses/gate/
    sales-tax until the loop is stable *and* the Lord's choices swing the outcome (same
    rigor as the combat sims).
-5. **Defend / closed loop** — challengers rise in your arena and come for your throne.
-6. **Exile mode (#3)** — separate design + build (survive the wilds → found a new
+6. **Defend / closed loop** — challengers rise in your arena and come for your throne.
+7. **Exile mode (#3)** — separate design + build (survive the wilds → found a new
    Stronghold). Own pass.
-7. **(far future) Stronghold warfare** — many Strongholds in one world battling on a
+8. **(far future) Stronghold warfare** — many Strongholds in one world battling on a
    battlefield (tactics, siege engines, cavalry). Own grand plan later.
 
 ### Serve — mode (the household path) (STUB, plan separately)
@@ -777,6 +781,91 @@ reign **≥5–6 seasons** (confirm via sim) · **Aging** is now a system · **A
   many-Strongholds-in-*one*-world hierarchy — these are sealed, independent universes.
 
 ---
+
+## Stronghold Stewardship (SimCity layer, design v7)  ← PLANNED, not built
+
+**User direction (2026-07-07):** the Lord needs *city-management* roles, not just arena-tycoon
+knobs — "ensuring maintenance of the place, supplies, trade, attract NPCs to the place (so we
+don't have only people leaving). In short, city management style." Design greenlit; **no code
+until a separate go.**
+
+**What exists today vs. this pillar:** the built Lord is an *arena tycoon* (tickets, purses,
+tax, licences, 5 one-shot buildings, flat upkeep). Departures exist (GUI-60, guilds-leave is
+designed); **arrivals are automatic 1:1 bed-filling** — nothing attracts anyone, nothing
+decays, nothing is consumed, nothing is traded. Stewardship turns those absences into the
+Lord's daily job.
+
+### The four systems (all PROPOSED; numbers sim-tuned bottom-up as always)
+
+**1 · Maintenance — buildings age**
+- Every building gains **condition 0–100**; decays per season (seating decays faster with
+  big crowds — success wears the benches).
+- Condition **scales the building's effect** linearly (a 50% infirmary heals half as well);
+  at 0 the building is **offline** until repaired.
+- **Repairs cost gold** (per-building line in the clerk's book); the flat ECONOMY.upkeep
+  constant is retired in favour of real, visible costs.
+- Lord role: set a **repair policy** (priority order / budget cap) or repair by hand.
+
+**2 · Supplies — the granary**
+- The hold **consumes provisions daily** (residents + household + the Lord's table).
+- Sources: **market purchase** (provisioning budget decree) and **trade** (below).
+- New building: **Granary** (stock cap; tiers raise it). Stock is visible on the dashboard.
+- **Shortage bites:** champions start bouts worn (HP fraction — reuses the startHp
+  mechanism), departures accelerate, immigration freezes, crier cries the hunger.
+- **Plenty pays:** a full granary feeds the Pull score (below) and slows aging fade? (open Q).
+
+**3 · Trade — caravans between holds**
+- Partners: **the founders' ledger** — champions who rode out (GUI-60) founded the very
+  holds you now trade with (+ worldgen-seeded neighbours). The dead ledger becomes a map.
+- Each season (or day-N) a **caravan** runs per route: export surplus provisions/gear,
+  import provisions; **seeded price swings** make timing a decision.
+- Lord role: a **trade stance** decree (export surplus / balance / stockpile) + per-route
+  open/close. Trade is a first-class **ledger line**; caravans make crier headlines.
+- Future hooks: routes are what Warfare raids later threaten; Guilds later become the
+  internal distributors of the same flows.
+
+**4 · Attraction — the Pull score (migration)**
+- Replaces automatic arrivals. **Pull = f(purses, resident fame, tax rate, granary stock,
+  average building condition, throne stability (seasons since last rebellion))** — exact
+  weights sim-tuned.
+- High pull → **more and better hopefuls** (some arrive with real careers, not just 0–4
+  wins); low pull → beds stay empty and the roster **genuinely shrinks**. Population is a
+  bar the Lord can fail.
+- Lord role: a **heralds budget** decree (spend gold to advertise the games abroad — a
+  direct Pull lever with diminishing returns).
+- NPC behaviour: hopefuls *choose* the best-pulling hold once multi-stronghold exists
+  (GUI-25 synergy); until then Pull scales the arrival stream.
+
+### NPC Lords run the same systems
+Simple policy AI (personality-weighted: a Grasping lord under-repairs and over-taxes; a
+Disciplined one balances) so holds visibly **flourish or rot** while the player is a
+commoner — and future throne challenges gain **economic motive** (challenge the negligent).
+
+### Soft-fail integration
+Bankruptcy already deposes (designed). Stewardship adds the *paths* to it: rot, hunger and
+emptiness — and their visible warnings (clerk's book lines, crier cries, condition bars).
+
+### Compatibility notes
+- **Standalone-now, Guilds-later:** the Granary abstracts food until Guilds unpark; then
+  guilds become tithe-fed middlemen of the same flows (no rework — the flows just get owners).
+- **World growth (GUI-25):** trade routes + Pull are exactly the edges the multi-stronghold
+  world needs; founders' holds gain their first mechanical meaning.
+- Save-schema: stronghold gains condition map, granary stock, routes, pull cache — all
+  versioned migrations as usual.
+
+### Sim requirements (before any code)
+- Provisioning/repair cost curves vs. income at current ECONOMY constants (no death spirals
+  at default decrees; greedy neglect must fail in ~2–3 seasons, not instantly).
+- Pull weights: a well-run hold grows to a soft cap (~48 residents?); a neglected one decays
+  to a floor (~24?) without extinction.
+- NPC-lord policies: commoner-world holds stay within ±20% of design population long-run.
+
+### Open questions (for the design pass)
+- Does plenty slow aging fade, or is that scope creep? (leaning: cosmetic only)
+- Provisions unit & prices — size bottom-up from goldForWin like everything else.
+- Trade goods beyond provisions (gear? luxuries for spectacle bonus?) — v1 provisions only?
+- Do empty beds affect the tournament (thinner bands = fewer bouts = smaller gate) —
+  automatic via existing systems, verify in sim.
 
 ## Architecture — the key decision
 
