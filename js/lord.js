@@ -32,7 +32,8 @@
     const attendance = Math.round(
       (E.crowdBase + seating + E.crowdPerResident * state.npcs.length) *
       (boxSpec / 3) * E.demand(st.ticketPrice) * E.prestige(st.purse) *
-      (1 + eff("tavern") * FX.tavernCrowd));
+      (1 + eff("tavern") * FX.tavernCrowd) *
+      (st.starvingToday ? 1 - G.data.STEW.hungerGateHit : 1)); // a hungry hold draws a thin crowd (GUI-76)
     // Site traits (GUI-85): the Ford tolls travellers; the Hunter's Camp feeds itself a little.
     const gate = Math.round(attendance * st.ticketPrice + eff("royalbox") * FX.royalBoxGate + (st.archetype === "ford" ? FX.archFordGate : 0));
     const wagers = Math.round(attendance * (E.wagerStake + eff("tavern") * FX.tavernStake) * E.wagerCut);
@@ -41,16 +42,45 @@
     // heavy tax causes (GUI-36 found greedy rates were a degenerate optimum).
     const tax = Math.round(bouts * E.taxSpendPerBout * (1 + eff("market") * FX.marketTax) * G.game.gearScale() * st.taxRate / 100);
     const purses = day.brackets.length * st.purse;
-    const upkeep = E.upkeep - (st.archetype === "hunter" ? FX.archHunterUpkeep : 0);
-    const net = gate + wagers + licences + tax - purses - upkeep;
-    return { attendance, avgSpec: Math.round(avgSpec * 10) / 10, gate, wagers, licences, tax, purses, upkeep, net };
+    // The flat upkeep is RETIRED (GUI-76): the hold's real daily cost is the
+    // provisions the steward bought this morning (the Hunter's Camp hunts
+    // part of the need for free — see provisionNeed).
+    const provisions = st._provSpend || 0;
+    const net = gate + wagers + licences + tax - purses - provisions;
+    return { attendance, avgSpec: Math.round(avgSpec * 10) / 10, gate, wagers, licences, tax, purses, provisions, stock: st.stock, price: st.grainPrice, starving: !!st.starvingToday, net };
   }
 
   // Hold the day's games: every band fights, the Lord watches from the high seat.
   function holdGames() {
     const game = G.game, state = game.state;
     if (!state.player || state.player.role !== "lord") return;
-    const champs = state.npcs.map((n) => G.roster.combatChar(n, game.gearScale()));
+    // ---- the hold eats FIRST (GUI-76): a hungry fighter is a worn fighter ----
+    const st = state.stronghold, STEW = G.data.STEW;
+    st.stock = st.stock == null ? STEW.granaryCap[0] : st.stock;
+    const need = game.provisionNeed();
+    const starving = st.stock < need;
+    st.stock = Math.max(0, st.stock - need);
+    if (starving) st.starvedDays = (st.starvedDays || 0) + 1;
+    st.starvingToday = starving; // the ledger reads it (thin crowds)
+    // …then the steward buys, per the provisioning decree, at this year's price.
+    let provSpend = 0;
+    {
+      const cap = game.granaryCap();
+      const target = st.provisionPolicy === "none" ? 0 : st.provisionPolicy === "half" ? Math.floor(cap / 2) : cap;
+      const want = Math.max(0, target - st.stock);
+      const price = st.grainPrice || 1;
+      const affordable = Math.min(want, Math.floor(Math.max(0, st.treasury) / price));
+      if (affordable > 0) {
+        provSpend = Math.round(affordable * price);
+        st.stock += affordable;
+      }
+    }
+    st._provSpend = provSpend; // the ledger line (paid below, in net)
+    const champs = state.npcs.map((n) => {
+      const c = G.roster.combatChar(n, game.gearScale());
+      if (starving) { c.startHp = Math.round(c.maxHp * STEW.hungerWear); } // hunger wears the body (parchment-visible)
+      return c;
+    });
     const byId = {};
     for (const c of champs) byId[c.id] = c;
     const day = G.tournament.runDay(champs, game.nextSeed(), (br, m, res, w) => {

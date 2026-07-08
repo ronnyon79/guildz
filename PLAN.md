@@ -772,6 +772,22 @@ cap (3) & per-bout replenish (50%)**, servant **upkeep/housing** cost, and **ser
   with GUI-79's NPC policies; flat upkeep retires when GUI-76 brings provisions. NEW
   SUITE tools/test_maintenance.js (23) → 535 green / 29 suites.
 
+- **GUI-76 Granary & provisions: the hold eats — v0.48.0** (Stewardship system 2/4,
+  sim-sized). data.STEW moves in: **1 unit/head/day** (residents + household + the
+  Lord's table; 🐺 Hunter's Camp hunts 5 free — its interim upkeep hook retired), grain
+  at a **seeded seasonal price 0.7–1.5g** re-rolled each year, larder **cap 80 bare /
+  200/400/800** by the new 🌾 **Granary** (Era 2, condition-scaled). Presided days: the
+  hold **eats FIRST**, then the steward buys per the **provisioning decree** (🧺 full /
+  ⚖️ half / 🚫 none, buttons on the new larder card: stock bar, days-left warning, this
+  year's price). **The flat ECONOMY.upkeep is RETIRED** — the ledger's real line is
+  provisions. **Hunger's three bites:** starving residents fight WORN (startHp 85% —
+  parchment-visible) · the crowd thins 25% · at the season's close a **starvation
+  exodus** (25% × starving-fraction, floor 8 souls) empties beds while **immigration
+  freezes** (both refill streams). 🍞 crier cry + the chronicle's reserved **softfail**
+  type goes live ("Hunger stalked <hold>…", k-deduped per year). NEW SUITE
+  tools/test_granary.js (24; test_economy/test_fingerprints updated for the retired
+  upkeep) → 559 green / 30 suites.
+
 ### Build order (when the user says go)
 1. **Champion summit** — NPC population + Popularity ladder + Lord boss fight (finish
    the Rise). Small, self-contained, reuses combat entirely.
