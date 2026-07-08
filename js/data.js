@@ -226,8 +226,27 @@
     infirmary: { name: "Infirmary", emoji: "⛑️", max: 3, costs: [250, 500, 1000], desc: "Healers at your side — +2 HP per round per level when you defend the throne." },
     barracks:  { name: "Barracks", emoji: "🏚️", max: 3, costs: [400, 800, 1600], desc: "Quarters for your household — one servant slot per level (the gauntlet)." },
     yard:      { name: "Training Yard", emoji: "🎯", max: 3, costs: [200, 400, 800], desc: "Sparring drills — each day, one resident per level earns a win." },
+    // Era 1 — the Arena (GUI-81): six more, each re-weighting a LIVE system.
+    tavern:     { name: "Tavern", emoji: "🍺", era: 1, max: 3, costs: [250, 500, 1000], desc: "Ale before the games — +8% crowd per level, and drunk bettors stake bigger." },
+    market:     { name: "Marketplace", emoji: "🏪", era: 1, max: 3, costs: [300, 600, 1200], desc: "Stalls beyond the vendors — one more licence line per level, and a wider sales-tax base." },
+    royalbox:   { name: "Royal Box", emoji: "👑", era: 1, max: 3, costs: [400, 800, 1600], desc: "Noble seats at noble prices — a flat gate line per level, and finer fights draw finer crowds." },
+    walls:      { name: "Walls & Gatehouse", emoji: "🧱", era: 1, max: 3, costs: [350, 700, 1400], desc: "A harder way in — a challenger reaching your throne arrives 5% more worn per level." },
+    chapel:     { name: "Chapel", emoji: "⛪", era: 1, max: 3, costs: [250, 500, 1000], desc: "A culture of loyalty — the restless linger, beaten challengers kneel more readily, the Steadfast are honoured." },
+    watchtower: { name: "Watchtower", emoji: "🗼", era: 1, max: 3, costs: [200, 400, 800], desc: "Eyes on every road — scout the challenger at your gate; at full height the crier hears a claim brewing a season early." },
   };
-  const BUILDING_FX = { seatingCrowd: 15, armoryGear: 0.05, infirmaryRegen: 2 };
+  const BUILDING_FX = {
+    seatingCrowd: 15, armoryGear: 0.05, infirmaryRegen: 2,
+    // Era 1 (GUI-81) — one hook each, sim-sizable:
+    tavernCrowd: 0.08,   // +8% attendance per level
+    tavernStake: 0.5,    // +0.5g wager stake per level (drunk bettors)
+    marketLicence: 1,    // +1 licence line per level
+    marketTax: 0.05,     // +5% sales-tax base per level (more stalls to spend at)
+    royalBoxGate: 30,    // flat noble-seats gold per level
+    royalBoxSpec: 0.15,  // the crowd reads the card finer: +★ bias per level (gate calc only)
+    wallsWear: 0.05,     // a challenger at the throne door arrives −5pp per level
+    chapelLoyalty: 0.05, // the loyalty knob per level: departures, kneels, Steadfast honour
+    watchWarnAt: 3,      // watchtower tier that hears a claim brewing a season early
+  };
 
   /* Aging (GUI-17): everyone ages +1 per season. Champions PEAK then DECLINE —
    * past the peak, pools fade 3%/year (floor 50%) — so the challenger threat

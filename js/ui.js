@@ -956,7 +956,7 @@
   function buildingsBlock(s) {
     const st = s.stronghold;
     if (!st || !st.buildings) return "";
-    const rows = Object.entries(G.data.BUILDINGS).map(([id, def]) => {
+    const row = ([id, def]) => {
       const lvl = st.buildings[id] || 0;
       const maxed = lvl >= def.max;
       const cost = maxed ? null : def.costs[lvl];
@@ -965,8 +965,12 @@
         <div style="flex:1"><div class="card-title" style="font-size:14px">${def.emoji} ${def.name} <span class="pill">${"▮".repeat(lvl)}${"▯".repeat(def.max - lvl)}</span></div>
         <div class="card-sub">${def.desc}</div></div>
         ${maxed ? `<span class="pill on">MAX</span>` : `<button class="btn sm gold" data-act="build" data-arg="${id}" ${afford ? "" : "disabled"}>🏛️ ${cost}</button>`}</div>`;
-    }).join("");
-    return `<div class="card"><div class="card-title">🏗️ The Stronghold</div>${rows}</div>`;
+    };
+    const entries = Object.entries(G.data.BUILDINGS);
+    const keep = entries.filter(([, d]) => !d.era).map(row).join("");
+    const era1 = entries.filter(([, d]) => d.era === 1).map(row).join("");
+    return `<div class="card"><div class="card-title">🏗️ The Stronghold</div>${keep}
+      <div class="card-sub center" style="margin-top:10px"><b>— Era I · the Arena (GUI-81) —</b></div>${era1}</div>`;
   }
 
   // The Lord's view of a finished day: the games he presided over.
@@ -1010,10 +1014,18 @@
       <div class="card-sub">${pk.desc}</div></div></div></div>`).join("");
     return topbar(s.player) + `<div class="screen">
       <div class="screen-title">⚔️ The challenger stands before you</div>
-      ${bouts ? `<div class="card"><div class="card-title">The gauntlet</div>${bouts}</div>` : `<p class="card-sub center">You have no household — ${esc(npc.name)} comes to you untouched.</p>`}
+      ${bouts ? `<div class="card"><div class="card-title">The gauntlet</div>${bouts}</div>` : `<p class="card-sub center">You have no household — ${esc(npc.name)} comes to you ${wornPct < 100 ? "<b>bloodied by your walls</b>" : "untouched"}.</p>`}
       <div class="card"><div class="card-row"><div class="avatar">${CLASSES[ch.classId].emoji}</div>
         <div><div class="card-title">${esc(npc.name)} <span class="pill">${CLASSES[ch.classId].name} · ${ch.wins}w</span></div>
         <div class="card-sub">Worn to <b>${wornPct}%</b> — the gauntlet takes its toll. You fight FRESH, on your own sand.</div></div></div></div>
+      ${(() => { // 🗼 The Watchtower's report (GUI-81): the taller the tower, the finer the intel.
+        const wt = ((s.stronghold || {}).buildings || {}).watchtower || 0;
+        if (!wt) return "";
+        const temper = npc.personality ? G.data.PERSONALITY.label(npc.personality) : "";
+        return `<div class="card"><div class="card-title" style="font-size:14px">🗼 The watchtower's report</div>
+          ${temper ? `<div class="card-sub">temperament: <b>${temper}</b></div>` : `<div class="card-sub">an unremarkable temperament</div>`}
+          ${wt >= 2 ? arsenalLine(s, npc.name) + styleLine(s, npc.name) : `<div class="card-sub sys">a taller tower would count their blades…</div>`}</div>`;
+      })()}
       <div class="screen-title">Choose the ground</div>
       <div class="alloc-row">
         <button class="btn sm ${ui.defRange === "missile" ? "" : "ghost"}" data-act="def-range" data-arg="missile">🏹 Open at missile</button>
