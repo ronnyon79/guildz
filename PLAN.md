@@ -745,6 +745,19 @@ cap (3) & per-bout replenish (50%)**, servant **upkeep/housing** cost, and **ser
   persisted watchWarned). NEW SUITE tools/test_era1.js (19) → 500 green / 27 suites.
   GUI-85 fingerprints are now unblocked (Walls/Marketplace/Chapel exist).
 
+- **GUI-85 Archetype fingerprints — v0.46.0.** Every origin leaves ONE permanent mark
+  (`applyFingerprint`, guarded once per world; applied at creation AND retro-applied to
+  old saves on load — free buildings only fill empty ground, never downgrade). Free
+  buildings: 🏚️ Ruin → Walls t1 · 🛤️ Crossroads → Marketplace t1 · ⛪ Pilgrim's →
+  Chapel t1. Hoard: ⚔️ Brigand's End +150🏛️ once. **Site traits** (origin-only, can
+  never be built, read live from stronghold.archetype): 🕳️ Quarry −10% every raise
+  (new `buildCost(id)` helper, UI shows the discounted price; repairs join in GUI-75) ·
+  🌊 Ford +10🏛️ traveller toll on every presided gate · 🐺 Hunter −5 daily upkeep
+  (becomes a provision trickle in GUI-76) · 🔥 Spite +2 founding company (recorded;
+  consumed by the GUI-90 from-scratch start). Hold profile card shows the ⚙️ mark under
+  the archetype. NEW SUITE tools/test_fingerprints.js (12) → 512 green / 28 suites.
+  Founding & the Hold Chronicle: only GUI-90/91 remain (both wait on Stewardship).
+
 ### Build order (when the user says go)
 1. **Champion summit** — NPC population + Popularity ladder + Lord boss fight (finish
    the Rise). Small, self-contained, reuses combat entirely.

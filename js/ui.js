@@ -396,7 +396,7 @@
     const reigning = s.player && s.player.role === "lord" ? s.player.name : (s.lord || {}).name;
     const nth = age === 1 ? "first" : age + (age % 10 === 2 && age % 100 !== 12 ? "nd" : age % 10 === 3 && age % 100 !== 13 ? "rd" : "th");
     const lines = [];
-    if (arch) lines.push(`<div class="card-sub">${arch.emoji} <b>${arch.name}</b></div>`);
+    if (arch) lines.push(`<div class="card-sub">${arch.emoji} <b>${arch.name}</b>${arch.fx ? ` — <span class="sys">⚙️ ${arch.fx.desc}</span>` : ""}</div>`);
     lines.push(`<div class="card-sub">founded in Year ${st.foundedOn || 1}${st.founder ? ` by ${plink(s, st.founder.name)}` : ""} — its ${nth} year</div>`);
     if (lords.length) lines.push(`<div class="card-sub">👑 the line of Lords: ${lords.map((l) => `${plink(s, l.name)} <span class="sys">(Y${l.y})</span>`).join(" → ")}${reigning ? ` · <b>${esc(reigning)}</b> reigns today` : ""}</div>`);
     const rows = chron.map((e) => `<div class="card-sub crier-row">${e.icon} <span class="sys">Y${e.y}·D${e.d}</span> ${chronText(s, e)}</div>`).join("")
@@ -959,7 +959,7 @@
     const row = ([id, def]) => {
       const lvl = st.buildings[id] || 0;
       const maxed = lvl >= def.max;
-      const cost = maxed ? null : def.costs[lvl];
+      const cost = maxed ? null : game.buildCost(id); // quarry-founded holds pay less (GUI-85)
       const afford = cost != null && st.treasury >= cost;
       return `<div class="card-row" style="margin-top:6px">
         <div style="flex:1"><div class="card-title" style="font-size:14px">${def.emoji} ${def.name} <span class="pill">${"▮".repeat(lvl)}${"▯".repeat(def.max - lvl)}</span></div>
