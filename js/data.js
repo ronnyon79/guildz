@@ -234,6 +234,15 @@
     chapel:     { name: "Chapel", emoji: "⛪", era: 1, max: 3, costs: [250, 500, 1000], desc: "A culture of loyalty — the restless linger, beaten challengers kneel more readily, the Steadfast are honoured." },
     watchtower: { name: "Watchtower", emoji: "🗼", era: 1, max: 3, costs: [200, 400, 800], desc: "Eyes on every road — scout the challenger at your gate; at full height the crier hears a claim brewing a season early." },
   };
+  /* Maintenance (GUI-75, sim-sized by GUI-74/80): built buildings hold a
+   * CONDITION 0–100 that scales their effect linearly (offline at 0). Decay
+   * runs under a player-Lord's reign (NPC repair policies arrive GUI-79). */
+  const MAINT = {
+    decayPerSeason: 10,  // condition points per season per built building
+    crowdWearPer40: 1,   // seating: +1 decay per 40 average attendance (success wears the benches)
+    repairPerPoint: 2,   // gold per condition point, ×building level (the Quarry discounts it)
+  };
+
   const BUILDING_FX = {
     seatingCrowd: 15, armoryGear: 0.05, infirmaryRegen: 2,
     // Era 1 (GUI-81) — one hook each, sim-sizable:
@@ -330,5 +339,5 @@
   };
   const SEASON = { days: 10 }; // days per season — first guess, tune via sim (GUI-30)
 
-  G.data = { CLASSES, WEAPONS, ARMOR, ARMOR_MAXTIER, VENDORS, ITEMS, ARROWS, GOLD_PER_WIN, goldForWin, totalGoldAt, POINTS_PER_WIN, CRIT_MULT, FOE_NAMES, EPITHETS, HOLD_NAMES, ROSTER, POPULARITY, SEASON, LORD, ECONOMY, BOARD, BUILDINGS, BUILDING_FX, AGE, PERSONALITY, WORLDGEN, ARCHETYPES };
+  G.data = { CLASSES, WEAPONS, ARMOR, ARMOR_MAXTIER, VENDORS, ITEMS, ARROWS, GOLD_PER_WIN, goldForWin, totalGoldAt, POINTS_PER_WIN, CRIT_MULT, FOE_NAMES, EPITHETS, HOLD_NAMES, ROSTER, POPULARITY, SEASON, LORD, ECONOMY, BOARD, BUILDINGS, BUILDING_FX, MAINT, AGE, PERSONALITY, WORLDGEN, ARCHETYPES };
 })(typeof window !== "undefined" ? window : globalThis);

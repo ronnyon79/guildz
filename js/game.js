@@ -7,7 +7,7 @@
  */
 (function (root) {
   const G = (root.G = root.G || {});
-  const { CLASSES, ITEMS, ARROWS, ARMOR, ARMOR_MAXTIER, goldForWin, POINTS_PER_WIN, POPULARITY, SEASON, LORD, ECONOMY, BOARD, BUILDINGS, BUILDING_FX, AGE, FOE_NAMES, EPITHETS, totalGoldAt } = G.data;
+  const { CLASSES, ITEMS, ARROWS, ARMOR, ARMOR_MAXTIER, goldForWin, POINTS_PER_WIN, POPULARITY, SEASON, LORD, ECONOMY, BOARD, BUILDINGS, BUILDING_FX, MAINT, AGE, FOE_NAMES, EPITHETS, totalGoldAt } = G.data;
 
   /* ---- worlds: each universe is a SEPARATE save game (decided design) ----
    * An index lists the universes; each world lives under its own key. Within a
@@ -179,6 +179,37 @@
     if (fx.building && !(st.buildings[fx.building] > 0)) st.buildings[fx.building] = 1;
     if (fx.gold) st.treasury += fx.gold;
   }
+  /* Condition (GUI-75): a BUILT building's state of repair, 0–100. Its effect
+   * scales linearly — bEff(id) is the level every consumer should read; at 0
+   * the building is OFFLINE until repaired. Unbuilt ground has no condition. */
+  function condOf(id) {
+    const st = state.stronghold;
+    if (!st || !((st.buildings || {})[id] > 0)) return 0;
+    const c = (st.condition || {})[id];
+    return c == null ? 100 : c;
+  }
+  function bEff(id) { return (((state.stronghold || {}).buildings || {})[id] || 0) * condOf(id) / 100; }
+  // What a repair costs: points × rate × level; the Quarry's stone discounts it.
+  function repairCost(id) {
+    const st = state.stronghold;
+    const lvl = ((st || {}).buildings || {})[id] || 0;
+    if (!lvl) return null;
+    const pts = 100 - condOf(id);
+    if (!pts) return null;
+    return Math.max(1, Math.round(pts * MAINT.repairPerPoint * lvl * (st.archetype === "quarry" ? 1 - BUILDING_FX.archQuarryDiscount : 1)));
+  }
+  function repairBuilding(id) {
+    const st = state.stronghold;
+    if (!st || !state.player || state.player.role !== "lord") return false;
+    const cost = repairCost(id);
+    if (cost == null || st.treasury < cost) return false;
+    st.treasury -= cost;
+    st.condition = st.condition || {};
+    st.condition[id] = 100;
+    save(); emit();
+    return true;
+  }
+
   // What a building costs HERE (GUI-85): the Quarry's stone discounts every raise.
   function buildCost(id) {
     const st = state.stronghold, def = BUILDINGS[id];
@@ -264,6 +295,7 @@
       if (!state.stronghold.name) state.stronghold.name = defaultHoldName(state.player.worldSeed || 7); // pre-GUI-54 saves
       if (!state.stronghold.buildings) state.stronghold.buildings = freshBuildings();
       for (const k of Object.keys(BUILDINGS)) if (state.stronghold.buildings[k] == null) state.stronghold.buildings[k] = 0; // eras added since this save
+      state.stronghold.condition = state.stronghold.condition || {}; // pre-GUI-75: everything stands at 100 (condOf defaults)
       if (!state.stronghold.foundedOn) state.stronghold.foundedOn = 1; // pre-GUI-84 saves: the hold has stood since the world clock began
       // Pre-GUI-87 saves: the chronicle opens with the founding it never wrote down.
       state.chronicle = Array.isArray(data.chronicle) ? data.chronicle : [foundingEntry(state.stronghold.name)];
@@ -373,7 +405,7 @@
   function gearScale() {
     const st = state.stronghold;
     if (!st) return 1;
-    return 1 - st.taxRate / 100 + ((st.buildings || {}).armory || 0) * BUILDING_FX.armoryGear;
+    return 1 - st.taxRate / 100 + bEff("armory") * BUILDING_FX.armoryGear; // a rotting armory outfits less (GUI-75)
   }
 
   // Raise a building one level, paid from the treasury (GUI-15).
@@ -385,6 +417,8 @@
     if (lvl >= def.max || price == null || st.treasury < price) return false;
     st.treasury -= price;
     st.buildings[id] = lvl + 1;
+    st.condition = st.condition || {};
+    st.condition[id] = 100; // fresh mortar — a raise IS a repair
     if (lvl === 0) chronicle("🏗️", "milestone", `The <b>${def.name}</b> was raised.`, { k: "built:" + id }); // first raising only — upgrades are upkeep, not history
     save(); emit();
     return true;
@@ -559,7 +593,7 @@
         const n = npcById(br.winner);
         if (n) {
           // Chapel (GUI-81): the Steadfast are honoured — a loyal champion's day counts a little extra.
-          if (gain > 0 && ((n.personality || {}).loy || 0) >= 0.7) gain += ((state.stronghold.buildings || {}).chapel || 0);
+          if (gain > 0 && ((n.personality || {}).loy || 0) >= 0.7) gain += Math.round(bEff("chapel"));
           n.popularity = (n.popularity || 0) + gain;
         }
       }
@@ -672,7 +706,7 @@
           for (const n of state.npcs.slice()) {
             if (n.wins < 25 || fought.has(n.name)) continue; // only idle VETERANS stagnate
             const P = n.personality || {};
-            const stay = (((state.stronghold || {}).buildings || {}).chapel || 0) * BUILDING_FX.chapelLoyalty; // the Chapel makes leaving harder (GUI-81)
+            const stay = bEff("chapel") * BUILDING_FX.chapelLoyalty; // the Chapel makes leaving harder (GUI-81/75)
             const reason = (P.amb != null ? P.amb : 0.5) >= 0.5 + stay ? "found"
               : (P.brv != null ? P.brv : 0.5) >= 0.4 + stay ? "adventure" : null;
             if (!reason) continue; // the steadfast wait for a worthy rival
@@ -799,7 +833,7 @@
       // 🗼 The Watchtower at full height (GUI-81): it hears a claim brewing
       // DAYS before season's end — time to order the wall, not just meet it.
       if (!rolled && state.player.role === "lord" && !state.defense
-          && (((state.stronghold || {}).buildings || {}).watchtower || 0) >= BUILDING_FX.watchWarnAt
+          && Math.floor(bEff("watchtower")) >= BUILDING_FX.watchWarnAt
           && (state.watchWarned || 0) !== state.clock.season) {
         const famous = fameLadder().filter((r) => !r.isPlayer && r.popularity > 0).slice(0, 3);
         const brewing = famous.find((r) => { const n = npcById(r.id); return n && (!n.personality || n.personality.amb >= 0.3); });
@@ -988,15 +1022,15 @@
    * between bouts. A beaten servant DIES. A beaten challenger faces
    * die / serve / exile. The throne falls only when the LORD falls. */
 
-  const barracksSlots = () => ((state.stronghold || {}).buildings || {}).barracks || 0;
+  const barracksSlots = () => ((state.stronghold || {}).buildings || {}).barracks || 0; // capacity — but NEW kneels need a standing roof:
+  const barracksOpen = () => (condOf("barracks") > 0 ? barracksSlots() : 0);
 
   // The keep's wear on an unopposed challenger (GUI-81 Walls & Gatehouse):
   // base wear (1.0 for a player-lord's open keep, LORD.keepGuardWear for the
   // abstract guard) minus 5pp per Walls level — the gatehouse makes them
   // bleed for the approach. Floor 40%: stone alone never wins the duel.
   function keepWear(base) {
-    const lvl = ((state.stronghold || {}).buildings || {}).walls || 0;
-    return Math.max(0.4, base - lvl * BUILDING_FX.wallsWear);
+    return Math.max(0.4, base - bEff("walls") * BUILDING_FX.wallsWear); // crumbling walls harry less (GUI-75)
   }
 
   // A beaten challenger's fate — their PERSONALITY chooses (GUI-42):
@@ -1006,8 +1040,8 @@
     const P = npc.personality || {};
     state.npcs = state.npcs.filter((x) => x.id !== npc.id); // leaves the roster either way
     const kneel = 0.2 + 0.6 * (P.loy != null ? P.loy : 0.5) // loyalty bends the knee…
-      + (((state.stronghold || {}).buildings || {}).chapel || 0) * BUILDING_FX.chapelLoyalty; // …and the Chapel bends it further (GUI-81)
-    const room = state.player.role === "lord" ? state.household.length < barracksSlots()
+      + bEff("chapel") * BUILDING_FX.chapelLoyalty; // …and the Chapel bends it further (GUI-81; a leaking roof persuades less, GUI-75)
+    const room = state.player.role === "lord" ? state.household.length < barracksOpen()
       : !!state.lord && state.household.length < 3; // NPC keeps hold 3 (GUI-73)
     if (r < kneel && room) {
       state.household.push({ id: npc.id, name: npc.name, classId: npc.classId, wins: npc.wins, age: npc.age, personality: npc.personality });
@@ -1107,7 +1141,7 @@
     const npc = npcById(d.challengerId);
     const me = playerCombatChar();
     if (!run.fielded) {
-      me.regen = (((state.stronghold || {}).buildings || {}).infirmary || 0) * BUILDING_FX.infirmaryRegen;
+      me.regen = Math.round(bEff("infirmary") * BUILDING_FX.infirmaryRegen); // healers work as well as their roof holds (GUI-75)
       if (perk === "crowd") { me.toHitBonus = LORD.crowd.toHit; me.toCritBonus = LORD.crowd.toCrit; }
       if (perk === "armory") {
         const best = Object.values(ARMOR).filter((a) => a.magical && a.tier <= (ARMOR_MAXTIER[state.player.classId] || 0)).sort((a, b) => b.dr - a.dr)[0];
@@ -1381,7 +1415,7 @@
     challengeLord, chooseFate,
     allocate, fightOn, retreat, returnHome, resetGame,
     openVendor, closeVendor, buyItem, buyArrow, loadArrow, buyArmor,
-    taxedCost, gearScale, setDecree, buyBuilding, buildCost, recordBout, openBout, renameHold, defaultHoldName,
+    taxedCost, gearScale, setDecree, buyBuilding, buildCost, condOf, bEff, repairCost, repairBuilding, recordBout, openBout, renameHold, defaultHoldName,
     beginDefense, defensePerks, startDefenseDuel, removeServant, moveServant,
     reignEnds: () => perish("throne-age"),
     nextSeed, settleDay, emit, // the seam lord.js drives the shared day through

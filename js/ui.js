@@ -961,15 +961,22 @@
       const maxed = lvl >= def.max;
       const cost = maxed ? null : game.buildCost(id); // quarry-founded holds pay less (GUI-85)
       const afford = cost != null && st.treasury >= cost;
+      // Condition (GUI-75): built buildings wear; a worn one shows its state and a 🔧.
+      const c = lvl > 0 ? game.condOf(id) : null;
+      const rc = game.repairCost(id);
+      const condPill = c != null && c < 100 ? ` <span class="pill" style="${c === 0 ? "color:var(--bad,#e66)" : c < 50 ? "color:var(--warn,#eb5)" : ""}">${c === 0 ? "🏚️ RUIN" : c + "%"}</span>` : "";
+      const repairBtn = rc != null ? `<button class="btn sm" data-act="repair" data-arg="${id}" ${st.treasury >= rc ? "" : "disabled"}>🔧 ${rc}</button>` : "";
       return `<div class="card-row" style="margin-top:6px">
-        <div style="flex:1"><div class="card-title" style="font-size:14px">${def.emoji} ${def.name} <span class="pill">${"▮".repeat(lvl)}${"▯".repeat(def.max - lvl)}</span></div>
+        <div style="flex:1"><div class="card-title" style="font-size:14px">${def.emoji} ${def.name} <span class="pill">${"▮".repeat(lvl)}${"▯".repeat(def.max - lvl)}</span>${condPill}</div>
         <div class="card-sub">${def.desc}</div></div>
-        ${maxed ? `<span class="pill on">MAX</span>` : `<button class="btn sm gold" data-act="build" data-arg="${id}" ${afford ? "" : "disabled"}>🏛️ ${cost}</button>`}</div>`;
+        ${repairBtn}${maxed ? `<span class="pill on">MAX</span>` : `<button class="btn sm gold" data-act="build" data-arg="${id}" ${afford ? "" : "disabled"}>🏛️ ${cost}</button>`}</div>`;
     };
     const entries = Object.entries(G.data.BUILDINGS);
     const keep = entries.filter(([, d]) => !d.era).map(row).join("");
     const era1 = entries.filter(([, d]) => d.era === 1).map(row).join("");
-    return `<div class="card"><div class="card-title">🏗️ The Stronghold</div>${keep}
+    const dueIds = Object.keys(G.data.BUILDINGS).filter((id) => game.repairCost(id) != null);
+    const dueTotal = dueIds.reduce((sum, id) => sum + game.repairCost(id), 0);
+    return `<div class="card"><div class="card-title">🏗️ The Stronghold${dueTotal ? ` <button class="btn sm" data-act="repair-all" ${st.treasury >= dueTotal ? "" : "disabled"}>🔧 Repair all — ${dueTotal}</button>` : ""}</div>${keep}
       <div class="card-sub center" style="margin-top:10px"><b>— Era I · the Arena (GUI-81) —</b></div>${era1}</div>`;
   }
 
@@ -1019,7 +1026,7 @@
         <div><div class="card-title">${esc(npc.name)} <span class="pill">${CLASSES[ch.classId].name} · ${ch.wins}w</span></div>
         <div class="card-sub">Worn to <b>${wornPct}%</b> — the gauntlet takes its toll. You fight FRESH, on your own sand.</div></div></div></div>
       ${(() => { // 🗼 The Watchtower's report (GUI-81): the taller the tower, the finer the intel.
-        const wt = ((s.stronghold || {}).buildings || {}).watchtower || 0;
+        const wt = Math.floor(game.bEff("watchtower")); // a crumbling tower sees less (GUI-75)
         if (!wt) return "";
         const temper = npc.personality ? G.data.PERSONALITY.label(npc.personality) : "";
         return `<div class="card"><div class="card-title" style="font-size:14px">🗼 The watchtower's report</div>
@@ -1711,6 +1718,8 @@
       case "profile-noop": break;
       case "servant-move": { const [sid, dir] = arg.split(":"); game.moveServant(sid, parseInt(dir, 10)); break; }
       case "rename-hold": { const n = typeof prompt === "function" ? prompt("Name your Stronghold:", (game.state.stronghold || {}).name || "") : null; if (n) game.renameHold(n); break; }
+      case "repair": game.repairBuilding(arg); break;
+      case "repair-all": for (const id of Object.keys(G.data.BUILDINGS)) if (game.repairCost(id) != null) game.repairBuilding(id); break;
       case "board-day": ui.boardDay = parseInt(arg, 10); ui.boardBand = null; render(game.state); break;
       case "board-season": {
         const seasons = [...new Set(game.state.board.map((d) => d.season))].sort((a, b) => a - b);
