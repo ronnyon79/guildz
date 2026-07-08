@@ -22,16 +22,22 @@
       if (m.spec) { specSum += m.spec; rated += 1; }
     }
     const avgSpec = rated ? specSum / rated : 3;
-    const seating = ((st.buildings || {}).seating || 0) * G.data.BUILDING_FX.seatingCrowd;
+    const FX = G.data.BUILDING_FX, B = st.buildings || {};
+    const seating = (B.seating || 0) * FX.seatingCrowd;
+    // Era-1 hooks (GUI-81): the Tavern fills seats, the Royal Box reads the
+    // card finer (a ★ bias in the DRAW only — the Scribe's ratings stay honest),
+    // the Marketplace adds licence lines and widens the tax base.
+    const boxSpec = Math.min(5, avgSpec + (B.royalbox || 0) * FX.royalBoxSpec);
     const attendance = Math.round(
       (E.crowdBase + seating + E.crowdPerResident * state.npcs.length) *
-      (avgSpec / 3) * E.demand(st.ticketPrice) * E.prestige(st.purse));
-    const gate = attendance * st.ticketPrice;
-    const wagers = Math.round(attendance * E.wagerStake * E.wagerCut);
-    const licences = G.data.VENDORS.filter((v) => !v.soon).length * E.licencePerVendor;
+      (boxSpec / 3) * E.demand(st.ticketPrice) * E.prestige(st.purse) *
+      (1 + (B.tavern || 0) * FX.tavernCrowd));
+    const gate = attendance * st.ticketPrice + (B.royalbox || 0) * FX.royalBoxGate;
+    const wagers = Math.round(attendance * (E.wagerStake + (B.tavern || 0) * FX.tavernStake) * E.wagerCut);
+    const licences = (G.data.VENDORS.filter((v) => !v.soon).length + (B.market || 0) * FX.marketLicence) * E.licencePerVendor;
     // Poor champions spend less: the tax base shrinks with the very poverty a
     // heavy tax causes (GUI-36 found greedy rates were a degenerate optimum).
-    const tax = Math.round(bouts * E.taxSpendPerBout * G.game.gearScale() * st.taxRate / 100);
+    const tax = Math.round(bouts * E.taxSpendPerBout * (1 + (B.market || 0) * FX.marketTax) * G.game.gearScale() * st.taxRate / 100);
     const purses = day.brackets.length * st.purse;
     const net = gate + wagers + licences + tax - purses - E.upkeep;
     return { attendance, avgSpec: Math.round(avgSpec * 10) / 10, gate, wagers, licences, tax, purses, upkeep: E.upkeep, net };

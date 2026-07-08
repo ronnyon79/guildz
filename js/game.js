@@ -163,6 +163,9 @@
     return { holdName, archetype: exile ? "spite" : G.worldgen.pickArchetype(rng, personality || {}) };
   }
   const nameHash = (s) => { let h = 0; for (const c of String(s)) h = (h * 31 + c.charCodeAt(0)) >>> 0; return h; };
+  // Every building in the catalogue starts unbuilt — derived, so new eras
+  // (GUI-81+) join world creation and save migration automatically.
+  const freshBuildings = () => { const b = {}; for (const k of Object.keys(BUILDINGS)) b[k] = 0; return b; };
 
   function listWorlds() { migrateLegacy(); return readIndex().worlds; }
   function boot() { migrateLegacy(); state.screen = "title"; emit(); }
@@ -170,7 +173,7 @@
   function save() {
     if (!state.worldId) return;
     try {
-      const blob = { player: state.player, npcs: state.npcs, lord: state.lord, stronghold: state.stronghold, household: state.household, defense: state.defense, board: state.board, departed: state.departed, clock: state.clock, lastSeason: state.lastSeason, challengeOpen: state.challengeOpen, throneRestUntil: state.throneRestUntil || 0, news: state.news, ledgerLog: state.ledgerLog, chronicle: state.chronicle || [], seedCounter: state.seedCounter };
+      const blob = { player: state.player, npcs: state.npcs, lord: state.lord, stronghold: state.stronghold, household: state.household, defense: state.defense, board: state.board, departed: state.departed, clock: state.clock, lastSeason: state.lastSeason, challengeOpen: state.challengeOpen, throneRestUntil: state.throneRestUntil || 0, news: state.news, ledgerLog: state.ledgerLog, chronicle: state.chronicle || [], watchWarned: state.watchWarned || 0, seedCounter: state.seedCounter };
       G.store.set(worldKey(state.worldId), JSON.stringify(blob));
       const ix = readIndex();
       const i = ix.worlds.findIndex((w) => w.id === state.worldId);
@@ -238,7 +241,8 @@
       // Migrate saves created before the economy existed.
       state.stronghold = data.stronghold || { ...ECONOMY.start };
       if (!state.stronghold.name) state.stronghold.name = defaultHoldName(state.player.worldSeed || 7); // pre-GUI-54 saves
-      if (!state.stronghold.buildings) state.stronghold.buildings = { seating: 0, armory: 0, infirmary: 0, barracks: 0, yard: 0 };
+      if (!state.stronghold.buildings) state.stronghold.buildings = freshBuildings();
+      for (const k of Object.keys(BUILDINGS)) if (state.stronghold.buildings[k] == null) state.stronghold.buildings[k] = 0; // eras added since this save
       if (!state.stronghold.foundedOn) state.stronghold.foundedOn = 1; // pre-GUI-84 saves: the hold has stood since the world clock began
       // Pre-GUI-87 saves: the chronicle opens with the founding it never wrote down.
       state.chronicle = Array.isArray(data.chronicle) ? data.chronicle : [foundingEntry(state.stronghold.name)];
@@ -251,6 +255,7 @@
         const first = state.chronicle[0];
         if (first && first.type === "founding" && !first.refs) state.chronicle[0] = foundingEntry(state.stronghold.name, f.founder, f.archetype);
       }
+      state.watchWarned = data.watchWarned || 0;
       state.household = Array.isArray(data.household) ? data.household : [];
       state.departed = Array.isArray(data.departed) ? data.departed : [];
       // Pre-GUI-89 ledgers: founders who rode out before holds were minted.
@@ -307,7 +312,7 @@
     const lordBox = { lord: state.lord };
     const history = G.worldgen.simulateHistory(state.npcs, lordBox, state.player.name, seed + 99);
     state.lord = lordBox.lord;
-    state.stronghold = { ...ECONOMY.start, buildings: { seating: 0, armory: 0, infirmary: 0, barracks: 0, yard: 0 } };
+    state.stronghold = { ...ECONOMY.start, buildings: freshBuildings() };
     state.stronghold.name = (holdName || "").trim().slice(0, 18) || defaultHoldName(seed);
     state.stronghold.foundedOn = 1; // Year 1 — the world epoch IS this hold's founding (GUI-84)
     state.stronghold.founder = { name: founding.founder.name, classId: founding.founder.classId };
@@ -524,9 +529,16 @@
     // Popularity: Σ perBout(band) × Crowd Rating over the champion's won bouts
     // (the decided formula, per-bout variant; a forfeit walkover pays 0).
     const awardFame = (br) => {
-      const gain = G.spectacle.fameFor(br.matches, br.winner, POPULARITY.perBout(br.band), POPULARITY.specMult);
+      let gain = G.spectacle.fameFor(br.matches, br.winner, POPULARITY.perBout(br.band), POPULARITY.specMult);
       if (br.winner === "player") state.player.popularity = (state.player.popularity || 0) + gain;
-      else { const n = npcById(br.winner); if (n) n.popularity = (n.popularity || 0) + gain; }
+      else {
+        const n = npcById(br.winner);
+        if (n) {
+          // Chapel (GUI-81): the Steadfast are honoured — a loyal champion's day counts a little extra.
+          if (gain > 0 && ((n.personality || {}).loy || 0) >= 0.7) gain += ((state.stronghold.buildings || {}).chapel || 0);
+          n.popularity = (n.popularity || 0) + gain;
+        }
+      }
       return gain;
     };
     const champion = playerBracket && playerBracket.winner === "player";
@@ -636,8 +648,9 @@
           for (const n of state.npcs.slice()) {
             if (n.wins < 25 || fought.has(n.name)) continue; // only idle VETERANS stagnate
             const P = n.personality || {};
-            const reason = (P.amb != null ? P.amb : 0.5) >= 0.5 ? "found"
-              : (P.brv != null ? P.brv : 0.5) >= 0.4 ? "adventure" : null;
+            const stay = (((state.stronghold || {}).buildings || {}).chapel || 0) * BUILDING_FX.chapelLoyalty; // the Chapel makes leaving harder (GUI-81)
+            const reason = (P.amb != null ? P.amb : 0.5) >= 0.5 + stay ? "found"
+              : (P.brv != null ? P.brv : 0.5) >= 0.4 + stay ? "adventure" : null;
             if (!reason) continue; // the steadfast wait for a worthy rival
             const dep = { name: n.name, classId: n.classId, wins: n.wins, age: n.age, reason, season: closing };
             if (reason === "found") { // GUI-89: the ledger mints the hold they ride out to raise
@@ -687,8 +700,8 @@
             const lc = lordCombatChar();
             // No wall of servants? The keep guard still harries the way in.
             if (!order.length) {
-              chHp = Math.round(chHp * LORD.keepGuardWear);
-              chMp = Math.round(chMp * LORD.keepGuardWear);
+              chHp = Math.round(chHp * keepWear(LORD.keepGuardWear));
+              chMp = Math.round(chMp * keepWear(LORD.keepGuardWear));
             }
             const worn = { ...ch, startHp: chHp, startMp: chMp };
             const seed = nextSeed();
@@ -759,6 +772,15 @@
       if (state.lastDay.defenseComing) cry("⚠️", `<b>${state.lastDay.defenseComing}</b> eyes the throne — a challenge comes with the new year.`);
       if (state.lastDay.mayChallenge) cry("👑", `The year was <b>yours</b> — the right to challenge the Lord awaits at home.`);
       else if (state.lastDay.seasonEnd && state.lastDay.seasonEnd.top[0]) cry("⭐", `Year ${state.lastDay.seasonEnd.season} closed with <b>${state.lastDay.seasonEnd.top[0].name}</b> atop the fame ladder (⭐${state.lastDay.seasonEnd.top[0].popularity}).`);
+      // 🗼 The Watchtower at full height (GUI-81): it hears a claim brewing
+      // DAYS before season's end — time to order the wall, not just meet it.
+      if (!rolled && state.player.role === "lord" && !state.defense
+          && (((state.stronghold || {}).buildings || {}).watchtower || 0) >= BUILDING_FX.watchWarnAt
+          && (state.watchWarned || 0) !== state.clock.season) {
+        const famous = fameLadder().filter((r) => !r.isPlayer && r.popularity > 0).slice(0, 3);
+        const brewing = famous.find((r) => { const n = npcById(r.id); return n && (!n.personality || n.personality.amb >= 0.3); });
+        if (brewing) { state.watchWarned = state.clock.season; cry("🗼", `The watchtower hears whispers: <b>${brewing.name}</b> courts the crowd — a claim is brewing for season's end.`); }
+      }
       while (state.news.length > 20) state.news.shift();
       // ---- and the Chronicle keeps what matters in a hundred years (GUI-87) ----
       const when = { y: rolled ? state.clock.season - 1 : state.clock.season, d: rolled ? G.data.SEASON.days : Math.max(1, state.clock.day - 1) };
@@ -944,13 +966,23 @@
 
   const barracksSlots = () => ((state.stronghold || {}).buildings || {}).barracks || 0;
 
+  // The keep's wear on an unopposed challenger (GUI-81 Walls & Gatehouse):
+  // base wear (1.0 for a player-lord's open keep, LORD.keepGuardWear for the
+  // abstract guard) minus 5pp per Walls level — the gatehouse makes them
+  // bleed for the approach. Floor 40%: stone alone never wins the duel.
+  function keepWear(base) {
+    const lvl = ((state.stronghold || {}).buildings || {}).walls || 0;
+    return Math.max(0.4, base - lvl * BUILDING_FX.wallsWear);
+  }
+
   // A beaten challenger's fate — their PERSONALITY chooses (GUI-42):
   // the loyal and level-headed kneel; the proud ride out; the fearless die.
   function challengerFate(npc, seed) {
     const r = G.engine.makeRng((seed >>> 0) + 17)();
     const P = npc.personality || {};
     state.npcs = state.npcs.filter((x) => x.id !== npc.id); // leaves the roster either way
-    const kneel = 0.2 + 0.6 * (P.loy != null ? P.loy : 0.5); // loyalty bends the knee
+    const kneel = 0.2 + 0.6 * (P.loy != null ? P.loy : 0.5) // loyalty bends the knee…
+      + (((state.stronghold || {}).buildings || {}).chapel || 0) * BUILDING_FX.chapelLoyalty; // …and the Chapel bends it further (GUI-81)
     const room = state.player.role === "lord" ? state.household.length < barracksSlots()
       : !!state.lord && state.household.length < 3; // NPC keeps hold 3 (GUI-73)
     if (r < kneel && room) {
@@ -970,6 +1002,10 @@
     const ch = G.roster.combatChar(npc, gearScale());
     state.defenseRun = { bouts: [], chHp: ch.maxHp, chMp: ch.maxMp, fielded: !!d.fielded };
     if (d.fielded) { startDefenseDuel(null, "missile"); return; } // servants get no perks
+    if (!state.household.length) { // no wall of servants — the WALLS take their toll (GUI-81)
+      state.defenseRun.chHp = Math.round(ch.maxHp * keepWear(1));
+      state.defenseRun.chMp = Math.round(ch.maxMp * keepWear(1));
+    }
     // The gauntlet in the LORD'S chosen order (GUI-51): household[0] fights
     // first. Speed-bumps-first or stopper-first is his decree to make.
     const order = state.household.slice();

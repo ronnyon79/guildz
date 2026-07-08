@@ -730,6 +730,21 @@ cap (3) & per-bout replenish (50%)**, servant **upkeep/housing** cost, and **ser
   table in the Stewardship section ("Sim requirements — VERIFIED"). No game code —
   GUI-75..79 move the STEW constants into data.js as they build.
 
+- **GUI-81 Era-1 building catalogue — v0.45.0.** Six arena buildings join the five of
+  the keep (11 total, 🏗️ panel grouped by era; fresh-world/migration building maps now
+  DERIVED from the catalogue). One live hook each (BUILDING_FX): 🍺 **Tavern** +8%
+  crowd/lvl + bigger wager stakes · 🏪 **Marketplace** +1 licence line/lvl + 5% wider
+  tax base · 👑 **Royal Box** flat noble-seats gate/lvl + a ★ bias in the DRAW only
+  (the Scribe's ratings stay honest) · 🧱 **Walls & Gatehouse** — NEW mechanic: an
+  unopposed challenger reaching the throne arrives worn through ONE `keepWear(base)`
+  helper (player-lord's open keep base 1.0 → 85% at walls 3; NPC keep-guard base 0.75
+  → 60%; floor 40%) · ⛪ **Chapel** one loyalty knob (+5pp/lvl): beaten challengers
+  kneel more, idle veterans linger (departure thresholds +), Steadfast band champions
+  +1⭐/lvl · 🗼 **Watchtower** tiered scouting on defense-prep (t1 temperament, t2
+  arsenal + style) and at t3 the crier hears a claim brewing MID-season (once/season,
+  persisted watchWarned). NEW SUITE tools/test_era1.js (19) → 500 green / 27 suites.
+  GUI-85 fingerprints are now unblocked (Walls/Marketplace/Chapel exist).
+
 ### Build order (when the user says go)
 1. **Champion summit** — NPC population + Popularity ladder + Lord boss fight (finish
    the Rise). Small, self-contained, reuses combat entirely.
