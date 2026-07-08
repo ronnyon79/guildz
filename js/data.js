@@ -246,6 +246,12 @@
     wallsWear: 0.05,     // a challenger at the throne door arrives −5pp per level
     chapelLoyalty: 0.05, // the loyalty knob per level: departures, kneels, Steadfast honour
     watchWarnAt: 3,      // watchtower tier that hears a claim brewing a season early
+    // Archetype fingerprints (GUI-85) — site traits, origin-only, forever:
+    archBrigandGold: 150,     // the hoard, once, at founding
+    archQuarryDiscount: 0.10, // build costs −10% (repairs too, when GUI-75 lands)
+    archFordGate: 10,         // flat traveller gold on every presided day's gate
+    archHunterUpkeep: 5,      // daily upkeep runs lighter (a provision trickle from GUI-76)
+    archSpiteCompany: 2,      // extra founding company (consumed by the GUI-90 from-scratch start)
   };
 
   /* Aging (GUI-17): everyone ages +1 per season. Champions PEAK then DECLINE —
@@ -286,14 +292,22 @@
    * the Era-1 catalogue first). `line` is the chronicle's founding phrase;
    * `spite` is exile-founded only and never rolls at world-gen. */
   const ARCHETYPES = {
-    ruin:       { name: "The Ruin Reclaimed", emoji: "🏚️", traits: ["loy"], line: "raised over the bones of an abandoned keep, its old stones set straight again" },
-    brigand:    { name: "Brigand's End", emoji: "⚔️", traits: ["agg", "cru"], line: "built where an outlaw nest was put to the sword, on ground cleared by force" },
-    crossroads: { name: "The Crossroads Camp", emoji: "🛤️", traits: ["cun", "grd"], line: "grown from a trade camp at the meeting of roads, palisade by palisade" },
-    quarry:     { name: "The Quarry", emoji: "🕳️", traits: ["dis"], line: "cut from the living rock of an old quarry, stone already to hand" },
-    spite:      { name: "The Exile's Spite", emoji: "🔥", traits: [], exileOnly: true, line: "raised in defiance, within sight of the banners that cast its founder out" },
-    ford:       { name: "The Ford", emoji: "🌊", traits: ["amb"], line: "commanding the river crossing where every road must slow and pay" },
-    pilgrim:    { name: "The Pilgrim's Rest", emoji: "⛪", traits: ["loy", "dis"], line: "grown around a wayside shrine and the beds that pilgrims paid for" },
-    hunter:     { name: "The Hunter's Camp", emoji: "🐺", traits: ["brv"], line: "a hunters' camp in wild country that put down roots and never struck them" },
+    ruin:       { name: "The Ruin Reclaimed", emoji: "🏚️", traits: ["loy"], line: "raised over the bones of an abandoned keep, its old stones set straight again",
+                  fx: { building: "walls", desc: "the old walls still stand — Walls & Gatehouse begins built" } },
+    brigand:    { name: "Brigand's End", emoji: "⚔️", traits: ["agg", "cru"], line: "built where an outlaw nest was put to the sword, on ground cleared by force",
+                  fx: { gold: 150, desc: "the brigands' hoard fattened the founding purse (+150🏛️)" } },
+    crossroads: { name: "The Crossroads Camp", emoji: "🛤️", traits: ["cun", "grd"], line: "grown from a trade camp at the meeting of roads, palisade by palisade",
+                  fx: { building: "market", desc: "the stalls came before the keep — Marketplace begins built" } },
+    quarry:     { name: "The Quarry", emoji: "🕳️", traits: ["dis"], line: "cut from the living rock of an old quarry, stone already to hand",
+                  fx: { trait: "quarry", desc: "stone to hand — buildings cost 10% less, forever" } },
+    spite:      { name: "The Exile's Spite", emoji: "🔥", traits: [], exileOnly: true, line: "raised in defiance, within sight of the banners that cast its founder out",
+                  fx: { trait: "spite", desc: "loyalists followed the founder out — +2 founding company (the from-scratch start)" } },
+    ford:       { name: "The Ford", emoji: "🌊", traits: ["amb"], line: "commanding the river crossing where every road must slow and pay",
+                  fx: { trait: "ford", desc: "toll and traffic — travellers swell the gate a little every day" } },
+    pilgrim:    { name: "The Pilgrim's Rest", emoji: "⛪", traits: ["loy", "dis"], line: "grown around a wayside shrine and the beds that pilgrims paid for",
+                  fx: { building: "chapel", desc: "the shrine came first — Chapel begins built" } },
+    hunter:     { name: "The Hunter's Camp", emoji: "🐺", traits: ["brv"], line: "a hunters' camp in wild country that put down roots and never struck them",
+                  fx: { trait: "hunter", desc: "the hunt provides — the hold's daily keep runs lighter" } },
   };
 
   const PERSONALITY = {

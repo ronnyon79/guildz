@@ -32,15 +32,17 @@
       (E.crowdBase + seating + E.crowdPerResident * state.npcs.length) *
       (boxSpec / 3) * E.demand(st.ticketPrice) * E.prestige(st.purse) *
       (1 + (B.tavern || 0) * FX.tavernCrowd));
-    const gate = attendance * st.ticketPrice + (B.royalbox || 0) * FX.royalBoxGate;
+    // Site traits (GUI-85): the Ford tolls travellers; the Hunter's Camp feeds itself a little.
+    const gate = attendance * st.ticketPrice + (B.royalbox || 0) * FX.royalBoxGate + (st.archetype === "ford" ? FX.archFordGate : 0);
     const wagers = Math.round(attendance * (E.wagerStake + (B.tavern || 0) * FX.tavernStake) * E.wagerCut);
     const licences = (G.data.VENDORS.filter((v) => !v.soon).length + (B.market || 0) * FX.marketLicence) * E.licencePerVendor;
     // Poor champions spend less: the tax base shrinks with the very poverty a
     // heavy tax causes (GUI-36 found greedy rates were a degenerate optimum).
     const tax = Math.round(bouts * E.taxSpendPerBout * (1 + (B.market || 0) * FX.marketTax) * G.game.gearScale() * st.taxRate / 100);
     const purses = day.brackets.length * st.purse;
-    const net = gate + wagers + licences + tax - purses - E.upkeep;
-    return { attendance, avgSpec: Math.round(avgSpec * 10) / 10, gate, wagers, licences, tax, purses, upkeep: E.upkeep, net };
+    const upkeep = E.upkeep - (st.archetype === "hunter" ? FX.archHunterUpkeep : 0);
+    const net = gate + wagers + licences + tax - purses - upkeep;
+    return { attendance, avgSpec: Math.round(avgSpec * 10) / 10, gate, wagers, licences, tax, purses, upkeep, net };
   }
 
   // Hold the day's games: every band fights, the Lord watches from the high seat.

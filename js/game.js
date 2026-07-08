@@ -166,6 +166,27 @@
   // Every building in the catalogue starts unbuilt — derived, so new eras
   // (GUI-81+) join world creation and save migration automatically.
   const freshBuildings = () => { const b = {}; for (const k of Object.keys(BUILDINGS)) b[k] = 0; return b; };
+  /* The archetype's FINGERPRINT (GUI-85): every origin leaves ONE permanent
+   * mark — a building that was already standing, a hoard, or a site trait
+   * (read live from stronghold.archetype: quarry/ford/hunter/spite). Applied
+   * once (st.fingerprint guards), at creation and at old-save migration. */
+  function applyFingerprint() {
+    const st = state.stronghold;
+    const a = st && G.data.ARCHETYPES[st.archetype];
+    if (!st || !a || st.fingerprint) return;
+    st.fingerprint = true;
+    const fx = a.fx || {};
+    if (fx.building && !(st.buildings[fx.building] > 0)) st.buildings[fx.building] = 1;
+    if (fx.gold) st.treasury += fx.gold;
+  }
+  // What a building costs HERE (GUI-85): the Quarry's stone discounts every raise.
+  function buildCost(id) {
+    const st = state.stronghold, def = BUILDINGS[id];
+    if (!st || !def) return null;
+    const lvl = (st.buildings || {})[id] || 0;
+    if (lvl >= def.max) return null;
+    return Math.round(def.costs[lvl] * (st.archetype === "quarry" ? 1 - BUILDING_FX.archQuarryDiscount : 1));
+  }
 
   function listWorlds() { migrateLegacy(); return readIndex().worlds; }
   function boot() { migrateLegacy(); state.screen = "title"; emit(); }
@@ -255,6 +276,7 @@
         const first = state.chronicle[0];
         if (first && first.type === "founding" && !first.refs) state.chronicle[0] = foundingEntry(state.stronghold.name, f.founder, f.archetype);
       }
+      applyFingerprint(); // pre-GUI-85 saves: the origin's mark arrives (once)
       state.watchWarned = data.watchWarned || 0;
       state.household = Array.isArray(data.household) ? data.household : [];
       state.departed = Array.isArray(data.departed) ? data.departed : [];
@@ -317,6 +339,7 @@
     state.stronghold.foundedOn = 1; // Year 1 — the world epoch IS this hold's founding (GUI-84)
     state.stronghold.founder = { name: founding.founder.name, classId: founding.founder.classId };
     state.stronghold.archetype = founding.archetype;
+    applyFingerprint(); // GUI-85: the origin leaves its mark
     state.household = [];
     state.defense = null;
     state.board = history.board;
@@ -358,8 +381,9 @@
     const st = state.stronghold, def = BUILDINGS[id];
     if (!def || !st || !state.player || state.player.role !== "lord") return false;
     const lvl = (st.buildings || {})[id] || 0;
-    if (lvl >= def.max || st.treasury < def.costs[lvl]) return false;
-    st.treasury -= def.costs[lvl];
+    const price = buildCost(id);
+    if (lvl >= def.max || price == null || st.treasury < price) return false;
+    st.treasury -= price;
     st.buildings[id] = lvl + 1;
     if (lvl === 0) chronicle("🏗️", "milestone", `The <b>${def.name}</b> was raised.`, { k: "built:" + id }); // first raising only — upgrades are upkeep, not history
     save(); emit();
@@ -1357,7 +1381,7 @@
     challengeLord, chooseFate,
     allocate, fightOn, retreat, returnHome, resetGame,
     openVendor, closeVendor, buyItem, buyArrow, loadArrow, buyArmor,
-    taxedCost, gearScale, setDecree, buyBuilding, recordBout, openBout, renameHold, defaultHoldName,
+    taxedCost, gearScale, setDecree, buyBuilding, buildCost, recordBout, openBout, renameHold, defaultHoldName,
     beginDefense, defensePerks, startDefenseDuel, removeServant, moveServant,
     reignEnds: () => perish("throne-age"),
     nextSeed, settleDay, emit, // the seam lord.js drives the shared day through
