@@ -22,23 +22,24 @@
       if (m.spec) { specSum += m.spec; rated += 1; }
     }
     const avgSpec = rated ? specSum / rated : 3;
-    const FX = G.data.BUILDING_FX, B = st.buildings || {};
-    const seating = (B.seating || 0) * FX.seatingCrowd;
+    const FX = G.data.BUILDING_FX;
+    const eff = (id) => G.game.bEff(id); // condition-scaled levels (GUI-75): a rotting building serves at half strength
+    const seating = eff("seating") * FX.seatingCrowd;
     // Era-1 hooks (GUI-81): the Tavern fills seats, the Royal Box reads the
     // card finer (a ★ bias in the DRAW only — the Scribe's ratings stay honest),
     // the Marketplace adds licence lines and widens the tax base.
-    const boxSpec = Math.min(5, avgSpec + (B.royalbox || 0) * FX.royalBoxSpec);
+    const boxSpec = Math.min(5, avgSpec + eff("royalbox") * FX.royalBoxSpec);
     const attendance = Math.round(
       (E.crowdBase + seating + E.crowdPerResident * state.npcs.length) *
       (boxSpec / 3) * E.demand(st.ticketPrice) * E.prestige(st.purse) *
-      (1 + (B.tavern || 0) * FX.tavernCrowd));
+      (1 + eff("tavern") * FX.tavernCrowd));
     // Site traits (GUI-85): the Ford tolls travellers; the Hunter's Camp feeds itself a little.
-    const gate = attendance * st.ticketPrice + (B.royalbox || 0) * FX.royalBoxGate + (st.archetype === "ford" ? FX.archFordGate : 0);
-    const wagers = Math.round(attendance * (E.wagerStake + (B.tavern || 0) * FX.tavernStake) * E.wagerCut);
-    const licences = (G.data.VENDORS.filter((v) => !v.soon).length + (B.market || 0) * FX.marketLicence) * E.licencePerVendor;
+    const gate = Math.round(attendance * st.ticketPrice + eff("royalbox") * FX.royalBoxGate + (st.archetype === "ford" ? FX.archFordGate : 0));
+    const wagers = Math.round(attendance * (E.wagerStake + eff("tavern") * FX.tavernStake) * E.wagerCut);
+    const licences = Math.round((G.data.VENDORS.filter((v) => !v.soon).length + eff("market") * FX.marketLicence) * E.licencePerVendor);
     // Poor champions spend less: the tax base shrinks with the very poverty a
     // heavy tax causes (GUI-36 found greedy rates were a degenerate optimum).
-    const tax = Math.round(bouts * E.taxSpendPerBout * (1 + (B.market || 0) * FX.marketTax) * G.game.gearScale() * st.taxRate / 100);
+    const tax = Math.round(bouts * E.taxSpendPerBout * (1 + eff("market") * FX.marketTax) * G.game.gearScale() * st.taxRate / 100);
     const purses = day.brackets.length * st.purse;
     const upkeep = E.upkeep - (st.archetype === "hunter" ? FX.archHunterUpkeep : 0);
     const net = gate + wagers + licences + tax - purses - upkeep;
@@ -59,7 +60,7 @@
       game.recordBout({ band: br.band, round: m.round, a: byId[m.a], b: byId[m.b], winner: w.name, rounds: res.rounds, spec: res.spec, hl: res.hl, seed: m.seed });
     });
     // Training Yard: each level drills one resident a day (+1 win of sparring).
-    const yard = ((state.stronghold.buildings || {}).yard || 0);
+    const yard = Math.round(G.game.bEff("yard")); // a neglected yard drills fewer (GUI-75)
     if (yard > 0 && state.npcs.length) {
       const rng = G.engine.makeRng(day.seed ^ 0x5eed);
       for (let i = 0; i < yard; i++) G.engine.pick(rng, state.npcs).wins += 1;
@@ -73,6 +74,30 @@
     state.ledgerLog = state.ledgerLog || [];
     state.ledgerLog.push({ d: state.clock.day, s: state.clock.season, net: ledger.net, after: state.stronghold.treasury });
     while (state.ledgerLog.length > 7) state.ledgerLog.shift();
+    // The hold AGES under your reign (GUI-75): a season's wear lands at its
+    // close — decay every built building, the benches worst when the crowds
+    // were big; anything ground to 0 goes OFFLINE and the crier says so.
+    {
+      const st = state.stronghold, M = G.data.MAINT;
+      st.attSeason = st.attSeason || { sum: 0, n: 0 };
+      st.attSeason.sum += ledger.attendance; st.attSeason.n += 1;
+      if (state.lastDay.seasonEnd) {
+        const avgAtt = st.attSeason.n ? st.attSeason.sum / st.attSeason.n : 0;
+        st.condition = st.condition || {};
+        for (const id of Object.keys(G.data.BUILDINGS)) {
+          if (!(st.buildings[id] > 0)) continue;
+          let dec = M.decayPerSeason;
+          if (id === "seating") dec += Math.round(avgAtt / 40) * M.crowdWearPer40;
+          const before = st.condition[id] == null ? 100 : st.condition[id];
+          st.condition[id] = Math.max(0, before - dec);
+          if (before > 0 && st.condition[id] === 0) {
+            state.news.push({ s: state.clock.season - 1, d: G.data.SEASON.days, icon: "🏚️", text: `The <b>${G.data.BUILDINGS[id].name}</b> has fallen into RUIN — no use to anyone until repaired.` });
+          }
+        }
+        while (state.news.length > 20) state.news.shift();
+        st.attSeason = { sum: 0, n: 0 };
+      }
+    }
     state.screen = "lord-sunset";
     game.save();
     game.emit();

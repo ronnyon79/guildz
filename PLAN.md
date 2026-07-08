@@ -758,6 +758,20 @@ cap (3) & per-bout replenish (50%)**, servant **upkeep/housing** cost, and **ser
   the archetype. NEW SUITE tools/test_fingerprints.js (12) → 512 green / 28 suites.
   Founding & the Hold Chronicle: only GUI-90/91 remain (both wait on Stewardship).
 
+- **GUI-75 Maintenance: buildings age — v0.47.0** (Stewardship system 1/4, sim-sized by
+  GUI-74/80). Built buildings carry **condition 0–100** (`stronghold.condition`; a raise
+  is fresh mortar at 100; old saves load sound). **Decay 10/season at a presided season's
+  close** (+1 seating wear per 40 avg crowd — success wears the benches); NPC reigns
+  maintain themselves until GUI-79's policies. **Effects scale linearly** through ONE
+  helper — `bEff(id)` = level × condition% — consumed everywhere: ledger (seating/tavern/
+  market/royalbox), gearScale (armory), infirmary regen, keepWear (walls), chapel (kneels/
+  departures/steadfast fame), yard drills, watchtower tiers + warning, barracks (existing
+  servants stay; NEW kneels need a standing roof). At 0 = **OFFLINE** + a 🏚️ crier cry.
+  **Repairs by hand**: points × 2g × level (Quarry −10%), per-row 🔧 + "Repair all" on
+  the 🏗️ panel, condition pills (%, RUIN). Repair POLICY (budget/priorities) arrives
+  with GUI-79's NPC policies; flat upkeep retires when GUI-76 brings provisions. NEW
+  SUITE tools/test_maintenance.js (23) → 535 green / 29 suites.
+
 ### Build order (when the user says go)
 1. **Champion summit** — NPC population + Popularity ladder + Lord boss fight (finish
    the Rise). Small, self-contained, reuses combat entirely.
