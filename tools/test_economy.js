@@ -54,7 +54,7 @@ G.lord.holdGames();
 const L = S.lastDay.ledger;
 ok(!!L && L.attendance > 0, `the stands fill (${L.attendance} spectators, avg ${L.avgSpec}★)`);
 ok(L.gate === L.attendance * S.stronghold.ticketPrice, "gate = attendance × ticket price");
-ok(L.net === L.gate + L.wagers + L.licences + L.tax - L.purses - L.upkeep, "the ledger sums");
+ok(L.net === L.gate + L.wagers + L.licences + L.tax - L.purses - (L.provisions || 0), "the ledger sums (GUI-76: provisions, not flat upkeep)");
 ok(S.stronghold.treasury === t0 + L.net, "net flows into the treasury");
 game.returnHome();
 

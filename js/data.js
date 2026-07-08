@@ -233,7 +233,24 @@
     walls:      { name: "Walls & Gatehouse", emoji: "🧱", era: 1, max: 3, costs: [350, 700, 1400], desc: "A harder way in — a challenger reaching your throne arrives 5% more worn per level." },
     chapel:     { name: "Chapel", emoji: "⛪", era: 1, max: 3, costs: [250, 500, 1000], desc: "A culture of loyalty — the restless linger, beaten challengers kneel more readily, the Steadfast are honoured." },
     watchtower: { name: "Watchtower", emoji: "🗼", era: 1, max: 3, costs: [200, 400, 800], desc: "Eyes on every road — scout the challenger at your gate; at full height the crier hears a claim brewing a season early." },
+    // Era 2 — Stewardship (GUI-76+): the hold that feeds itself.
+    granary:    { name: "Granary", emoji: "🌾", era: 2, max: 3, costs: [300, 600, 1200], desc: "Deep stores — the larder holds 200/400/800 provisions (80 bare)." },
   };
+  /* Supplies (GUI-76, sim-sized by GUI-74/80): the hold EATS — one unit per
+   * head per day (residents + household + the Lord's table), bought at a
+   * seeded seasonal market price and stored in the larder/Granary. An empty
+   * larder wears the fighters, thins the crowd, and — season over season —
+   * empties the beds. The flat ECONOMY.upkeep is RETIRED for these real costs. */
+  const STEW = {
+    provisionsPerHead: 1,            // units per head per day
+    priceSwing: [0.7, 1.5],          // seeded market price band (g/unit, per season)
+    granaryCap: [80, 200, 400, 800], // by effective Granary level (0 = the bare larder)
+    hungerWear: 0.85,                // starving residents enter bouts at 85% HP
+    hungerGateHit: 0.25,             // …and the crowd thins 25% on starving days
+    starvationExodus: 0.25,          // a fully starving season drives out a quarter of residents
+    hunterTrickle: 5,                // 🐺 the Hunter's Camp hunts this many units/day for free
+  };
+
   /* Maintenance (GUI-75, sim-sized by GUI-74/80): built buildings hold a
    * CONDITION 0–100 that scales their effect linearly (offline at 0). Decay
    * runs under a player-Lord's reign (NPC repair policies arrive GUI-79). */
@@ -259,7 +276,7 @@
     archBrigandGold: 150,     // the hoard, once, at founding
     archQuarryDiscount: 0.10, // build costs −10% (repairs too, when GUI-75 lands)
     archFordGate: 10,         // flat traveller gold on every presided day's gate
-    archHunterUpkeep: 5,      // daily upkeep runs lighter (a provision trickle from GUI-76)
+    archHunterUpkeep: 5,      // RETIRED by GUI-76 — the Hunter's Camp now hunts STEW.hunterTrickle units/day
     archSpiteCompany: 2,      // extra founding company (consumed by the GUI-90 from-scratch start)
   };
 
@@ -339,5 +356,5 @@
   };
   const SEASON = { days: 10 }; // days per season — first guess, tune via sim (GUI-30)
 
-  G.data = { CLASSES, WEAPONS, ARMOR, ARMOR_MAXTIER, VENDORS, ITEMS, ARROWS, GOLD_PER_WIN, goldForWin, totalGoldAt, POINTS_PER_WIN, CRIT_MULT, FOE_NAMES, EPITHETS, HOLD_NAMES, ROSTER, POPULARITY, SEASON, LORD, ECONOMY, BOARD, BUILDINGS, BUILDING_FX, MAINT, AGE, PERSONALITY, WORLDGEN, ARCHETYPES };
+  G.data = { CLASSES, WEAPONS, ARMOR, ARMOR_MAXTIER, VENDORS, ITEMS, ARROWS, GOLD_PER_WIN, goldForWin, totalGoldAt, POINTS_PER_WIN, CRIT_MULT, FOE_NAMES, EPITHETS, HOLD_NAMES, ROSTER, POPULARITY, SEASON, LORD, ECONOMY, BOARD, BUILDINGS, BUILDING_FX, MAINT, STEW, AGE, PERSONALITY, WORLDGEN, ARCHETYPES };
 })(typeof window !== "undefined" ? window : globalThis);

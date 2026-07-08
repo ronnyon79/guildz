@@ -56,8 +56,9 @@ const fordLedger = G.lord.ledgerFor(day, S);
 ok(fordLedger.gate === quarryLedger.gate + FX.archFordGate, "🌊 the Ford tolls travellers into the gate");
 loadAs("hunter");
 S.player.role = "lord"; S.lord = null;
-const hunterLedger = G.lord.ledgerFor(day, S);
-ok(hunterLedger.upkeep === quarryLedger.upkeep - FX.archHunterUpkeep, "🐺 the Hunter's Camp keeps itself a little");
+const needHunter = game.provisionNeed();
+loadAs("quarry");
+ok(needHunter === Math.max(0, game.provisionNeed() - G.data.STEW.hunterTrickle), "🐺 the Hunter's Camp keeps itself a little (the hunt feeds five, GUI-76)");
 
 console.log("— spite is recorded, spent later —");
 ok(G.data.ARCHETYPES.spite.fx.trait === "spite" && FX.archSpiteCompany === 2, "🔥 the Exile's Spite carries +2 founding company (consumed by the GUI-90 from-scratch start)");

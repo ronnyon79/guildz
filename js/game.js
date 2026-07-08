@@ -7,7 +7,7 @@
  */
 (function (root) {
   const G = (root.G = root.G || {});
-  const { CLASSES, ITEMS, ARROWS, ARMOR, ARMOR_MAXTIER, goldForWin, POINTS_PER_WIN, POPULARITY, SEASON, LORD, ECONOMY, BOARD, BUILDINGS, BUILDING_FX, MAINT, AGE, FOE_NAMES, EPITHETS, totalGoldAt } = G.data;
+  const { CLASSES, ITEMS, ARROWS, ARMOR, ARMOR_MAXTIER, goldForWin, POINTS_PER_WIN, POPULARITY, SEASON, LORD, ECONOMY, BOARD, BUILDINGS, BUILDING_FX, MAINT, STEW, AGE, FOE_NAMES, EPITHETS, totalGoldAt } = G.data;
 
   /* ---- worlds: each universe is a SEPARATE save game (decided design) ----
    * An index lists the universes; each world lives under its own key. Within a
@@ -210,6 +210,29 @@
     return true;
   }
 
+  /* Supplies (GUI-76): the larder. Capacity follows the Granary (condition-
+   * scaled); the market price re-rolls each season, seeded; the daily need
+   * is every mouth minus what the Hunter's Camp brings in for free. */
+  function granaryCap() {
+    const caps = STEW.granaryCap;
+    return caps[Math.max(0, Math.min(caps.length - 1, Math.round(bEff("granary"))))];
+  }
+  function grainPriceFor(season) {
+    const r = G.engine.makeRng((((state.player || {}).worldSeed || 7) ^ (season * 2654435761)) >>> 0)();
+    return Math.round((STEW.priceSwing[0] + r * (STEW.priceSwing[1] - STEW.priceSwing[0])) * 100) / 100;
+  }
+  function provisionNeed() {
+    const heads = (state.npcs || []).length + (state.household || []).length + 1; // the Lord eats too
+    const trickle = (state.stronghold || {}).archetype === "hunter" ? STEW.hunterTrickle : 0;
+    return Math.max(0, heads * STEW.provisionsPerHead - trickle);
+  }
+  function setProvisionPolicy(p) {
+    if (!state.player || state.player.role !== "lord" || !state.stronghold) return;
+    if (!["fill", "half", "none"].includes(p)) return;
+    state.stronghold.provisionPolicy = p;
+    save(); emit();
+  }
+
   // What a building costs HERE (GUI-85): the Quarry's stone discounts every raise.
   function buildCost(id) {
     const st = state.stronghold, def = BUILDINGS[id];
@@ -296,6 +319,10 @@
       if (!state.stronghold.buildings) state.stronghold.buildings = freshBuildings();
       for (const k of Object.keys(BUILDINGS)) if (state.stronghold.buildings[k] == null) state.stronghold.buildings[k] = 0; // eras added since this save
       state.stronghold.condition = state.stronghold.condition || {}; // pre-GUI-75: everything stands at 100 (condOf defaults)
+      if (state.stronghold.stock == null) state.stronghold.stock = STEW.granaryCap[0]; // pre-GUI-76: the larder starts full
+      if (!state.stronghold.provisionPolicy) state.stronghold.provisionPolicy = "fill";
+      if (state.stronghold.starvedDays == null) state.stronghold.starvedDays = 0;
+      if (state.stronghold.grainPrice == null) state.stronghold.grainPrice = grainPriceFor(state.clock.season);
       if (!state.stronghold.foundedOn) state.stronghold.foundedOn = 1; // pre-GUI-84 saves: the hold has stood since the world clock began
       // Pre-GUI-87 saves: the chronicle opens with the founding it never wrote down.
       state.chronicle = Array.isArray(data.chronicle) ? data.chronicle : [foundingEntry(state.stronghold.name)];
@@ -372,6 +399,11 @@
     state.stronghold.founder = { name: founding.founder.name, classId: founding.founder.classId };
     state.stronghold.archetype = founding.archetype;
     applyFingerprint(); // GUI-85: the origin leaves its mark
+    state.stronghold.condition = {}; // sound roofs (GUI-75; condOf defaults to 100)
+    state.stronghold.stock = STEW.granaryCap[0]; // a full larder on day one (GUI-76)
+    state.stronghold.provisionPolicy = "fill";
+    state.stronghold.starvedDays = 0;
+    state.stronghold.grainPrice = grainPriceFor(history.clock.season);
     state.household = [];
     state.defense = null;
     state.board = history.board;
@@ -659,6 +691,7 @@
       for (const n of state.npcs) n.popularity = Math.round((n.popularity || 0) / 2);
       state.clock.season += 1;
       state.clock.day = 1;
+      if (state.stronghold) state.stronghold.grainPrice = grainPriceFor(state.clock.season); // the market turns with the year (GUI-76)
       state.lastDay.seasonEnd = state.lastSeason; // surfaced on the sunset screens
       state.lastDay.mayChallenge = state.challengeOpen;
 
@@ -684,7 +717,7 @@
       const retiring = state.npcs.filter((n) => n.age >= AGE.retire + (hash(n.id) % 12));
       if (retiring.length) {
         state.npcs = state.npcs.filter((n) => !retiring.includes(n));
-        arriveHopefuls(retiring.length, "a");
+        if (!((state.stronghold || {}).starvedDays > 0)) arriveHopefuls(retiring.length, "a"); // nobody moves to a starving hold (GUI-76)
         state.lastDay.retired = retiring.map((r) => r.name);
       }
       /* Idle veterans move on (GUI-60, user design): a resident who fought NO
@@ -721,8 +754,33 @@
           if (departures.length) {
             state.departed = (state.departed || []).concat(departures).slice(-12); // the founders' ledger
             state.lastDay.departures = departures;
-            arriveHopefuls(departures.length, "d");
+            if (!((state.stronghold || {}).starvedDays > 0)) arriveHopefuls(departures.length, "d"); // the freeze again (GUI-76)
           }
+        }
+      }
+      // ---- the STARVATION EXODUS (GUI-76, sim-sized): people don't stay ----
+      // where there's no bread. A fully starving season drives out a quarter
+      // of the residents; a partly starving one, its share. The chronicle
+      // remembers a famine (the reserved `softfail` type, now live).
+      {
+        const st = state.stronghold || {};
+        if (st.starvedDays > 0) {
+          const frac = Math.min(1, st.starvedDays / SEASON.days);
+          const fleeing = Math.round(state.npcs.length * STEW.starvationExodus * frac);
+          if (fleeing > 0) {
+            const rng = G.engine.makeRng(((state.player.worldSeed || 1) ^ (state.clock.season * 104729)) >>> 0);
+            const fled = [];
+            for (let i = 0; i < fleeing && state.npcs.length > 8; i++) {
+              const n = state.npcs[Math.floor(rng() * state.npcs.length)];
+              fled.push(n.name);
+              state.npcs = state.npcs.filter((x) => x.id !== n.id);
+            }
+            if (fled.length) {
+              state.lastDay.famine = { fled };
+              chronicle("🍞", "softfail", `Hunger stalked <b>${st.name}</b> — <b>${fled.length}</b> soul${fled.length === 1 ? "" : "s"} fled the empty larder.`, { y: state.clock.season - 1, d: SEASON.days, k: "famine:" + (state.clock.season - 1) });
+            }
+          }
+          st.starvedDays = 0; // the new year starts hungry but counted afresh
         }
       }
       // GUI-72: the claim is answered — the Lord's wall in order, then the
@@ -826,6 +884,7 @@
       else if (nt) cry("🛡️", `<b>${nt.challenger}</b> came for the throne — <b>${nt.by}</b> ${nt.by === nt.lordName ? "cut them down" : "held the wall"}.`);
       for (const d2 of state.lastDay.departures || []) cry(d2.reason === "found" ? "🐎" : "🌄", `<b>${d2.name}</b> (${d2.wins}w) ${d2.reason === "found" ? "rode out to raise a banner of their own" : "left to seek adventure beyond the gates"}.`);
       for (const r of state.lastDay.retired || []) cry("🍂", `<b>${r}</b> hung up their blade — a young hopeful took the empty bed.`);
+      if (state.lastDay.famine) cry("🍞", `HUNGER at ${(state.stronghold || {}).name || "the hold"}: <b>${state.lastDay.famine.fled.length}</b> fled the empty larder — and no newcomer will pass the gates while it stands bare.`);
       if (state.lastDay.newLord) cry("⚱️", `The old Lord died on the throne. <b>${state.lastDay.newLord}</b>, most famed of the residents, was raised in their place.`);
       if (state.lastDay.defenseComing) cry("⚠️", `<b>${state.lastDay.defenseComing}</b> eyes the throne — a challenge comes with the new year.`);
       if (state.lastDay.mayChallenge) cry("👑", `The year was <b>yours</b> — the right to challenge the Lord awaits at home.`);
@@ -1415,7 +1474,7 @@
     challengeLord, chooseFate,
     allocate, fightOn, retreat, returnHome, resetGame,
     openVendor, closeVendor, buyItem, buyArrow, loadArrow, buyArmor,
-    taxedCost, gearScale, setDecree, buyBuilding, buildCost, condOf, bEff, repairCost, repairBuilding, recordBout, openBout, renameHold, defaultHoldName,
+    taxedCost, gearScale, setDecree, buyBuilding, buildCost, condOf, bEff, repairCost, repairBuilding, granaryCap, provisionNeed, setProvisionPolicy, recordBout, openBout, renameHold, defaultHoldName,
     beginDefense, defensePerks, startDefenseDuel, removeServant, moveServant,
     reignEnds: () => perish("throne-age"),
     nextSeed, settleDay, emit, // the seam lord.js drives the shared day through

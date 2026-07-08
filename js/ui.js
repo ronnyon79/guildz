@@ -945,11 +945,21 @@
       <div class="card-sub">${hint}</div></div>
       <button class="btn sm ghost" data-act="decree" data-arg="${key}:-1">−</button>
       <button class="btn sm" data-act="decree" data-arg="${key}:1" style="margin-left:6px">+</button></div>`;
+    // 🌾 The larder (GUI-76): stock, this year's price, and the provisioning decree.
+    const cap = game.granaryCap();
+    const stock = st.stock == null ? cap : st.stock;
+    const need = game.provisionNeed();
+    const daysLeft = need > 0 ? Math.floor(stock / need) : 99;
+    const pol = st.provisionPolicy || "fill";
+    const polBtn = (id, label) => `<button class="btn sm ${pol === id ? "" : "ghost"}" data-act="provision" data-arg="${id}">${label}</button>`;
+    const granary = `<div class="card"><div class="card-title">🌾 The larder <span class="pill">${stock}/${cap}</span>${stock < need ? ' <span class="pill" style="color:var(--bad,#e66)">⚠️ STARVING</span>' : daysLeft <= 2 ? ' <span class="pill" style="color:var(--warn,#eb5)">runs low</span>' : ""}</div>
+      <div class="card-sub">The hold eats <b>${need}</b>/day${st.archetype === "hunter" ? " (the hunt feeds " + G.data.STEW.hunterTrickle + ")" : ""} · grain at <b>${st.grainPrice || 1}g</b> this year. An empty larder wears your fighters, thins the crowd, and — season on season — empties the beds.</div>
+      <div class="alloc-row" style="margin-top:6px">${polBtn("fill", "🧺 Keep it full")}${polBtn("half", "⚖️ Half stores")}${polBtn("none", "🚫 Buy nothing")}</div></div>`;
     return `<div class="card"><div class="card-title">📜 Decrees</div>
       ${row("ticketPrice", "🎫", "Ticket price", "g", "Steeper tickets thin the crowd.")}
       ${row("taxRate", "🧾", "Sales tax", "%", "Heavy taxes leave champions poorly geared — and the fights duller.")}
       ${row("purse", "🏆", "Band purse", "g", "Fat purses draw crowds — and drain the coffers.")}
-    </div>`;
+    </div>` + granary;
   }
 
   // Stronghold buildings (GUI-15): level the arena, and it serves its Lord.
@@ -974,10 +984,12 @@
     const entries = Object.entries(G.data.BUILDINGS);
     const keep = entries.filter(([, d]) => !d.era).map(row).join("");
     const era1 = entries.filter(([, d]) => d.era === 1).map(row).join("");
+    const era2 = entries.filter(([, d]) => d.era === 2).map(row).join("");
     const dueIds = Object.keys(G.data.BUILDINGS).filter((id) => game.repairCost(id) != null);
     const dueTotal = dueIds.reduce((sum, id) => sum + game.repairCost(id), 0);
     return `<div class="card"><div class="card-title">🏗️ The Stronghold${dueTotal ? ` <button class="btn sm" data-act="repair-all" ${st.treasury >= dueTotal ? "" : "disabled"}>🔧 Repair all — ${dueTotal}</button>` : ""}</div>${keep}
-      <div class="card-sub center" style="margin-top:10px"><b>— Era I · the Arena (GUI-81) —</b></div>${era1}</div>`;
+      <div class="card-sub center" style="margin-top:10px"><b>— Era I · the Arena —</b></div>${era1}
+      <div class="card-sub center" style="margin-top:10px"><b>— Era II · Stewardship —</b></div>${era2}</div>`;
   }
 
   // The Lord's view of a finished day: the games he presided over.
@@ -991,7 +1003,7 @@
     const L = d.ledger;
     const money = L ? `<div class="card"><div class="card-title">🏛️ The day's ledger <span class="pill">${L.attendance} spectators · avg ${L.avgSpec}★</span></div>
       <div class="card-sub">🎫 Gate ${L.gate} · 🎲 Wagers ${L.wagers} · 🏪 Licences ${L.licences} · 🧾 Tax ${L.tax}</div>
-      <div class="card-sub">🏆 Purses −${L.purses} · 🏗️ Upkeep −${L.upkeep}</div>
+      <div class="card-sub">🏆 Purses −${L.purses} · 🌾 Provisions −${L.provisions || 0}${L.starving ? ' · <b style="color:var(--bad,#e66)">the hold STARVED today</b>' : ""}</div>
       <div class="card-title" style="margin-top:6px">${L.net >= 0 ? "Net +" : "Net "}${L.net} 🪙 → treasury <b>${s.stronghold.treasury}</b>${s.stronghold.treasury < 0 ? ' <span class="pill">⚠️ the coffers run dry</span>' : ""}</div>
     </div>` : "";
     return topbar(s.player) + `<div class="screen">
@@ -1719,6 +1731,7 @@
       case "servant-move": { const [sid, dir] = arg.split(":"); game.moveServant(sid, parseInt(dir, 10)); break; }
       case "rename-hold": { const n = typeof prompt === "function" ? prompt("Name your Stronghold:", (game.state.stronghold || {}).name || "") : null; if (n) game.renameHold(n); break; }
       case "repair": game.repairBuilding(arg); break;
+      case "provision": game.setProvisionPolicy(arg); break;
       case "repair-all": for (const id of Object.keys(G.data.BUILDINGS)) if (game.repairCost(id) != null) game.repairBuilding(id); break;
       case "board-day": ui.boardDay = parseInt(arg, 10); ui.boardBand = null; render(game.state); break;
       case "board-season": {
