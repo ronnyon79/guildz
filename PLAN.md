@@ -833,6 +833,30 @@ cap (3) & per-bout replenish (50%)**, servant **upkeep/housing** cost, and **ser
   universal migration) → 629 green / 33 suites. **Only GUI-90/91 remain** (from-scratch
   settlement start + its sim) before Stewardship + Founding are wholly done.
 
+- **GUI-91 Founding sim — v(sim only)** `tools/sim_founding.js` sized the settlement:
+  party 8 · pooled purse 1000 · forage 5/day · Arena at pop ≥ 16 + 300g. (See "Sized by
+  the founding sim" in the Founding section.)
+
+- **GUI-90 Found from scratch: settlement → Arena → First Lord — v0.52.0** (BOTH the
+  Founding & the Hold Chronicle AND Stronghold Stewardship projects now COMPLETE).
+  World creation asks a second question — ⚔️ **Join a living hold** (the classic climb,
+  unchanged) or 🏰 **Found from scratch**: `createCharacter(…, "found")` seats you as a
+  **founder** (role) — a 25-win veteran leading a party of 8, no Lord, no arena, a pooled
+  purse of 1000g, a seeded archetype + fingerprint, and page-one of the chronicle naming
+  YOU the founder. **Act 1 — the Settlement**: a dedicated screen (no arena tabs) with
+  the full Stewardship dashboard (buildings, larder, 🧲 Pull, 🐫 trade) + an arena-progress
+  card; **"Let a season pass"** runs `advanceSettlement()` — the camp feeds its people
+  (a purse-limited FLOW net of a 5/day forage; buy-nothing → hunger → settlers flee),
+  caravans trade, buildings weather, and a settlement-specific Pull (safety + stores +
+  heralds, slope 4) draws settlers. Competent play reaches the Arena in ~2 years with a
+  healthy purse; neglect stunts or disperses the camp. **Act 2 — the hinge**: at pop ≥ 16
+  + 300g, **Raise the Arena** (chronicle milestone, dated era) → the **election**: 👑 crown
+  (→ Lord mode, decrees seeded on), ⚔️ sword (the most ambitious founder is acclaimed Lord;
+  you enter the arena you built as a fresh champion), or 🐎 road (a triumphant departure —
+  the founding ends). Founder worlds resume on the settlement screen; ⛺ badge on the
+  title. UI refactor: granary/pull/trade cards extracted so both dashboards share them.
+  NEW SUITE tools/test_settlement.js (41) → 670 green / 34 suites.
+
 ### Build order (when the user says go)
 1. **Champion summit** — NPC population + Popularity ladder + Lord boss fight (finish
    the Rise). Small, self-contained, reuses combat entirely.
@@ -1319,14 +1343,17 @@ chronicle = **full curated event log** (curation list above) · from-scratch is
 Arena raised at a population threshold · **Lord chosen from the founders**, player holds
 first claim and may decline — **crown / champion / road**).
 
+### Sized by the founding sim (GUI-91, `tools/sim_founding.js`, 2026-07-09)
+Standalone model of the settlement economy (no arena income; party eats, one neighbour
+caravan trades, settlers arrive via a settlement Pull). **CHOSEN:** founding **party 8** ·
+pooled **purse 1000g** · a scrappy-camp **forage 5 units/day free** (net of provisions) ·
+**Arena raised at population ≥ 16 AND treasury ≥ 400g.** Results: competent play (heralds +
+repairs + Fields) raises the Arena in **year 2** with ~800g to spare (5/5 runs in the 2–5
+band); neglect stretches to year 11 but the purse survives folly; a spendthrift (heralds,
+no upkeep) bankrupts by year 8 — so the runway is real in both directions. The player-founder
+starts a **veteran** (mirrors GUI-60's 25-win rule) so the champion door is viable.
+
 ### Still open (sim/design-pass items)
-- Founding party: size (6–10?), class/career mix, and the player-founder's own starting
-  career (novice or modest veteran? their wins matter if they later choose the champion
-  door) — sim/design.
-- **Arena-raising threshold** — population count + arena cost; how many seasons should
-  Act 1 take at competent play (2–4?) — the founding sim.
-- Settlement runway: production + trade + pooled purse vs. consumption and construction —
-  can a well-run camp reach the arena before the purse dies? (pairs with Stewardship sims).
 - **Settlement events** (PROPOSED above): the Act-1 texture set — brigand raids as real
   party-defense combats, harvests, caravans — own mini design list.
 - Election acclaim: amb/esteem weights when the player declines (and for NPC foundings).

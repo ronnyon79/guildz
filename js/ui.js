@@ -54,12 +54,12 @@
 
   // ---------- top bar / nav ----------
   function topbar(p) {
-    const lord = p && p.role === "lord";
+    const coffers = p && (p.role === "lord" || p.role === "founder");
     const st = game.state.stronghold;
     return `<div class="topbar">
       <div class="brand">⚔️ Guildz</div>
       <div class="resources">
-        ${lord && st ? `<span class="res">🏛️ <b>${st.treasury}</b></span>` : ""}
+        ${coffers && st ? `<span class="res">🏛️ <b>${st.treasury}</b></span>` : ""}
         <span class="res">🪙 <b>${p ? p.gold : 0}</b></span>
         <span class="res">🏅 <b>${p ? p.wins : 0}</b></span>
         <span class="res">⭐ <b>${p ? p.popularity || 0 : 0}</b></span>
@@ -76,7 +76,7 @@
   // ---------- screens ----------
   function screenTitle() {
     const worlds = game.listWorlds();
-    const roleBadge = (w) => (w.role === "lord" ? "👑 Lord" : w.role === "servant" ? "🙇 Servant" : "⚔️ Champion");
+    const roleBadge = (w) => (w.role === "lord" ? "👑 Lord" : w.role === "servant" ? "🙇 Servant" : w.role === "founder" ? "⛺ Founder" : "⚔️ Champion");
     const cards = worlds.map((w) => `<div class="card class-card" data-act="load-world" data-arg="${w.id}">
       <div class="card-row"><div class="avatar">${CLASSES[w.classId] ? CLASSES[w.classId].emoji : "⚔️"}</div>
         <div><div class="card-title">${esc(w.name)} <span class="pill">${roleBadge(w)}</span>${w.hold ? ` <span class="pill">🏰 ${esc(w.hold)}</span>` : ""}</div>
@@ -102,13 +102,19 @@
           <div class="card-sub">${c.blurb}</div></div></div>
         ${classStats(c.id)}</div>`;
     }).join("");
+    const mode = ui.seatMode || "join";
+    const seatBtn = (id, emoji, title, sub) => `<div class="card class-card ${mode === id ? "sel" : ""}" data-act="seat-mode" data-arg="${id}"><div class="card-row"><div class="avatar">${emoji}</div>
+      <div><div class="card-title" style="font-size:15px">${title}</div><div class="card-sub">${sub}</div></div></div></div>`;
     return `<div class="screen">
       <div class="screen-title">Choose your class</div>${cards}
+      <div class="screen-title">How will you begin?</div>
+      ${seatBtn("join", "⚔️", "Join a living hold", "Arrive at an established Stronghold with its own Lord and history, and fight your way up the arena. The classic climb.")}
+      ${seatBtn("found", "🏰", "Found from scratch", "Lead a band of adventurers into the wild and build a settlement. Manage it (no arena yet) until it can raise one — then take the crown, the sword, or the road. A city-builder's start.")}
       <div class="screen-title">Your name</div>
       <input class="name-input" id="hero-name" maxlength="14" placeholder="Hero" />
-      <div class="screen-title">Your Stronghold's name <span class="sys" style="text-transform:none">(leave blank and the Scribe picks one)</span></div>
+      <div class="screen-title">Your ${mode === "found" ? "settlement's" : "Stronghold's"} name <span class="sys" style="text-transform:none">(leave blank and the Scribe picks one)</span></div>
       <input class="name-input" id="hold-name" maxlength="18" placeholder="Ravenhold" />
-      <button class="btn block lg" style="margin-top:14px" data-act="create">Begin</button>
+      <button class="btn block lg" style="margin-top:14px" data-act="create">${mode === "found" ? "🏰 Raise a banner" : "⚔️ Begin"}</button>
     </div>`;
   }
 
@@ -221,6 +227,74 @@
       <p class="card-sub center" style="margin-top:12px"><span class="plink" data-act="hold">🏰 <b>${esc((s.stronghold || {}).name || "The Stronghold")}</b></span> · Day ${s.clock.day} · Year ${s.clock.season}</p>
       <p class="card-sub center" style="margin-top:6px">Each day is a knockout tournament in your win-band (${G.tournament.bandLabel(G.tournament.bandOf(p.wins))}). Every bout won earns gold and stats — lose once and your day ends, but you keep everything. Take the band to be <b>Champion of the Day</b> and earn ⭐ fame — the most famous at year's end may challenge the Lord.</p>`}
     </div>` + tabbar("home");
+  }
+
+  // ---------- the Settlement (GUI-90): Act 1 of a from-scratch founding ----------
+  function screenSettlement(s) {
+    const st = s.stronghold, p = s.player;
+    const pop = s.npcs.length, need = G.data.STEW.arenaPop, cost = G.data.STEW.arenaCost;
+    const ready = game.arenaReady();
+    const arch = G.data.ARCHETYPES[st.archetype];
+    const progress = `<div class="card"><div class="card-title">🏛️ Toward the Arena</div>
+      <div class="card-sub">A camp becomes a <b>Stronghold</b> when it can raise an Arena — <b>${pop}/${need}</b> settlers${pop >= need ? " ✓" : ""} and <b>${st.treasury}/${cost}🪙</b>${st.treasury >= cost ? " ✓" : ""}.</div>
+      ${ready
+        ? `<button class="btn block lg gold" style="margin-top:8px" data-act="raise-arena">🏛️ Raise the Arena</button>`
+        : `<div class="card-sub" style="margin-top:6px">${pop < need ? "Draw more settlers (Pull) " : ""}${pop < need && st.treasury < cost ? "and " : ""}${st.treasury < cost ? "fill the common purse " : ""}— then the founders will raise it.</div>`}</div>`;
+    return topbar(p) + `<div class="screen">
+      <div class="card"><div class="card-row"><div class="avatar">${arch ? arch.emoji : "⛺"}</div>
+        <div><div class="card-title"><span class="plink" data-act="hold">${esc(st.name)}</span> <span class="pill">⛺ a young camp</span></div>
+        <div class="card-sub">Founded by <b>${esc(p.name)}</b> · Year ${s.clock.season} · ${pop} settlers${arch ? ` · ${arch.emoji} ${arch.name}` : ""}</div></div></div></div>
+      ${progress}
+      ${buildingsBlock(s)}
+      ${granaryCard(s)}
+      ${pullCard(s)}
+      ${tradeCard(s)}
+      ${crierBlock(s)}
+      <button class="btn block lg" style="margin-top:12px" data-act="advance-settlement">🌅 Let a season pass</button>
+      <p class="card-sub center" style="margin-top:8px">Each season the camp eats, trades, and draws (or loses) settlers. The pooled purse is your runway — spend it wisely on walls, stores, and heralds until the day you raise an Arena.</p>
+    </div>`;
+  }
+  function screenSettleSunset(s) {
+    const r = s.settleReport || {};
+    const st = s.stronghold;
+    return topbar(s.player) + `<div class="screen">
+      <div class="screen-title">🌇 Year ${r.year} at ${esc(st.name)}</div>
+      <div class="card">
+        <div class="card-sub">🧲 Pull <b>${r.pull}</b> · <b>${r.arrivals || 0}</b> arrived, <b>${r.left || 0}</b> moved on → <b>${r.pop}</b> settlers</div>
+        ${r.trade ? `<div class="card-sub">🐫 Caravans: <b>${r.trade.net >= 0 ? "+" : ""}${r.trade.net}🪙</b>${r.trade.provisions ? ` · +${r.trade.provisions} provisions` : ""}</div>` : ""}
+        <div class="card-sub">🌾 Provisions & upkeep −${r.spend || 0}🪙${r.starved ? ' · <b style="color:var(--bad,#e66)">the camp went hungry</b>' : ""}</div>
+        <div class="card-title" style="margin-top:6px">🏛️ Common purse: <b>${r.treasury}</b> 🪙</div>
+        ${r.ready ? `<div class="levelup" style="margin-top:8px">🏛️ <b>The people are ready to raise an Arena.</b></div>` : ""}
+      </div>
+      <button class="btn block lg gold" style="margin-top:12px" data-act="settle-continue">Continue building →</button>
+    </div>`;
+  }
+  function screenSettleFailed(s) {
+    const st = s.stronghold;
+    return `<div class="title-wrap">
+      <div class="title-logo">⛺</div>
+      <div class="title-name">The camp disperses</div>
+      <p class="card-sub center" style="max-width:420px;margin-top:10px">The common purse ran dry, and hungry founders drift away one by one. <b>${esc(st.name)}</b> is left to the wind — a few burnt palisade-stakes and a name half-remembered. Not every founding becomes a Stronghold.</p>
+      <button class="btn lg gold" style="margin-top:16px" data-act="reset-game">Begin anew</button>
+    </div>`;
+  }
+  function screenArenaElection(s) {
+    const st = s.stronghold, p = s.player;
+    const pool = s.npcs.slice().sort((a, b) => ((b.personality || {}).amb || 0.5) - ((a.personality || {}).amb || 0.5) || b.wins - a.wins);
+    const heir = pool[0];
+    return topbar(p) + `<div class="screen">
+      <div class="screen-title">🏛️ The Arena stands</div>
+      <div class="card"><div class="card-sub">The first crowds gather in the pit you built. <b>${esc(st.name)}</b> is a Stronghold now — and a Stronghold needs a Lord. As its founder, the first claim is yours.</div></div>
+      <div class="card class-card" data-act="founder-fate" data-arg="crown"><div class="card-row"><div class="avatar">👑</div>
+        <div><div class="card-title" style="font-size:15px">Take the crown</div>
+        <div class="card-sub">Rule the arena you raised — set its purses, tax and games; defend its throne. (Lord mode.)</div></div></div></div>
+      <div class="card class-card" data-act="founder-fate" data-arg="champion"><div class="card-row"><div class="avatar">⚔️</div>
+        <div><div class="card-title" style="font-size:15px">Take up the sword</div>
+        <div class="card-sub">Let ${heir ? `<b>${esc(heir.name)}</b>, the most ambitious founder,` : "a founder"} be acclaimed Lord — and fight your way up the arena you built as a champion.</div></div></div></div>
+      <div class="card class-card" data-act="founder-fate" data-arg="road"><div class="card-row"><div class="avatar">🐎</div>
+        <div><div class="card-title" style="font-size:15px">Ride on</div>
+        <div class="card-sub">Leave the hold in others' hands and seek a new horizon. (The founding is complete; your road ends here.)</div></div></div></div>
+    </div>`;
   }
 
   // ---------- the day's bracket ----------
@@ -943,6 +1017,56 @@
   }
 
   // The Lord's decrees (GUI-13): the knobs of the realm.
+  // 🌾 The larder (GUI-76): stock, this year's price, and the provisioning decree.
+  function granaryCard(s) {
+    const st = s.stronghold;
+    const cap = game.granaryCap();
+    const stock = st.stock == null ? cap : st.stock;
+    const need = game.provisionNeed();
+    const daysLeft = need > 0 ? Math.floor(stock / need) : 99;
+    const pol = st.provisionPolicy || "fill";
+    const polBtn = (id, label) => `<button class="btn sm ${pol === id ? "" : "ghost"}" data-act="provision" data-arg="${id}">${label}</button>`;
+    const forage = st.archetype === "hunter" ? G.data.STEW.hunterTrickle : 0;
+    const camp = s.player.role === "founder";
+    return `<div class="card"><div class="card-title">🌾 The larder <span class="pill">${stock}/${cap}</span>${stock < need ? ' <span class="pill" style="color:var(--bad,#e66)">⚠️ STARVING</span>' : daysLeft <= 2 ? ' <span class="pill" style="color:var(--warn,#eb5)">runs low</span>' : ""}</div>
+      <div class="card-sub">${camp ? "The camp" : "The hold"} eats <b>${need}</b>/day${camp ? ` (the camp forages ${G.data.STEW.foundForage}${forage ? "+" + forage : ""})` : forage ? ` (the hunt feeds ${forage})` : ""} · grain at <b>${st.grainPrice || 1}g</b> this year. ${camp ? "An empty larder freezes new arrivals — feed your founders." : "An empty larder wears your fighters, thins the crowd, and — season on season — empties the beds."}</div>
+      <div class="alloc-row" style="margin-top:6px">${polBtn("fill", "🧺 Keep it full")}${polBtn("half", "⚖️ Half stores")}${polBtn("none", "🚫 Buy nothing")}</div></div>`;
+  }
+  // 🧲 The Pull card (GUI-78): the migration bar, with the heralds decree.
+  function pullCard(s) {
+    const pull = game.pullScore();
+    const mig = (s.lastDay || {}).migration;
+    const camp = s.player.role === "founder";
+    return `<div class="card"><div class="card-title">🧲 ${camp ? "The camp's" : "The hold's"} Pull <span class="pill ${pull >= 50 ? "on" : ""}">${pull}</span></div>
+      <div class="card-sub">${camp ? "Safe walls, a stocked larder, and word carried abroad draw settlers to a young camp — 50 holds the line, more grows it toward an Arena." : "Fat purses, sound roofs, light taxes, a full larder, famous names and a steady crown draw settlers — 50 holds the line, less empties beds."}${mig ? ` Last year: <b>${mig.arrivals}</b> arrived where <b>${mig.churn}</b> left.` : ""}</div>
+      <div class="card-row" style="margin-top:6px">
+        <div style="flex:1"><div class="card-title" style="font-size:14px">📯 Heralds abroad: <b>${s.stronghold.heralds || 0}g</b>/year</div>
+        <div class="card-sub">Criers in far taverns sing your ${camp ? "young hold" : "games"} — the first coin shouts loudest.</div></div>
+        <button class="btn sm ghost" data-act="decree" data-arg="heralds:-25">−</button>
+        <button class="btn sm" data-act="decree" data-arg="heralds:25" style="margin-left:6px">+</button></div></div>`;
+  }
+  // 🐫 The trade card (GUI-77): the founders' ledger is a map of routes.
+  function tradeCard(s) {
+    const st = s.stronghold;
+    const routes = game.tradeRoutes();
+    if (!routes.length) return "";
+    const stance = st.tradeStance || "export";
+    const season = s.clock.season;
+    const stanceBtn = (id, label) => `<button class="btn sm ${stance === id ? "" : "ghost"}" data-act="trade-stance" data-arg="${id}">${label}</button>`;
+    const rows = routes.map((r) => {
+      const arch = G.data.ARCHETYPES[r.archetype];
+      const fp = game.foreignPrice(r.name, season);
+      return `<div class="card-row" style="margin-top:6px;${r.open ? "" : "opacity:.5"}">
+        <div style="flex:1"><div class="card-title" style="font-size:14px">${arch ? arch.emoji : "🏰"} ${esc(r.name)} ${r.kind === "child" ? `<span class="sys">founded by ${plink(s, r.founder)}</span>` : `<span class="sys">neighbour</span>`}</div>
+        <div class="card-sub">grain there: <b>${fp}g</b> ${fp < (st.grainPrice || 1) ? "🟢 cheap — buy" : "🔴 dear — sell"}</div></div>
+        <button class="btn sm ${r.open ? "" : "ghost"}" data-act="trade-route" data-arg="${esc(r.name)}">${r.open ? "open" : "closed"}</button></div>`;
+    }).join("");
+    const tr = (s.lastDay || {}).trade;
+    return `<div class="card"><div class="card-title">🐫 Trade routes <span class="pill">${routes.filter((r) => r.open).length}/${routes.length} open</span></div>
+      <div class="card-sub">Caravans run once a year. ${tr ? `Last year: <b>${tr.net >= 0 ? "+" : ""}${tr.net}🪙</b>${tr.provisions ? ` · +${tr.provisions} provisions` : ""}.` : "Export goods where grain sells dear; stockpile where it's cheap."}</div>
+      <div class="alloc-row" style="margin-top:6px">${stanceBtn("export", "💰 Export")}${stanceBtn("balance", "⚖️ Balance")}${stanceBtn("stockpile", "🌾 Stockpile")}</div>
+      ${rows}</div>`;
+  }
   function decreesBlock(s) {
     const st = s.stronghold;
     if (!st) return "";
@@ -951,52 +1075,11 @@
       <div class="card-sub">${hint}</div></div>
       <button class="btn sm ghost" data-act="decree" data-arg="${key}:-1">−</button>
       <button class="btn sm" data-act="decree" data-arg="${key}:1" style="margin-left:6px">+</button></div>`;
-    // 🌾 The larder (GUI-76): stock, this year's price, and the provisioning decree.
-    const cap = game.granaryCap();
-    const stock = st.stock == null ? cap : st.stock;
-    const need = game.provisionNeed();
-    const daysLeft = need > 0 ? Math.floor(stock / need) : 99;
-    const pol = st.provisionPolicy || "fill";
-    const polBtn = (id, label) => `<button class="btn sm ${pol === id ? "" : "ghost"}" data-act="provision" data-arg="${id}">${label}</button>`;
-    const granary = `<div class="card"><div class="card-title">🌾 The larder <span class="pill">${stock}/${cap}</span>${stock < need ? ' <span class="pill" style="color:var(--bad,#e66)">⚠️ STARVING</span>' : daysLeft <= 2 ? ' <span class="pill" style="color:var(--warn,#eb5)">runs low</span>' : ""}</div>
-      <div class="card-sub">The hold eats <b>${need}</b>/day${st.archetype === "hunter" ? " (the hunt feeds " + G.data.STEW.hunterTrickle + ")" : ""} · grain at <b>${st.grainPrice || 1}g</b> this year. An empty larder wears your fighters, thins the crowd, and — season on season — empties the beds.</div>
-      <div class="alloc-row" style="margin-top:6px">${polBtn("fill", "🧺 Keep it full")}${polBtn("half", "⚖️ Half stores")}${polBtn("none", "🚫 Buy nothing")}</div></div>`;
     return `<div class="card"><div class="card-title">📜 Decrees</div>
       ${row("ticketPrice", "🎫", "Ticket price", "g", "Steeper tickets thin the crowd.")}
       ${row("taxRate", "🧾", "Sales tax", "%", "Heavy taxes leave champions poorly geared — and the fights duller.")}
       ${row("purse", "🏆", "Band purse", "g", "Fat purses draw crowds — and drain the coffers.")}
-    </div>` + granary + (() => {
-      // 🧲 The Pull card (GUI-78): the migration bar the Lord can move.
-      const pull = game.pullScore();
-      const mig = (s.lastDay || {}).migration;
-      return `<div class="card"><div class="card-title">🧲 The hold's Pull <span class="pill ${pull >= 50 ? "on" : ""}">${pull}</span></div>
-        <div class="card-sub">Fat purses, sound roofs, light taxes, a full larder, famous names and a steady crown draw settlers — 50 holds the line, less empties beds.${mig ? ` Last year: <b>${mig.arrivals}</b> arrived where <b>${mig.churn}</b> left.` : ""}</div>
-        <div class="card-row" style="margin-top:6px">
-          <div style="flex:1"><div class="card-title" style="font-size:14px">📯 Heralds abroad: <b>${s.stronghold.heralds || 0}g</b>/year</div>
-          <div class="card-sub">Criers in far taverns sing your games — the first coin shouts loudest.</div></div>
-          <button class="btn sm ghost" data-act="decree" data-arg="heralds:-25">−</button>
-          <button class="btn sm" data-act="decree" data-arg="heralds:25" style="margin-left:6px">+</button></div></div>`;
-    })() + (() => {
-      // 🐫 The trade card (GUI-77): the founders' ledger is a map of routes.
-      const routes = game.tradeRoutes();
-      if (!routes.length) return "";
-      const stance = st.tradeStance || "export";
-      const season = s.clock.season;
-      const stanceBtn = (id, label) => `<button class="btn sm ${stance === id ? "" : "ghost"}" data-act="trade-stance" data-arg="${id}">${label}</button>`;
-      const rows = routes.map((r) => {
-        const arch = G.data.ARCHETYPES[r.archetype];
-        const fp = game.foreignPrice(r.name, season);
-        return `<div class="card-row" style="margin-top:6px;${r.open ? "" : "opacity:.5"}">
-          <div style="flex:1"><div class="card-title" style="font-size:14px">${arch ? arch.emoji : "🏰"} ${esc(r.name)} ${r.kind === "child" ? `<span class="sys">founded by ${plink(s, r.founder)}</span>` : `<span class="sys">neighbour</span>`}</div>
-          <div class="card-sub">grain there: <b>${fp}g</b> ${fp < (st.grainPrice || 1) ? "🟢 cheap — buy" : "🔴 dear — sell"}</div></div>
-          <button class="btn sm ${r.open ? "" : "ghost"}" data-act="trade-route" data-arg="${esc(r.name)}">${r.open ? "open" : "closed"}</button></div>`;
-      }).join("");
-      const tr = (s.lastDay || {}).trade;
-      return `<div class="card"><div class="card-title">🐫 Trade routes <span class="pill">${routes.filter((r) => r.open).length}/${routes.length} open</span></div>
-        <div class="card-sub">Caravans run once a year. ${tr ? `Last year: <b>${tr.net >= 0 ? "+" : ""}${tr.net}🪙</b>${tr.provisions ? ` · +${tr.provisions} provisions` : ""}.` : "Export goods where grain sells dear; stockpile where it's cheap."}</div>
-        <div class="alloc-row" style="margin-top:6px">${stanceBtn("export", "💰 Export")}${stanceBtn("balance", "⚖️ Balance")}${stanceBtn("stockpile", "🌾 Stockpile")}</div>
-        ${rows}</div>`;
-    })();
+    </div>` + granaryCard(s) + pullCard(s) + tradeCard(s);
   }
 
   // Stronghold buildings (GUI-15): level the arena, and it serves its Lord.
@@ -1147,6 +1230,15 @@
 
   function screenMemorial(s) {
     const t = s.lastThrone || {};
+    if (t.founderRoad) { // GUI-90: the founder rode on — a triumph, not a grave
+      return `<div class="result">
+        <div class="result-emoji">🐎</div>
+        <div class="result-title">The founder rides on</div>
+        <p class="muted">You led a band into the wild, raised <b>${esc(t.hold || "a hold")}</b> from bare ground, and saw its Arena stand. With the hold in other hands, you turn your horse to the horizon — a founder's work is done, and another beckons.</p>
+        <p class="card-sub center">The hold you built lives on without you. Your road ends here.</p>
+        <button class="btn lg gold" style="margin-top:16px" data-act="reset-game">Begin anew</button>
+      </div>`;
+    }
     return `<div class="result loss">
       <div class="result-emoji">🪦</div>
       <div class="result-title">${t.fate === "uprising" ? "The uprising fails" : t.fate === "defense" ? "Fallen in defence" : t.fate === "throne-age" ? "👑 Died on the throne — UNDEFEATED" : "Here ends the tale"}</div>
@@ -1707,6 +1799,10 @@
       case "title": html = screenTitle(); break;
       case "class-select": html = screenClassSelect(); break;
       case "home": html = screenHome(s); break;
+      case "settlement": html = screenSettlement(s); break;
+      case "settlement-sunset": html = screenSettleSunset(s); break;
+      case "settlement-failed": html = screenSettleFailed(s); break;
+      case "arena-election": html = screenArenaElection(s); break;
       case "fame": html = screenFame(s); break;
       case "board": html = screenBoard(s); break;
       case "parchment": html = screenParchment(s); break;
@@ -1804,12 +1900,18 @@
         break;
       }
       case "pick-class": ui.selectedClass = arg; render(game.state); break;
+      case "seat-mode": ui.seatMode = arg; render(game.state); break;
       case "create": {
         const name = (document.getElementById("hero-name") || {}).value || "";
         const holdEl = document.getElementById("hold-name");
-        game.createCharacter(ui.selectedClass, name.trim(), undefined, holdEl ? holdEl.value : "");
+        game.createCharacter(ui.selectedClass, name.trim(), undefined, holdEl ? holdEl.value : "", ui.seatMode || "join");
         break;
       }
+      case "advance-settlement": game.advanceSettlement(); break;
+      case "settle-continue": game.settleContinue(); break;
+      case "raise-arena": game.raiseArena(); break;
+      case "founder-fate": game.chooseFounderFate(arg); break;
+      case "reset-game": game.resetGame(); break;
       case "tab": game.go(arg); break;
       case "enter-arena": game.enterArena(); break;
       case "fight-bout": game.fightBout(); break;

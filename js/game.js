@@ -223,7 +223,8 @@
   }
   function provisionNeed() {
     const heads = (state.npcs || []).length + (state.household || []).length + 1; // the Lord eats too
-    const trickle = (state.stronghold || {}).archetype === "hunter" ? STEW.hunterTrickle : 0;
+    let trickle = (state.stronghold || {}).archetype === "hunter" ? STEW.hunterTrickle : 0;
+    if (state.player && state.player.role === "founder") trickle += STEW.foundForage; // a scrappy camp forages (GUI-90)
     return Math.max(0, heads * STEW.provisionsPerHead - trickle);
   }
   /* The Pull score (GUI-78, sim-verified weights): who wants to live here?
@@ -237,6 +238,19 @@
     const fameTop = Math.max(0, ...state.npcs.map((n) => n.popularity || 0), 0);
     const built = Object.keys(BUILDINGS).filter((id) => (st.buildings || {})[id] > 0);
     const avgCond = built.length ? built.reduce((s, id) => s + condOf(id), 0) / built.length : 50; // bare ground: nothing to admire, nothing rotting
+    // A SETTLEMENT (GUI-90) has no arena purse or famous card — it draws folk
+    // by safety (walls + condition), a stocked larder, word abroad (heralds),
+    // and how long it's stood. Sized so competent play reaches the Arena in ~2y.
+    if (state.player.role === "founder") {
+      const heraldsP = STEW.heraldsMax * Math.sqrt(Math.min(st.heralds || 0, STEW.heraldsBudget) / STEW.heraldsBudget);
+      const years = Math.max(0, state.clock.season - (st.foundedOn || 1));
+      // Base ~62 fed → steady growth to the Arena on feeding alone (a slow, safe
+      // path); walls + heralds accelerate it (a faster, costlier one).
+      return Math.max(0, Math.min(100, Math.round(
+        52 + (avgCond / 100) * 14 + bEff("walls") * 5 +
+        Math.min(1, (st.stock || 0) / STEW.granaryCap[0]) * 10 +
+        Math.min(1, years / 3) * 8 + heraldsP)));
+    }
     // Stability = seasons the reigning power has held: the player's crown, or
     // the NPC Lord's tenure when the player is a commoner (GUI-79).
     const tenure = state.player.role === "lord"
@@ -475,6 +489,7 @@
       if (state.stronghold.heralds == null) state.stronghold.heralds = 0; // pre-GUI-78
       if (!state.stronghold.tradeStance) state.stronghold.tradeStance = "export"; // pre-GUI-77
       if (!Array.isArray(state.stronghold.routesClosed)) state.stronghold.routesClosed = [];
+      if (state.stronghold.arenaRaised == null) state.stronghold.arenaRaised = state.player.role !== "founder"; // pre-GUI-90: living holds always had their arena
       if (!state.stronghold.foundedOn) state.stronghold.foundedOn = 1; // pre-GUI-84 saves: the hold has stood since the world clock began
       // Pre-GUI-87 saves: the chronicle opens with the founding it never wrote down.
       state.chronicle = Array.isArray(data.chronicle) ? data.chronicle : [foundingEntry(state.stronghold.name)];
@@ -500,7 +515,8 @@
       }
       state.defense = data.defense || null;
       state.board = Array.isArray(data.board) ? data.board : [];
-      state.screen = "home";
+      state.settleReport = null; state.settleFailed = false;
+      state.screen = state.player.role === "founder" ? "settlement" : "home"; // GUI-90: resume a camp on its own screen
       return true;
     } catch (e) { return false; }
   }
@@ -510,15 +526,16 @@
   function emit() { for (const fn of listeners) fn(state); }
 
   // ---- actions ----
-  function createCharacter(classId, name, worldSeed, holdName) {
+  function createCharacter(classId, name, worldSeed, holdName, mode) {
     const seed = (worldSeed != null ? worldSeed : Date.now()) >>> 0;
     const ix = readIndex();
     state.worldId = "w" + ix.nextId++;
     writeIndex(ix);
+    const found = mode === "found";
     state.player = {
       name: (name || "Hero").slice(0, 14) || "Hero",
       classId,
-      wins: 0,
+      wins: found ? STEW.founderWins : 0, // a from-scratch founder is a veteran (GUI-90)
       gold: 0,
       bonusHp: 0,
       bonusMp: 0,
@@ -531,47 +548,193 @@
       armor: null,   // equipped armor id
       armorDurability: 0,
       popularity: 0, // fame — the ladder to the Lord's throne
-      role: "champion", // champion | servant | lord
-      age: AGE.start,
+      role: found ? "founder" : "champion", // founder | champion | servant | lord
+      age: found ? AGE.start + Math.round(STEW.founderWins / 3) + 4 : AGE.start,
       controller: "player", // the governance seam (GUI-26): ai | a player id
       worldSeed: seed, // seeds this world's population (deterministic world-gen)
     };
+
+    // Every world begins with a founding archetype + a founder (GUI-86).
+    const st = { ...ECONOMY.start, buildings: freshBuildings() };
+    st.name = (holdName || "").trim().slice(0, 18) || defaultHoldName(seed);
+    st.foundedOn = 1;
+    st.condition = {};
+    st.provisionPolicy = "fill";
+    st.starvedDays = 0;
+    st.tradeStance = "export"; st.routesClosed = [];
+    state.stronghold = st;
+    state.household = []; state.defense = null; state.lastThrone = null;
+    state.challengeOpen = false; state.throneRestUntil = 0;
+    state.news = []; state.ledgerLog = [];
+    state.settleReport = null; state.settleFailed = false; // GUI-90
+
+    if (found) {
+      // ---- FOUND FROM SCRATCH (GUI-90): a settlement, not yet a Stronghold ----
+      const arch = G.worldgen.pickArchetype(G.engine.makeRng((seed + 1) >>> 0), {});
+      st.archetype = arch;
+      st.founder = { name: state.player.name, classId }; // YOU are the founder
+      st.arenaRaised = false;                            // the Arena is not built (Act 2)
+      st.stock = STEW.granaryCap[0];
+      st.grainPrice = grainPriceFor(1);
+      st.purse = 0; st.taxRate = 0; st.ticketPrice = ECONOMY.start.ticketPrice; // no arena income yet
+      st.treasury = STEW.foundPurse; // the party's pooled capital…
+      applyFingerprint(); // …plus the origin's mark (free buildings / the Brigand hoard adds on top)
+      // The founding party: companions who followed you (mixed, modest careers).
+      let party = STEW.foundParty;
+      if (G.data.ARCHETYPES[arch].fx && G.data.ARCHETYPES[arch].fx.trait === "spite") party += G.data.BUILDING_FX.archSpiteCompany;
+      state.npcs = G.roster.generateRoster(seed, state.player.name, party, "f").map((f) => ({ ...f, wins: Math.min(f.wins, 8) }));
+      state.lord = null; // a settlement has no throne
+      state.clock = { day: 1, season: 1 };
+      state.lastSeason = null; state.board = [];
+      const a = G.data.ARCHETYPES[arch];
+      state.chronicle = [{ y: 1, d: 1, icon: a.emoji, type: "founding",
+        text: `<b>${st.name}</b> was founded by <b>${state.player.name}</b> the ${CLASSES[classId].name} and a band of ${party} — ${a.line}. A camp, not yet a Stronghold; no arena, no Lord — only the work of raising one.`,
+        refs: [state.player.name] }];
+      state.screen = "settlement";
+      save(); emit();
+      return;
+    }
+
+    // ---- JOIN A LIVING HOLD (the default): pre-sim history, an established Lord ----
     state.npcs = G.roster.generateRoster(seed, state.player.name);
-    // The founding comes FIRST (GUI-86): a veteran founder raises the hold and
-    // takes its first throne — THEN history is fought on top of it, so the
-    // reigning Lord on arrival is the founder or whoever toppled the line.
     const founding = G.worldgen.rollFounding(seed + 1);
     state.lord = founding.founder;
     const lordBox = { lord: state.lord };
     const history = G.worldgen.simulateHistory(state.npcs, lordBox, state.player.name, seed + 99);
     state.lord = lordBox.lord;
-    state.stronghold = { ...ECONOMY.start, buildings: freshBuildings() };
-    state.stronghold.name = (holdName || "").trim().slice(0, 18) || defaultHoldName(seed);
-    state.stronghold.foundedOn = 1; // Year 1 — the world epoch IS this hold's founding (GUI-84)
-    state.stronghold.founder = { name: founding.founder.name, classId: founding.founder.classId };
-    state.stronghold.archetype = founding.archetype;
+    st.arenaRaised = true; // a living hold has always had its arena
+    st.founder = { name: founding.founder.name, classId: founding.founder.classId };
+    st.archetype = founding.archetype;
     applyFingerprint(); // GUI-85: the origin leaves its mark
-    state.stronghold.condition = {}; // sound roofs (GUI-75; condOf defaults to 100)
-    state.stronghold.stock = STEW.granaryCap[0]; // a full larder on day one (GUI-76)
-    state.stronghold.provisionPolicy = "fill";
-    state.stronghold.starvedDays = 0;
-    state.stronghold.grainPrice = grainPriceFor(history.clock.season);
-    state.stronghold.tradeStance = "export"; state.stronghold.routesClosed = []; // GUI-77
-    { const pol = npcLordPolicy(state.lord); state.stronghold.taxRate = pol.taxRate; state.stronghold.purse = pol.purse; state.stronghold.ticketPrice = pol.ticketPrice; } // GUI-79: your Lord's temperament rules from day one
-    state.household = [];
-    state.defense = null;
+    st.stock = STEW.granaryCap[0];
+    st.grainPrice = grainPriceFor(history.clock.season);
+    { const pol = npcLordPolicy(state.lord); st.taxRate = pol.taxRate; st.purse = pol.purse; st.ticketPrice = pol.ticketPrice; } // GUI-79
     state.board = history.board;
     state.clock = history.clock;
     state.lastSeason = history.lastSeason;
-    state.challengeOpen = false;
-    state.throneRestUntil = 0;
-    state.news = [];
-    state.ledgerLog = [];
-    // The chronicle opens with the founding, then history's own regime fights
-    // (GUI-86/87) — chronicle, lords line and worldgen finally agree.
-    state.chronicle = [foundingEntry(state.stronghold.name, founding.founder, founding.archetype), ...(history.events || [])];
-    state.lastThrone = null;
+    state.chronicle = [foundingEntry(st.name, founding.founder, founding.archetype), ...(history.events || [])];
     state.screen = "home";
+    save(); emit();
+  }
+
+  /* ---- the Settlement (GUI-90): Act 1 of a from-scratch founding ----
+   * No arena, no tournament — the founders build a camp toward the day it can
+   * raise an Arena and become a Stronghold. One button advances a whole year
+   * of stewardship: eat, trade, draw settlers, age. The pooled purse is the
+   * runway; competent play reaches the Arena in ~2 years (GUI-91 sim). */
+  function arenaReady() {
+    const st = state.stronghold;
+    return !!st && !st.arenaRaised && state.npcs.length >= STEW.arenaPop && st.treasury >= STEW.arenaCost;
+  }
+  function advanceSettlement() {
+    const st = state.stronghold;
+    if (!state.player || state.player.role !== "founder" || !st || st.arenaRaised) return;
+    const rep = { year: state.clock.season, spend: 0, trade: null, arrivals: 0, left: 0, starved: false };
+    // 1) the camp feeds its people — a yearly FLOW bought at market (limited by
+    // the purse, not the larder: a camp resupplies as it goes). Buy-nothing or
+    // an empty purse means hunger, which freezes new arrivals.
+    const need = provisionNeed() * SEASON.days;
+    const price = st.grainPrice || 1;
+    const wantFrac = st.provisionPolicy === "none" ? 0 : st.provisionPolicy === "half" ? 0.5 : 1;
+    const affordable = Math.floor(Math.max(0, st.treasury) / price);
+    const fed = Math.min(Math.round(need * wantFrac), affordable);
+    st.treasury -= Math.round(fed * price); rep.spend += Math.round(fed * price);
+    const starving = fed < need;
+    if (starving) rep.starved = true;
+    st.stock = granaryCap(); // the larder stays topped for trade + the Pull bonus
+    // 2) the caravans trade (the neighbour route runs even for a camp).
+    const tr = runTrade(state.clock.season); if (tr) { rep.trade = tr; }
+    // 3) heralds are paid; buildings weather a year (the founder repairs by hand).
+    if (st.heralds > 0) { st.treasury -= st.heralds; rep.spend += st.heralds; }
+    st.condition = st.condition || {};
+    for (const id of Object.keys(BUILDINGS)) {
+      if (!(st.buildings[id] > 0)) continue;
+      const before = st.condition[id] == null ? 100 : st.condition[id];
+      st.condition[id] = Math.max(0, before - MAINT.decayPerSeason);
+    }
+    // 4) settlers arrive by Pull; the old move on (a camp has its churn too).
+    const pull = pullScore();
+    for (const n of state.npcs) n.age = (n.age || AGE.start) + 1;
+    state.player.age = (state.player.age || AGE.start) + 1;
+    const hash = (s) => { let h = 0; for (const c of String(s)) h = (h * 31 + c.charCodeAt(0)) >>> 0; return h; };
+    const retiring = state.npcs.filter((n) => n.age >= AGE.retire + (hash(n.id) % 12));
+    state.npcs = state.npcs.filter((n) => !retiring.includes(n)); rep.left = retiring.length;
+    // A young camp grows FASTER per Pull point than an established hold (a
+    // settlement slope of 4 vs 6) and crowds only gently, so feeding alone
+    // still reaches the Arena — it just takes longer than heralds would.
+    let growth = Math.round((pull - 50) / 4);
+    if (growth > 0) growth = Math.round(growth * Math.max(0.3, 1 - state.npcs.length / (STEW.arenaPop + 24)));
+    let arrivals = Math.max(0, retiring.length + growth);
+    if (starving) { // a hungry camp draws no one AND bleeds settlers who lose faith
+      arrivals = 0;
+      const flee = Math.min(2, Math.max(0, state.npcs.length - 2));
+      state.npcs = state.npcs.slice(0, state.npcs.length - flee);
+      rep.left += flee;
+    }
+    if (arrivals > 0) {
+      const fresh = G.roster.generateRoster((state.player.worldSeed ^ (state.clock.season * 7919)) >>> 0, state.player.name, arrivals, "s" + state.clock.season + "_");
+      const taken = new Set(state.npcs.map((n) => n.name).concat([state.player.name]));
+      for (const f of fresh) { f.wins = Math.min(f.wins, 6); while (taken.has(f.name)) f.name += " II"; taken.add(f.name); state.npcs.push(f); }
+      rep.arrivals = arrivals;
+    }
+    // 5) the year turns.
+    state.clock.season += 1; state.clock.day = 1;
+    st.grainPrice = grainPriceFor(state.clock.season);
+    rep.pop = state.npcs.length; rep.pull = pull; rep.treasury = st.treasury; rep.ready = arenaReady();
+    state.settleReport = rep;
+    // the crier of the young camp
+    state.news.push({ s: state.clock.season - 1, d: SEASON.days, icon: "⛺", text: `Year ${state.clock.season - 1} at <b>${st.name}</b>: ${state.npcs.length} settlers, ${st.treasury}🪙 in the common purse.${rep.starved ? " <b>The camp went hungry.</b>" : ""}${rep.ready ? " <b>The people are ready to raise an Arena.</b>" : ""}` });
+    while (state.news.length > 20) state.news.shift();
+    // failure: the purse is spent, or the camp has dwindled to nothing → it disperses.
+    if (st.treasury < 0 || state.npcs.length <= 2) { state.settleFailed = true; state.screen = "settlement-failed"; save(); emit(); return; }
+    state.screen = "settlement-sunset";
+    save(); emit();
+  }
+  function settleContinue() { if (state.screen === "settlement-sunset") { state.screen = "settlement"; state.settleReport = null; emit(); } }
+
+  // The hinge (GUI-90): raise the Arena — a camp becomes a Stronghold.
+  function raiseArena() {
+    const st = state.stronghold;
+    if (!arenaReady()) return;
+    st.treasury -= STEW.arenaCost;
+    st.arenaRaised = true; st.arenaRaisedOn = state.clock.season;
+    chronicle("🏛️", "milestone", `The <b>Arena</b> was raised — the camp of <b>${st.name}</b> is a Stronghold at last.`, { k: "arena" });
+    state.news.push({ s: state.clock.season, d: 1, icon: "🏛️", text: `<b>${st.name}</b> raises its Arena — a camp becomes a Stronghold, and its founders must choose a Lord.` });
+    state.screen = "arena-election";
+    save(); emit();
+  }
+
+  // The founders choose a Lord (GUI-90): crown yourself, step aside for a
+  // founder and fight as champion, or leave the city you built.
+  function chooseFounderFate(fate) {
+    const st = state.stronghold, p = state.player;
+    if (!st || !st.arenaRaised || p.role !== "founder") return;
+    // arena income turns on: seed the decrees a first Lord would set.
+    st.purse = ECONOMY.start.purse; st.taxRate = ECONOMY.start.taxRate; st.ticketPrice = ECONOMY.start.ticketPrice;
+    if (fate === "crown") {
+      p.role = "lord"; p.crownedSeason = state.clock.season; state.lord = null;
+      chronicle("👑", "regime", `<b>${p.name}</b>, founder of the hold, took its first throne.`, { refs: [p.name] });
+      state.news.push({ s: state.clock.season, d: 1, icon: "👑", text: `<b>${p.name}</b> is acclaimed the first Lord of <b>${st.name}</b>.` });
+      state.screen = "home";
+    } else if (fate === "champion") {
+      // The most AMBITIOUS founder is acclaimed; you keep your sword.
+      const pool = state.npcs.slice().sort((a, b) => ((b.personality || {}).amb || 0.5) - ((a.personality || {}).amb || 0.5) || b.wins - a.wins);
+      const chosen = pool[0] || state.npcs[0];
+      state.npcs = state.npcs.filter((n) => n.id !== chosen.id);
+      state.lord = { name: chosen.name, classId: chosen.classId, wins: Math.max(chosen.wins, 20), reignSeasons: 0, age: chosen.age, personality: chosen.personality };
+      const pol = npcLordPolicy(state.lord); st.taxRate = pol.taxRate; st.purse = pol.purse; st.ticketPrice = pol.ticketPrice;
+      p.role = "champion"; p.wins = 0; p.age = AGE.start; // you step into the arena as a fresh challenger of the pit you built
+      chronicle("👑", "regime", `<b>${chosen.name}</b> was acclaimed the first Lord of <b>${st.name}</b>; its founder <b>${p.name}</b> chose the sword.`, { refs: [chosen.name, p.name] });
+      state.news.push({ s: state.clock.season, d: 1, icon: "👑", text: `<b>${chosen.name}</b> is acclaimed first Lord; founder <b>${p.name}</b> enters the arena as a champion.` });
+      state.screen = "home";
+    } else { // road — you leave the hold you founded
+      chronicle("🐎", "child", `<b>${p.name}</b> raised <b>${st.name}</b>, saw its Arena stand, and rode on to another horizon.`, { refs: [p.name] });
+      state.lastThrone = { founderRoad: true, hold: st.name };
+      deleteWorld(state.worldId); // the founding is complete — no trailing save (it would resurrect the world)
+      state.screen = "memorial";
+      emit();
+      return;
+    }
     save(); emit();
   }
 
@@ -1657,6 +1820,7 @@
     state.stronghold = null; state.household = []; state.defense = null; state.defenseRun = null;
     state.throneDefense = false; state.board = []; state.lastDefense = null; state.viewBout = null;
     state.chronicle = [];
+    state.settleReport = null; state.settleFailed = false; // GUI-90
     state.allocPending = false; state.screen = "title";
     emit();
   }
@@ -1668,7 +1832,7 @@
     challengeLord, chooseFate,
     allocate, fightOn, retreat, returnHome, resetGame,
     openVendor, closeVendor, buyItem, buyArrow, loadArrow, buyArmor,
-    taxedCost, gearScale, setDecree, buyBuilding, buildCost, condOf, bEff, repairCost, repairBuilding, granaryCap, provisionNeed, setProvisionPolicy, pullScore, npcLordPolicy, tradeRoutes, foreignPrice, runTrade, setTradeStance, toggleRoute, recordBout, openBout, renameHold, defaultHoldName,
+    taxedCost, gearScale, setDecree, buyBuilding, buildCost, condOf, bEff, repairCost, repairBuilding, granaryCap, provisionNeed, setProvisionPolicy, pullScore, npcLordPolicy, tradeRoutes, foreignPrice, runTrade, setTradeStance, toggleRoute, arenaReady, advanceSettlement, settleContinue, raiseArena, chooseFounderFate, recordBout, openBout, renameHold, defaultHoldName,
     beginDefense, defensePerks, startDefenseDuel, removeServant, moveServant,
     reignEnds: () => perish("throne-age"),
     nextSeed, settleDay, emit, // the seam lord.js drives the shared day through
