@@ -35,7 +35,7 @@ ok(gone.find((d) => d.name === "Vet vf" && d.reason === "found"), "the ambitious
 ok(gone.find((d) => d.name === "Vet va" && d.reason === "adventure"), "the restless one leaves for adventure");
 ok(!!S.npcs.find((n) => n.id === "vs"), "the steadfast one lingers, waiting for a rival");
 ok(!S.npcs.find((n) => n.id === "vf") && !S.npcs.find((n) => n.id === "va"), "the departed left the roster");
-ok(S.npcs.length === pop0, "hopefuls took the empty beds (population stable)");
+ok(Math.abs(S.npcs.length - pop0) <= 2 && !!S.lastDay.migration, `Pull decides the beds now (GUI-78): near-neutral hold stays near stable (${pop0} → ${S.npcs.length}, pull ${(S.lastDay.migration || {}).pull})`);
 ok(S.departed.filter((d) => d.name.startsWith("Vet ")).length === 2 && S.departed.every((d) => d.wins >= 25 && d.season >= 1), "the founders ledger records them (GUI-25 seed)");
 // veterans who FOUGHT don't leave; neither do novices
 const active = S.npcs.filter((n) => n.wins >= 25 && n.id.startsWith("n"));

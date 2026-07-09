@@ -226,6 +226,29 @@
     const trickle = (state.stronghold || {}).archetype === "hunter" ? STEW.hunterTrickle : 0;
     return Math.max(0, heads * STEW.provisionsPerHead - trickle);
   }
+  /* The Pull score (GUI-78, sim-verified weights): who wants to live here?
+   * 0–100; 50 is the old steady state. Purses and sound roofs pull hardest;
+   * taxes push; a full larder, a famous card and a stable crown help; a
+   * heralds budget buys the rest (sqrt — the first coin shouts loudest). */
+  function pullScore() {
+    const st = state.stronghold;
+    if (!st) return 50;
+    const W = STEW.pullW;
+    const fameTop = Math.max(0, ...state.npcs.map((n) => n.popularity || 0), 0);
+    const built = Object.keys(BUILDINGS).filter((id) => (st.buildings || {})[id] > 0);
+    const avgCond = built.length ? built.reduce((s, id) => s + condOf(id), 0) / built.length : 50; // bare ground: nothing to admire, nothing rotting
+    const stability = Math.min(1, Math.max(0, state.clock.season - (state.player.crownedSeason || state.clock.season)) / 3);
+    const heralds = STEW.heraldsMax * Math.sqrt(Math.min(st.heralds || 0, STEW.heraldsBudget) / STEW.heraldsBudget);
+    return Math.max(0, Math.min(100, Math.round(
+      W.purse * Math.min(1, st.purse / 40) +
+      W.fame * Math.min(1, fameTop / 200) +
+      W.taxInv * (1 - st.taxRate / 25) +
+      W.granary * Math.min(1, (st.stock || 0) / STEW.granaryCap[0]) +
+      W.condition * (avgCond / 100) +
+      W.stability * stability +
+      heralds)));
+  }
+
   function setProvisionPolicy(p) {
     if (!state.player || state.player.role !== "lord" || !state.stronghold) return;
     if (!["fill", "half", "none"].includes(p)) return;
@@ -323,6 +346,7 @@
       if (!state.stronghold.provisionPolicy) state.stronghold.provisionPolicy = "fill";
       if (state.stronghold.starvedDays == null) state.stronghold.starvedDays = 0;
       if (state.stronghold.grainPrice == null) state.stronghold.grainPrice = grainPriceFor(state.clock.season);
+      if (state.stronghold.heralds == null) state.stronghold.heralds = 0; // pre-GUI-78
       if (!state.stronghold.foundedOn) state.stronghold.foundedOn = 1; // pre-GUI-84 saves: the hold has stood since the world clock began
       // Pre-GUI-87 saves: the chronicle opens with the founding it never wrote down.
       state.chronicle = Array.isArray(data.chronicle) ? data.chronicle : [foundingEntry(state.stronghold.name)];
@@ -692,22 +716,24 @@
       state.clock.season += 1;
       state.clock.day = 1;
       if (state.stronghold) state.stronghold.grainPrice = grainPriceFor(state.clock.season); // the market turns with the year (GUI-76)
+      if (state.player.role === "lord" && state.stronghold && state.stronghold.heralds > 0) state.stronghold.treasury -= state.stronghold.heralds; // the heralds are paid yearly (GUI-78)
       state.lastDay.seasonEnd = state.lastSeason; // surfaced on the sunset screens
       state.lastDay.mayChallenge = state.challengeOpen;
 
       // ---- the season's turn: everyone ages a year (GUI-17) ----
+      let churnOut = 0; // under a player-Lord, PULL decides who takes the beds (GUI-78)
       const hash = (s) => { let h = 0; for (const c of String(s)) h = (h * 31 + c.charCodeAt(0)) >>> 0; return h; };
       state.player.age = (state.player.age || AGE.start) + 1;
       for (const n of state.npcs) n.age = (n.age || AGE.start) + 1;
       for (const h of state.household) h.age = (h.age || AGE.start) + 1;
       if (state.lord) state.lord.age = (state.lord.age || 40) + 1;
       // Fresh hopefuls arrive to fill emptied beds (shared by churn + departures).
-      const arriveHopefuls = (count, prefix) => {
+      const arriveHopefuls = (count, prefix, maxWins) => {
         if (count <= 0) return;
         const fresh = G.roster.generateRoster(((state.player.worldSeed || 1) ^ (state.clock.season * 2654435761) ^ hash(prefix)) >>> 0, state.player.name, count, prefix + state.clock.season + "_");
         const taken = new Set(state.npcs.map((n) => n.name).concat(state.household.map((h) => h.name), state.lord ? [state.lord.name] : []));
         for (const f of fresh) {
-          f.wins = Math.min(f.wins, 4); f.age = AGE.start + (hash(f.id) % 4);
+          f.wins = Math.min(f.wins, maxWins || 4); f.age = AGE.start + (hash(f.id) % 4) + (f.wins > 4 ? Math.round(f.wins / 3) : 0);
           while (taken.has(f.name)) f.name += " II"; // no two champions share a name (narration keys on it)
           taken.add(f.name);
           state.npcs.push(f);
@@ -717,7 +743,8 @@
       const retiring = state.npcs.filter((n) => n.age >= AGE.retire + (hash(n.id) % 12));
       if (retiring.length) {
         state.npcs = state.npcs.filter((n) => !retiring.includes(n));
-        if (!((state.stronghold || {}).starvedDays > 0)) arriveHopefuls(retiring.length, "a"); // nobody moves to a starving hold (GUI-76)
+        if (state.player.role === "lord") churnOut += retiring.length; // Pull decides (GUI-78)
+        else if (!((state.stronghold || {}).starvedDays > 0)) arriveHopefuls(retiring.length, "a"); // nobody moves to a starving hold (GUI-76)
         state.lastDay.retired = retiring.map((r) => r.name);
       }
       /* Idle veterans move on (GUI-60, user design): a resident who fought NO
@@ -754,7 +781,8 @@
           if (departures.length) {
             state.departed = (state.departed || []).concat(departures).slice(-12); // the founders' ledger
             state.lastDay.departures = departures;
-            if (!((state.stronghold || {}).starvedDays > 0)) arriveHopefuls(departures.length, "d"); // the freeze again (GUI-76)
+            if (state.player.role === "lord") churnOut += departures.length; // Pull decides (GUI-78)
+            else if (!((state.stronghold || {}).starvedDays > 0)) arriveHopefuls(departures.length, "d"); // the freeze again (GUI-76)
           }
         }
       }
@@ -765,6 +793,7 @@
       {
         const st = state.stronghold || {};
         if (st.starvedDays > 0) {
+          state.lastDay.starved = true; // the Pull block below reads it: nobody moves to a starving hold
           const frac = Math.min(1, st.starvedDays / SEASON.days);
           const fleeing = Math.round(state.npcs.length * STEW.starvationExodus * frac);
           if (fleeing > 0) {
@@ -781,6 +810,26 @@
             }
           }
           st.starvedDays = 0; // the new year starts hungry but counted afresh
+        }
+      }
+      // ---- PULL decides who takes the empty beds (GUI-78, sim-verified) ----
+      // Under a player-Lord the automatic 1:1 refill is GONE: arrivals =
+      // churn + (Pull−50)/6, growth choked by crowding near the soft cap; a
+      // fed hold never drifts below the floor; a starving one gets NOBODY.
+      if (state.player.role === "lord" && state.stronghold) {
+        const st = state.stronghold;
+        const pull = pullScore();
+        let growth = Math.round((pull - 50) / STEW.migrationSlope);
+        if (growth > 0) growth = Math.round(growth * Math.max(0, 1 - state.npcs.length / STEW.softCapPop));
+        let arrivals = Math.max(0, churnOut + growth);
+        if (state.lastDay.starved) arrivals = 0; // the freeze
+        else if (state.npcs.length + arrivals < STEW.floorPop) {
+          arrivals = Math.min(STEW.floorPop - state.npcs.length, churnOut + 2); // the fed hold finds its level (gently)
+        }
+        arriveHopefuls(arrivals, "p", pull >= STEW.goodHopefulPull ? 15 : 4); // a famous hold draws REAL careers
+        state.lastDay.migration = { pull, churn: churnOut, arrivals };
+        if (state.npcs.length < STEW.dyingPop) {
+          chronicle("☠️", "softfail", `<b>${st.name}</b> is DYING — fewer than ${STEW.dyingPop} souls remain within its walls.`, { y: state.clock.season - 1, d: SEASON.days, k: "dying:" + (state.clock.season - 1) });
         }
       }
       // GUI-72: the claim is answered — the Lord's wall in order, then the
@@ -885,6 +934,10 @@
       for (const d2 of state.lastDay.departures || []) cry(d2.reason === "found" ? "🐎" : "🌄", `<b>${d2.name}</b> (${d2.wins}w) ${d2.reason === "found" ? "rode out to raise a banner of their own" : "left to seek adventure beyond the gates"}.`);
       for (const r of state.lastDay.retired || []) cry("🍂", `<b>${r}</b> hung up their blade — a young hopeful took the empty bed.`);
       if (state.lastDay.famine) cry("🍞", `HUNGER at ${(state.stronghold || {}).name || "the hold"}: <b>${state.lastDay.famine.fled.length}</b> fled the empty larder — and no newcomer will pass the gates while it stands bare.`);
+      const mig = state.lastDay.migration;
+      if (mig && mig.arrivals > mig.churn) cry("🧲", `Word of ${(state.stronghold || {}).name || "the hold"} spreads — <b>${mig.arrivals}</b> hopeful${mig.arrivals === 1 ? "" : "s"} arrived at the gates (pull ${mig.pull}).`);
+      else if (mig && mig.arrivals < mig.churn) cry("🕸️", `Beds stand EMPTY — only <b>${mig.arrivals}</b> came where <b>${mig.churn}</b> left (pull ${mig.pull}).`);
+      if (mig && state.npcs.length < STEW.dyingPop) cry("☠️", `<b>${(state.stronghold || {}).name || "The hold"}</b> is DYING — fewer than ${STEW.dyingPop} souls remain. Rule better, or rule ruins.`);
       if (state.lastDay.newLord) cry("⚱️", `The old Lord died on the throne. <b>${state.lastDay.newLord}</b>, most famed of the residents, was raised in their place.`);
       if (state.lastDay.defenseComing) cry("⚠️", `<b>${state.lastDay.defenseComing}</b> eyes the throne — a challenge comes with the new year.`);
       if (state.lastDay.mayChallenge) cry("👑", `The year was <b>yours</b> — the right to challenge the Lord awaits at home.`);
@@ -1474,7 +1527,7 @@
     challengeLord, chooseFate,
     allocate, fightOn, retreat, returnHome, resetGame,
     openVendor, closeVendor, buyItem, buyArrow, loadArrow, buyArmor,
-    taxedCost, gearScale, setDecree, buyBuilding, buildCost, condOf, bEff, repairCost, repairBuilding, granaryCap, provisionNeed, setProvisionPolicy, recordBout, openBout, renameHold, defaultHoldName,
+    taxedCost, gearScale, setDecree, buyBuilding, buildCost, condOf, bEff, repairCost, repairBuilding, granaryCap, provisionNeed, setProvisionPolicy, pullScore, recordBout, openBout, renameHold, defaultHoldName,
     beginDefense, defensePerks, startDefenseDuel, removeServant, moveServant,
     reignEnds: () => perish("throne-age"),
     nextSeed, settleDay, emit, // the seam lord.js drives the shared day through
