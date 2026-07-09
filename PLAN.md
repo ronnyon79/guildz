@@ -1319,14 +1319,17 @@ chronicle = **full curated event log** (curation list above) · from-scratch is
 Arena raised at a population threshold · **Lord chosen from the founders**, player holds
 first claim and may decline — **crown / champion / road**).
 
+### Sized by the founding sim (GUI-91, `tools/sim_founding.js`, 2026-07-09)
+Standalone model of the settlement economy (no arena income; party eats, one neighbour
+caravan trades, settlers arrive via a settlement Pull). **CHOSEN:** founding **party 8** ·
+pooled **purse 1000g** · a scrappy-camp **forage 5 units/day free** (net of provisions) ·
+**Arena raised at population ≥ 16 AND treasury ≥ 400g.** Results: competent play (heralds +
+repairs + Fields) raises the Arena in **year 2** with ~800g to spare (5/5 runs in the 2–5
+band); neglect stretches to year 11 but the purse survives folly; a spendthrift (heralds,
+no upkeep) bankrupts by year 8 — so the runway is real in both directions. The player-founder
+starts a **veteran** (mirrors GUI-60's 25-win rule) so the champion door is viable.
+
 ### Still open (sim/design-pass items)
-- Founding party: size (6–10?), class/career mix, and the player-founder's own starting
-  career (novice or modest veteran? their wins matter if they later choose the champion
-  door) — sim/design.
-- **Arena-raising threshold** — population count + arena cost; how many seasons should
-  Act 1 take at competent play (2–4?) — the founding sim.
-- Settlement runway: production + trade + pooled purse vs. consumption and construction —
-  can a well-run camp reach the arena before the purse dies? (pairs with Stewardship sims).
 - **Settlement events** (PROPOSED above): the Act-1 texture set — brigand raids as real
   party-defense combats, harvests, caravans — own mini design list.
 - Election acclaim: amb/esteem weights when the player declines (and for NPC foundings).
