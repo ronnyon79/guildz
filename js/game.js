@@ -887,12 +887,55 @@
     applyNpcBout(res.winnerId);
   }
 
+  /* Visiting challengers (GUI-92): when the PLAYER's win-band is too thin for a
+   * real bracket, the arena's renown draws fighters from neighbouring holds —
+   * scaled to the band (a fair ~50% fight), named for a real neighbour (the
+   * trade routes / founders' ledger). Transient: they fight the day and ride
+   * off, never joining the roster. Seeded per day → deterministic + replayable. */
+  function visitorsFor(band, count, seed) {
+    const rng = G.engine.makeRng(seed >>> 0);
+    const routes = tradeRoutes();
+    const holds = routes.length ? routes.map((r) => r.name) : [(state.stronghold || {}).name || "the wilds"];
+    const classes = Object.keys(CLASSES);
+    const out = [];
+    for (let i = 0; i < count; i++) {
+      const wins = band * G.tournament.BAND_WIDTH + G.engine.randInt(rng, 0, G.tournament.BAND_WIDTH - 1);
+      out.push({
+        id: "v" + state.clock.season + "_" + state.clock.day + "_" + i,
+        name: G.engine.pick(rng, FOE_NAMES) + " " + G.engine.pick(rng, EPITHETS),
+        classId: G.engine.pick(rng, classes),
+        wins,
+        age: AGE.start + Math.round(wins / 3) + G.engine.randInt(rng, 0, 8),
+        personality: G.roster.rollPersonality(rng),
+        visiting: G.engine.pick(rng, holds), // the hold they travelled from
+      });
+    }
+    return out;
+  }
+
   function startDay() {
     state.streak = 0;
     state.challengeOpen = false; // stepping onto the sand lets the moment pass
     const pc = playerCombatChar();
     pc.id = "player";
     const champs = [pc, ...state.npcs.map((n) => G.roster.combatChar(n, gearScale()))];
+    // GUI-92: no hollow walkovers — if the player's band is sparse, the wider
+    // world sends challengers to fill a real field.
+    const pband = G.tournament.bandOf(state.player.wins);
+    const bandmates = state.npcs.filter((n) => G.tournament.bandOf(n.wins || 0) === pband).length;
+    const short = G.data.ARENA.minField - (bandmates + 1); // +1 = the player
+    state.dayVisitors = [];
+    if (short > 0) {
+      // Seed by the DAY, not the running counter — so the same day always draws
+      // the same visitors (deterministic + replayable, GUI-92).
+      const daySeed = ((state.player.worldSeed || 1) ^ (state.clock.season * 2654435761) ^ (state.clock.day * 40503)) >>> 0;
+      state.dayVisitors = visitorsFor(pband, short, daySeed);
+      for (const v of state.dayVisitors) {
+        const ch = G.roster.combatChar(v, gearScale());
+        ch.visiting = v.visiting; // carry the origin for the bracket / scout / board
+        champs.push(ch);
+      }
+    }
     state.dayById = {};
     for (const c of champs) state.dayById[c.id] = c;
     state.day = G.tournament.newDay(champs, nextSeed());
@@ -1832,7 +1875,7 @@
     challengeLord, chooseFate,
     allocate, fightOn, retreat, returnHome, resetGame,
     openVendor, closeVendor, buyItem, buyArrow, loadArrow, buyArmor,
-    taxedCost, gearScale, setDecree, buyBuilding, buildCost, condOf, bEff, repairCost, repairBuilding, granaryCap, provisionNeed, setProvisionPolicy, pullScore, npcLordPolicy, tradeRoutes, foreignPrice, runTrade, setTradeStance, toggleRoute, arenaReady, advanceSettlement, settleContinue, raiseArena, chooseFounderFate, recordBout, openBout, renameHold, defaultHoldName,
+    taxedCost, gearScale, setDecree, buyBuilding, buildCost, condOf, bEff, repairCost, repairBuilding, granaryCap, provisionNeed, setProvisionPolicy, pullScore, npcLordPolicy, tradeRoutes, foreignPrice, runTrade, setTradeStance, toggleRoute, arenaReady, advanceSettlement, settleContinue, raiseArena, chooseFounderFate, visitorsFor, recordBout, openBout, renameHold, defaultHoldName,
     beginDefense, defensePerks, startDefenseDuel, removeServant, moveServant,
     reignEnds: () => perish("throne-age"),
     nextSeed, settleDay, emit, // the seam lord.js drives the shared day through

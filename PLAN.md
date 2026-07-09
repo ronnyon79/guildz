@@ -471,7 +471,34 @@ cap (3) & per-bout replenish (50%)**, servant **upkeep/housing** cost, and **ser
   empty bracket). The sunset board now says **"🕊️ walkover — no challengers in this band"**
   instead of the puzzling "0 bouts won · +0⭐". OPEN design question posed to the user:
   merge sparse adjacent bands for the day so lone veterans still fight (would amend the
-  bands-of-5 rule — awaiting their call).
+  bands-of-5 rule — awaiting their call). **RESOLVED 2026-07-09 → GUI-92 (Option B): the
+  world sends VISITING challengers, not a band-merge.**
+
+### Visiting challengers — no walkovers for the player (GUI-92, design 2026-07-09) ← DECIDED
+**The problem (user, in play):** a champion who out-climbs the roster lands in a win-band
+with no one else → every day a WALKOVER. Worse than boring: a walkover grants no bout,
+so **no career win, no fame** — the player is frozen (can't win the wins that would carry
+them out of the empty band). A hard progression dead-end at the top.
+**The fix (Option B, chosen over band-merge):** *"the arena the Lord builds draws stronger
+fighters"* — the design pillar's own promise, made literal. When the **player's** band would
+be too sparse for a real bracket, **visiting champions arrive from the wider world** —
+named after real neighbouring holds (the GUI-77 trade routes: the worldgen neighbour + the
+founders' ledger holds). Decided shape:
+- **Trigger (player-only):** count real entrants in the player's band; if fewer than a
+  target, summon `target − real` visitors. NPC lone-veterans keep the GUI-60 depart rule —
+  this is about the player's day never being hollow.
+- **Target = a small bracket** (≈4 so there's a round or two, sim/taste-tuned; a more
+  prestigious arena — Seating — may draw a fuller card, a future hook).
+- **Scaled fair:** a visitor's wins sit in the player's band (bandFloor + 0–4), built through
+  the SAME `roster.combatChar` builder (right pools/gear/perks/temperament) → a ~50% fight,
+  so climbing stays earned, not farmed. Aging remains the real cap (GUI-17), so endless
+  visitors don't break the arc.
+- **Transient:** visitors fight the day and ride off — they do NOT join `state.npcs` (no
+  population bloat) and take no residency/fame if they win the band; a player LOSS to one
+  ends the day normally. Seeded per day (deterministic/replayable).
+- **Themed + visible:** "Vex the Bold, of Emberhold" — the origin hold shown on the bracket,
+  scout card and Board parchments; the crier heralds a visitor's arrival. Ties fights to
+  the neighbouring-holds systems we built and makes a famous arena *feel* famous.
 
 - **GUI-60 Idle veterans depart — v0.19.0** (USER DESIGN: solves the lone-veteran lockout
   without touching bands-of-5 or the fame-gated challenge). A veteran (25+ wins) who fought
@@ -856,6 +883,20 @@ cap (3) & per-bout replenish (50%)**, servant **upkeep/housing** cost, and **ser
   the founding ends). Founder worlds resume on the settlement screen; ⛺ badge on the
   title. UI refactor: granary/pull/trade cards extracted so both dashboards share them.
   NEW SUITE tools/test_settlement.js (41) → 670 green / 34 suites.
+
+- **GUI-92 Visiting challengers: no walkovers for the player — v0.53.0** (user-found in
+  play; resolves the GUI-59 open question via Option B). When the **player's** win-band
+  holds fewer than `ARENA.minField` (4) real entrants, `startDay` summons
+  `visitorsFor(band, short, daySeed)` — **transient** champions (never added to the roster)
+  scaled into the player's band (bandFloor + 0–4) via `roster.combatChar`, named for a real
+  neighbouring hold (GUI-77 trade routes). So a champion who out-climbs the roster gets a
+  real bracket every day instead of a hollow walkover — and can keep winning career wins to
+  climb on (the old walkover gave none: a progression dead-end, now closed). Seeded by the
+  DAY (deterministic + replayable). NPC lone-veterans keep the GUI-60 depart rule; a full
+  band draws no visitors. UI: bracket heralds "N challengers travelled from neighbouring
+  holds", the scout + profile show "🚩 of/visiting from <Hold>". Aging stays the real cap,
+  so endless visitors don't break the arc. NEW SUITE tools/test_visitors.js (14) → 684 green
+  / 35 suites. Future hook: a more prestigious arena (Seating) could draw a fuller field.
 
 ### Build order (when the user says go)
 1. **Champion summit** — NPC population + Popularity ladder + Lord boss fight (finish

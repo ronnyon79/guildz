@@ -379,6 +379,10 @@
     specMult: (stars) => stars / 3,
   };
   const SEASON = { days: 10 }; // days per season — first guess, tune via sim (GUI-30)
+  // Visiting challengers (GUI-92): the smallest field the PLAYER's band should
+  // ever hold. If fewer real champions share their win-band, the arena draws
+  // visitors from neighbouring holds so the day is never a hollow walkover.
+  const ARENA = { minField: 4 };
 
-  G.data = { CLASSES, WEAPONS, ARMOR, ARMOR_MAXTIER, VENDORS, ITEMS, ARROWS, GOLD_PER_WIN, goldForWin, totalGoldAt, POINTS_PER_WIN, CRIT_MULT, FOE_NAMES, EPITHETS, HOLD_NAMES, ROSTER, POPULARITY, SEASON, LORD, ECONOMY, BOARD, BUILDINGS, BUILDING_FX, MAINT, STEW, AGE, PERSONALITY, WORLDGEN, ARCHETYPES };
+  G.data = { CLASSES, WEAPONS, ARMOR, ARMOR_MAXTIER, VENDORS, ITEMS, ARROWS, GOLD_PER_WIN, goldForWin, totalGoldAt, POINTS_PER_WIN, CRIT_MULT, FOE_NAMES, EPITHETS, HOLD_NAMES, ROSTER, POPULARITY, SEASON, ARENA, LORD, ECONOMY, BOARD, BUILDINGS, BUILDING_FX, MAINT, STEW, AGE, PERSONALITY, WORLDGEN, ARCHETYPES };
 })(typeof window !== "undefined" ? window : globalThis);
