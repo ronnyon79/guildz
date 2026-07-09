@@ -92,16 +92,14 @@ const famousPull = (S.lastDay.migration || {}).pull;
 ok(famousPull >= STEW.goodHopefulPull && famousPull <= 100, `(setup) pull reached the good-hopeful bar, clamped to 100 (${famousPull})`);
 ok(sawVeteran, "a famous hold draws hopefuls with real careers (wins > 4)");
 
-console.log("— a commoner's world is untouched —");
+console.log("— a commoner's world migrates too now (GUI-79) —");
 game.resetGame();
 game.createCharacter("thief", "Watcher", 787880);
 const pop0 = S.npcs.length;
 S.throneRestUntil = 999; // no throne claims — GUI-72's churn-out is designed, not migration
-for (let i = 0; i < 2; i++) {
-  S.clock.day = G.data.SEASON.days; game.enterArena(); game.retreat(); if (S.screen !== "home") game.returnHome();
-}
-ok(S.npcs.length === pop0, "under an NPC Lord the beds still refill 1:1 (until GUI-79)");
-ok(!S.lastDay.migration, "…and no migration report is filed");
+S.clock.day = G.data.SEASON.days; game.enterArena(); game.retreat(); if (S.screen !== "home") game.returnHome();
+ok(!!S.lastDay.migration && S.lastDay.migration.npc, "under an NPC Lord Pull now decides the beds — a migration report is filed");
+ok(Math.abs(S.npcs.length - pop0) <= 12, `a functioning NPC hold stays in the ballpark (${pop0} → ${S.npcs.length}, pull ${S.lastDay.migration.pull})`);
 
 console.log("— the dashboard shows the bar —");
 S.player.role = "lord"; S.lord = null; S.player.crownedSeason = S.clock.season;

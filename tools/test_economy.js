@@ -17,8 +17,8 @@ function ok(cond, name) {
 
 console.log("— stronghold state —");
 game.createCharacter("fighter", "Coin", 121212);
-ok(S.stronghold && S.stronghold.treasury === E.start.treasury && S.stronghold.taxRate === E.start.taxRate,
-  "fresh world gets the starting coffers + decrees");
+ok(S.stronghold && S.stronghold.treasury === E.start.treasury && S.stronghold.taxRate === G.game.npcLordPolicy(S.lord).taxRate,
+  "fresh world: starting coffers, decrees set by the ruling Lord's temperament (GUI-79)");
 // migration
 const wid = S.worldId, raw = JSON.parse(store["guildz.world." + wid]);
 delete raw.stronghold;

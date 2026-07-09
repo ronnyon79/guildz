@@ -237,7 +237,12 @@
     const fameTop = Math.max(0, ...state.npcs.map((n) => n.popularity || 0), 0);
     const built = Object.keys(BUILDINGS).filter((id) => (st.buildings || {})[id] > 0);
     const avgCond = built.length ? built.reduce((s, id) => s + condOf(id), 0) / built.length : 50; // bare ground: nothing to admire, nothing rotting
-    const stability = Math.min(1, Math.max(0, state.clock.season - (state.player.crownedSeason || state.clock.season)) / 3);
+    // Stability = seasons the reigning power has held: the player's crown, or
+    // the NPC Lord's tenure when the player is a commoner (GUI-79).
+    const tenure = state.player.role === "lord"
+      ? Math.max(0, state.clock.season - (state.player.crownedSeason || state.clock.season))
+      : ((state.lord && state.lord.reignSeasons) || 0);
+    const stability = Math.min(1, tenure / 3);
     const heralds = STEW.heraldsMax * Math.sqrt(Math.min(st.heralds || 0, STEW.heraldsBudget) / STEW.heraldsBudget);
     return Math.max(0, Math.min(100, Math.round(
       W.purse * Math.min(1, st.purse / 40) +
@@ -330,6 +335,51 @@
     if (!["fill", "half", "none"].includes(p)) return;
     state.stronghold.provisionPolicy = p;
     save(); emit();
+  }
+
+  /* NPC-lord stewardship (GUI-79): a commoner's hold is run by its NPC Lord,
+   * whose TEMPERAMENT sets the same knobs the player would (GUI-42 traits).
+   * A neutral (0.5) lord reproduces today's defaults, so a well-run hold holds
+   * its ground; a Grasping one over-taxes and under-repairs → the hold rots.
+   * Deterministic — the same lord always rules the same way. */
+  function npcLordPolicy(lord) {
+    const P = (lord && lord.personality) || {};
+    const grd = P.grd != null ? P.grd : 0.5; // greed ↔ generosity
+    const dis = P.dis != null ? P.dis : 0.5; // discipline (husbandry)
+    const amb = P.amb != null ? P.amb : 0.5; // ambition (spends to draw crowds)
+    return {
+      taxRate: Math.round(5 + grd * 20),              // 5–25%: grasping taxes hard
+      purse: Math.round(40 - grd * 40),               // 40→0: the generous fund fat purses
+      ticketPrice: Math.round(3 + grd * 8),           // 3–11g
+      provision: grd > 0.75 ? "half" : "fill",        // only the truly greedy skimp on bread
+      repairs: dis >= 0.35,                            // the undisciplined let it rot
+      tradeStance: grd >= 0.5 ? "export" : "balance",
+      heralds: amb >= 0.6 ? 50 : 0,                    // the ambitious pay criers abroad
+    };
+  }
+  // Run one season of an NPC Lord's stewardship on the shared hold, so a
+  // commoner watches the place flourish or rot (GUI-79). Physical only —
+  // the NPC treasury is abstract in champion mode; decrees + condition +
+  // larder are LIVE (they shape the player's rivals and their own migration).
+  function stewardNpcHold() {
+    const st = state.stronghold, L = state.lord;
+    if (!st || !L) return;
+    const pol = npcLordPolicy(L);
+    st.taxRate = pol.taxRate; st.purse = pol.purse; st.ticketPrice = pol.ticketPrice;
+    st.provisionPolicy = pol.provision; st.tradeStance = pol.tradeStance; st.heralds = pol.heralds;
+    // Maintenance: a season's decay, then repairs unless the lord neglects them.
+    st.condition = st.condition || {};
+    for (const id of Object.keys(BUILDINGS)) {
+      if (!(st.buildings[id] > 0)) continue;
+      const before = st.condition[id] == null ? 100 : st.condition[id];
+      const decayed = Math.max(0, before - MAINT.decayPerSeason);
+      st.condition[id] = pol.repairs ? 100 : decayed;
+    }
+    // Supplies: a full/half larder feeds the hold (hunger shows up SOFTLY —
+    // a leaner larder lowers Pull, it doesn't trigger the player's hard exodus).
+    const cap = granaryCap();
+    st.stock = pol.provision === "half" ? Math.floor(cap / 2) : cap;
+    return pol;
   }
 
   // What a building costs HERE (GUI-85): the Quarry's stone discounts every raise.
@@ -507,6 +557,7 @@
     state.stronghold.starvedDays = 0;
     state.stronghold.grainPrice = grainPriceFor(history.clock.season);
     state.stronghold.tradeStance = "export"; state.stronghold.routesClosed = []; // GUI-77
+    { const pol = npcLordPolicy(state.lord); state.stronghold.taxRate = pol.taxRate; state.stronghold.purse = pol.purse; state.stronghold.ticketPrice = pol.ticketPrice; } // GUI-79: your Lord's temperament rules from day one
     state.household = [];
     state.defense = null;
     state.board = history.board;
@@ -801,12 +852,18 @@
       state.lastDay.mayChallenge = state.challengeOpen;
 
       // ---- the season's turn: everyone ages a year (GUI-17) ----
-      let churnOut = 0; // under a player-Lord, PULL decides who takes the beds (GUI-78)
+      let churnOut = 0; // PULL decides who takes the beds (GUI-78/79)
       const hash = (s) => { let h = 0; for (const c of String(s)) h = (h * 31 + c.charCodeAt(0)) >>> 0; return h; };
       state.player.age = (state.player.age || AGE.start) + 1;
       for (const n of state.npcs) n.age = (n.age || AGE.start) + 1;
       for (const h of state.household) h.age = (h.age || AGE.start) + 1;
-      if (state.lord) state.lord.age = (state.lord.age || 40) + 1;
+      if (state.lord) { state.lord.age = (state.lord.age || 40) + 1; state.lord.reignSeasons = (state.lord.reignSeasons || 0) + 1; }
+      // GUI-79: a commoner's hold is run by its NPC Lord — his temperament sets
+      // the decrees, the repairs, the larder. From here migration (Pull) is
+      // universal: the same law fills or empties EVERY hold, not just yours.
+      const npcSteward = state.player.role !== "lord" && !!state.lord;
+      if (npcSteward) stewardNpcHold();
+      const hasSteward = state.player.role === "lord" || npcSteward;
       // Fresh hopefuls arrive to fill emptied beds (shared by churn + departures).
       const arriveHopefuls = (count, prefix, maxWins) => {
         if (count <= 0) return;
@@ -823,7 +880,7 @@
       const retiring = state.npcs.filter((n) => n.age >= AGE.retire + (hash(n.id) % 12));
       if (retiring.length) {
         state.npcs = state.npcs.filter((n) => !retiring.includes(n));
-        if (state.player.role === "lord") churnOut += retiring.length; // Pull decides (GUI-78)
+        if (hasSteward) churnOut += retiring.length; // Pull decides (GUI-78/79)
         else if (!((state.stronghold || {}).starvedDays > 0)) arriveHopefuls(retiring.length, "a"); // nobody moves to a starving hold (GUI-76)
         state.lastDay.retired = retiring.map((r) => r.name);
       }
@@ -861,7 +918,7 @@
           if (departures.length) {
             state.departed = (state.departed || []).concat(departures).slice(-12); // the founders' ledger
             state.lastDay.departures = departures;
-            if (state.player.role === "lord") churnOut += departures.length; // Pull decides (GUI-78)
+            if (hasSteward) churnOut += departures.length; // Pull decides (GUI-78/79)
             else if (!((state.stronghold || {}).starvedDays > 0)) arriveHopefuls(departures.length, "d"); // the freeze again (GUI-76)
           }
         }
@@ -896,7 +953,7 @@
       // Under a player-Lord the automatic 1:1 refill is GONE: arrivals =
       // churn + (Pull−50)/6, growth choked by crowding near the soft cap; a
       // fed hold never drifts below the floor; a starving one gets NOBODY.
-      if (state.player.role === "lord" && state.stronghold) {
+      if (hasSteward && state.stronghold) {
         const st = state.stronghold;
         const pull = pullScore();
         let growth = Math.round((pull - 50) / STEW.migrationSlope);
@@ -907,7 +964,7 @@
           arrivals = Math.min(STEW.floorPop - state.npcs.length, churnOut + 2); // the fed hold finds its level (gently)
         }
         arriveHopefuls(arrivals, "p", pull >= STEW.goodHopefulPull ? 15 : 4); // a famous hold draws REAL careers
-        state.lastDay.migration = { pull, churn: churnOut, arrivals };
+        state.lastDay.migration = { pull, churn: churnOut, arrivals, npc: npcSteward };
         if (state.npcs.length < STEW.dyingPop) {
           chronicle("☠️", "softfail", `<b>${st.name}</b> is DYING — fewer than ${STEW.dyingPop} souls remain within its walls.`, { y: state.clock.season - 1, d: SEASON.days, k: "dying:" + (state.clock.season - 1) });
         }
@@ -1611,7 +1668,7 @@
     challengeLord, chooseFate,
     allocate, fightOn, retreat, returnHome, resetGame,
     openVendor, closeVendor, buyItem, buyArrow, loadArrow, buyArmor,
-    taxedCost, gearScale, setDecree, buyBuilding, buildCost, condOf, bEff, repairCost, repairBuilding, granaryCap, provisionNeed, setProvisionPolicy, pullScore, tradeRoutes, foreignPrice, runTrade, setTradeStance, toggleRoute, recordBout, openBout, renameHold, defaultHoldName,
+    taxedCost, gearScale, setDecree, buyBuilding, buildCost, condOf, bEff, repairCost, repairBuilding, granaryCap, provisionNeed, setProvisionPolicy, pullScore, npcLordPolicy, tradeRoutes, foreignPrice, runTrade, setTradeStance, toggleRoute, recordBout, openBout, renameHold, defaultHoldName,
     beginDefense, defensePerks, startDefenseDuel, removeServant, moveServant,
     reignEnds: () => perish("throne-age"),
     nextSeed, settleDay, emit, // the seam lord.js drives the shared day through

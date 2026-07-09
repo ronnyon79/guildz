@@ -816,6 +816,23 @@ cap (3) & per-bout replenish (50%)**, servant **upkeep/housing** cost, and **ser
   test_pull heralds isolate updated) → 589 green / 32 suites. Stewardship build is done bar
   GUI-79 (NPC-lord policies) — then GUI-90/91 unlock the from-scratch settlement start.
 
+- **GUI-79 NPC-lord policies: commoner holds flourish or rot — v0.51.0** (Stewardship
+  system COMPLETE — the SimCity pillar is fully built). `game.npcLordPolicy(lord)` derives
+  decrees + stances from GUI-42 temperament (grd → tax 5–25% & purse 40→0 & skimp-bread;
+  dis → repairs on/off; amb → heralds); a neutral 0.5 Lord reproduces today's defaults.
+  Migration is now **universal**: `stewardNpcHold()` runs each season under a commoner's
+  NPC Lord (decrees LIVE from creation, buildings decay + repair-by-discipline, larder
+  set by policy), and the Pull-driven arrivals/floor/dying logic applies to EVERY hold,
+  not just the player's. pullScore stability now reads the NPC Lord's `reignSeasons` when
+  the player is a commoner (incremented each season). Result (sim-matched): a grasping
+  Lord's hold rots (condition falls, tax 24%, Pull ~38, population drains toward the
+  floor); a wise one holds/grows (Pull ~80); a neutral one stays in the 40–60 band for
+  8 years. Hold card shows a 🧲 thriving/steady/faltering/rotting verdict for your hold.
+  Trade + heralds gold stay player-only (NPC treasury abstract in champion mode). NEW
+  SUITE tools/test_npcpolicy.js (17; test_aging/economy/maintenance/pull updated for
+  universal migration) → 629 green / 33 suites. **Only GUI-90/91 remain** (from-scratch
+  settlement start + its sim) before Stewardship + Founding are wholly done.
+
 ### Build order (when the user says go)
 1. **Champion summit** — NPC population + Popularity ladder + Lord boss fight (finish
    the Rise). Small, self-contained, reuses combat entirely.

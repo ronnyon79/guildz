@@ -21,14 +21,22 @@ const M = G.data.MAINT;
 console.log("— an NPC reign: the keep maintains itself (until GUI-79) —");
 game.createCharacter("fighter", "Warden", 757575);
 S.stronghold.buildings.seating = 2;
+// GUI-79: a DISCIPLINED NPC Lord keeps his hold in repair; an idle one lets it rot.
+S.lord.personality = { ...(S.lord.personality || {}), dis: 0.9, grd: 0.5, amb: 0.3 };
 S.clock.day = G.data.SEASON.days;
 game.enterArena(); game.retreat(); if (S.screen !== "home") game.returnHome();
-ok(game.condOf("seating") === 100, "a commoner's season passes — no decay under an NPC Lord");
+ok(game.condOf("seating") === 100, "a disciplined NPC Lord keeps the benches in repair");
+S.stronghold.buildings.armory = 1; S.stronghold.condition.armory = 100;
+S.lord.personality = { ...(S.lord.personality || {}), dis: 0.1 }; // the idle lord
+S.clock.day = G.data.SEASON.days;
+game.enterArena(); game.retreat(); if (S.screen !== "home") game.returnHome();
+ok(game.condOf("armory") < 100, "…an undisciplined NPC Lord lets it rot (GUI-79)");
 
 console.log("— a presided season wears the hold —");
 S.player.role = "lord"; S.lord = null; S.player.crownedSeason = S.clock.season;
 S.player.age = 20; S.stronghold.treasury = 99999;
 S.stronghold.buildings.armory = 1;
+S.stronghold.condition = {}; // fresh mortar on every building (the NPC section above wore some)
 function presideSeason() { const s0 = S.clock.season; let g = 0; while (S.clock.season === s0 && g++ < 15) { G.lord.holdGames(); if (S.screen === "lord-sunset") game.returnHome(); } }
 presideSeason();
 ok(game.condOf("armory") === 100 - M.decayPerSeason, `the armory lost ${M.decayPerSeason} condition at the season's close`);
