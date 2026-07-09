@@ -332,6 +332,8 @@
     if (h) return { rec: h, status: `<span class="pill">🛡️ sworn to the household</span>` };
     const n = s.npcs.find((x) => x.name === name);
     if (n) return { rec: n, status: `<span class="pill">resident champion</span>` };
+    const v = (s.dayVisitors || []).find((x) => x.name === name); // GUI-92
+    if (v) return { rec: v, status: `<span class="pill">🚩 visiting from ${esc(v.visiting)}</span>` };
     const d = (s.departed || []).find((x) => x.name === name);
     if (d) return { rec: d, status: `<span class="pill">${d.reason === "found" ? (d.holdName ? `${d.archetype === "spite" ? "🔥" : "🐎"} founder of ${esc(d.holdName)}` : "🐎 founded their own hold") : "🌄 rode out for adventure"}</span>` };
     return { rec: null, status: "" };
@@ -529,10 +531,11 @@
     const h2h = h.meetings
       ? `⚔ against you: <b>you ${h.yWins} – ${h.xWins} them</b> (${h.meetings} meeting${h.meetings === 1 ? "" : "s"})`
       : "⚔ you have never crossed steel — first meeting";
+    const visiting = rec && rec.visiting;
     return `<div class="card scout-card">
       <div class="card-row"><div class="avatar">${cls ? cls.emoji : "❓"}</div>
-      <div><div class="card-title" style="font-size:14px">🔍 The Scout’s word on ${plink(s, n)}</div>
-      <div class="card-sub">${cls ? cls.name : "?"}${rec && rec.wins != null ? ` · <b>${rec.wins}</b> wins` : ""}${rec && rec.age != null ? ` · age ${rec.age}${fade < 1 ? " 🍂" : ""}` : ""}${temper ? ` · <b>${temper}</b>` : ""}</div>
+      <div><div class="card-title" style="font-size:14px">🔍 The Scout’s word on ${plink(s, n)}${visiting ? ` <span class="pill">🚩 of ${esc(visiting)}</span>` : ""}</div>
+      <div class="card-sub">${visiting ? `A challenger travelled from <b>${esc(visiting)}</b> to test your sand. ` : ""}${cls ? cls.name : "?"}${rec && rec.wins != null ? ` · <b>${rec.wins}</b> wins` : ""}${rec && rec.age != null ? ` · age ${rec.age}${fade < 1 ? " 🍂" : ""}` : ""}${temper ? ` · <b>${temper}</b>` : ""}</div>
       ${c ? `<div class="card-sub">record: ${c.wins}/${c.bouts} bouts (${c.bouts ? Math.round((c.wins / c.bouts) * 100) : 0}%)${c.wins ? ` · crowds rate them ${(c.stars / c.wins).toFixed(1)}★` : ""}</div>` : ""}
       ${arsenalLine(s, n)}${styleLine(s, n)}
       <div class="card-sub">${h2h}</div></div></div>
@@ -558,8 +561,10 @@
       rounds.push(`<div class="card"><div class="card-title">Round ${r}</div>${lines}${bye}</div>`);
     }
     const alive = br.alive.length;
+    const visitors = (s.dayVisitors || []).length;
     return topbar(s.player) + `<div class="screen">
       <div class="screen-title">🏟️ Band ${G.tournament.bandLabel(br.band)} — ${br.entrants.length} fighters</div>
+      ${visitors ? `<div class="card"><div class="card-sub">🚩 Your renown draws the wider world: <b>${visitors}</b> challenger${visitors === 1 ? "" : "s"} travelled from neighbouring holds to fight in your band.</div></div>` : ""}
       ${rounds.join("")}
       ${m ? scoutCard(s, m.a === "player" ? name(m.b) : name(m.a)) : ""}
       <button class="btn block lg gold" data-act="fight-bout">⚔️ Fight your bout</button>
