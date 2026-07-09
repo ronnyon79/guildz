@@ -833,6 +833,30 @@ cap (3) & per-bout replenish (50%)**, servant **upkeep/housing** cost, and **ser
   universal migration) → 629 green / 33 suites. **Only GUI-90/91 remain** (from-scratch
   settlement start + its sim) before Stewardship + Founding are wholly done.
 
+- **GUI-91 Founding sim — v(sim only)** `tools/sim_founding.js` sized the settlement:
+  party 8 · pooled purse 1000 · forage 5/day · Arena at pop ≥ 16 + 300g. (See "Sized by
+  the founding sim" in the Founding section.)
+
+- **GUI-90 Found from scratch: settlement → Arena → First Lord — v0.52.0** (BOTH the
+  Founding & the Hold Chronicle AND Stronghold Stewardship projects now COMPLETE).
+  World creation asks a second question — ⚔️ **Join a living hold** (the classic climb,
+  unchanged) or 🏰 **Found from scratch**: `createCharacter(…, "found")` seats you as a
+  **founder** (role) — a 25-win veteran leading a party of 8, no Lord, no arena, a pooled
+  purse of 1000g, a seeded archetype + fingerprint, and page-one of the chronicle naming
+  YOU the founder. **Act 1 — the Settlement**: a dedicated screen (no arena tabs) with
+  the full Stewardship dashboard (buildings, larder, 🧲 Pull, 🐫 trade) + an arena-progress
+  card; **"Let a season pass"** runs `advanceSettlement()` — the camp feeds its people
+  (a purse-limited FLOW net of a 5/day forage; buy-nothing → hunger → settlers flee),
+  caravans trade, buildings weather, and a settlement-specific Pull (safety + stores +
+  heralds, slope 4) draws settlers. Competent play reaches the Arena in ~2 years with a
+  healthy purse; neglect stunts or disperses the camp. **Act 2 — the hinge**: at pop ≥ 16
+  + 300g, **Raise the Arena** (chronicle milestone, dated era) → the **election**: 👑 crown
+  (→ Lord mode, decrees seeded on), ⚔️ sword (the most ambitious founder is acclaimed Lord;
+  you enter the arena you built as a fresh champion), or 🐎 road (a triumphant departure —
+  the founding ends). Founder worlds resume on the settlement screen; ⛺ badge on the
+  title. UI refactor: granary/pull/trade cards extracted so both dashboards share them.
+  NEW SUITE tools/test_settlement.js (41) → 670 green / 34 suites.
+
 ### Build order (when the user says go)
 1. **Champion summit** — NPC population + Popularity ladder + Lord boss fight (finish
    the Rise). Small, self-contained, reuses combat entirely.

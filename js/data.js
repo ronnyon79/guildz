@@ -265,6 +265,14 @@
     caravanCap: 120,        // units a caravan carries
     caravanMargin: 0.15,    // the spread captured selling goods abroad
     foreignSwing: [0.6, 1.6], // seeded foreign grain price band (wider than home — distance)
+    // Founding a hold from scratch (GUI-90/91, sim-sized): a settlement runs
+    // on its pooled purse until it draws enough people to raise the Arena.
+    foundParty: 8,          // founders who follow you out
+    foundPurse: 1000,       // the party's pooled capital (your treasury)
+    foundForage: 5,         // the scrappy camp forages this many units/day free
+    arenaPop: 16,           // settlers before the Arena is worth raising
+    arenaCost: 300,         // gold to raise it
+    founderWins: 25,        // the player-founder is a veteran (the champion door stays viable)
   };
 
   /* Maintenance (GUI-75, sim-sized by GUI-74/80): built buildings hold a
