@@ -898,6 +898,15 @@ founders' ledger holds). Decided shape:
   so endless visitors don't break the arc. NEW SUITE tools/test_visitors.js (14) → 684 green
   / 35 suites. Future hook: a more prestigious arena (Seating) could draw a fuller field.
 
+- **GUI-92 follow-up — visitors read as a ROUND TRIP — v0.53.1** (user consistency note:
+  "does the count decrease in the other stronghold?"). The other holds aren't simulated
+  yet (names only, until GUI-25), so there's no population to transfer — and a *visitor*
+  shouldn't transfer one anyway: they travel, fight, and ride home. Copy reworded to make
+  that explicit everywhere (bracket "…visitors, who ride home when the day is done", scout
+  "…a visitor, home again when the games are done", profile pill "· rides home after") so
+  it never reads as poaching a neighbour's champion. When GUI-25 simulates every hold's
+  roster, a visit becomes a real temporary absence + return — consistent both ends.
+
 ### Build order (when the user says go)
 1. **Champion summit** — NPC population + Popularity ladder + Lord boss fight (finish
    the Rise). Small, self-contained, reuses combat entirely.
