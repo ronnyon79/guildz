@@ -198,7 +198,7 @@
    * duller fights → smaller gate · purse ↑ → prestige draws a bigger crowd
    * (and drains the coffers). Guild rent joins these lines with the Guilds project. */
   const ECONOMY = {
-    start: { treasury: 500, ticketPrice: 5, taxRate: 10, purse: 20, heralds: 0 },
+    start: { treasury: 500, ticketPrice: 5, taxRate: 10, purse: 20, heralds: 0, tradeStance: "export" },
     limits: { ticketPrice: [1, 20], taxRate: [0, 25], purse: [0, 100], heralds: [0, 100] },
     crowdBase: 20,        // spectators who turn up regardless
     crowdPerResident: 2,  // every resident champion draws fans
@@ -259,6 +259,12 @@
     floorPop: 30,          // a FED, functioning hold finds its level here — never extinct
     dyingPop: 24,          // below this the hold is DYING (deposition-grade fail)
     goodHopefulPull: 70,   // at this Pull, real careers start arriving (not just novices)
+    /* Trade (GUI-77): caravans on the founders' routes. Each open route runs
+     * ONE caravan per year; the stance sets its cargo; a seeded FOREIGN grain
+     * price per route makes timing a decision (sell where dear, buy where cheap). */
+    caravanCap: 120,        // units a caravan carries
+    caravanMargin: 0.15,    // the spread captured selling goods abroad
+    foreignSwing: [0.6, 1.6], // seeded foreign grain price band (wider than home — distance)
   };
 
   /* Maintenance (GUI-75, sim-sized by GUI-74/80): built buildings hold a
