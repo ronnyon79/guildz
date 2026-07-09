@@ -802,6 +802,20 @@ cap (3) & per-bout replenish (50%)**, servant **upkeep/housing** cost, and **ser
   arrived-vs-left, heralds stepper); 🧲/🕸️ crier lines. NEW SUITE tools/test_pull.js (22;
   test_aging/test_departures updated for Pull-driven refill) → 581 green / 31 suites.
 
+- **GUI-77 Trade: caravans between holds — v0.50.0** (Stewardship system 4/4 — the SimCity
+  pillar's four systems are COMPLETE). The founders' ledger becomes a MAP: routes = every
+  hold your champions rode out to found (GUI-89) + one seeded worldgen **neighbour** (so
+  caravans run from Year 1). Each open route sends one caravan a year at the season turn
+  (under a player-Lord), with a seeded **foreign grain price** (band 0.6–1.6, per route ×
+  year) that makes the stance a timing call. **Trade-stance decree:** 💰 export (pure gold,
+  cap 120 × 15% margin × foreign price) · 🌾 stockpile (buy grain into the larder where it's
+  cheap) · ⚖️ balance (half each); plus **per-route open/close**. First-class ledger line
+  (on the lord-sunset ledger card) + 🐫 crier headline. New 🐫 Trade card on the dashboard:
+  stance buttons, route list with each hold's archetype, founder (tappable), foreign price
+  + 🟢cheap/🔴dear cue, open/closed toggle. NEW SUITE tools/test_trade.js (30;
+  test_pull heralds isolate updated) → 589 green / 32 suites. Stewardship build is done bar
+  GUI-79 (NPC-lord policies) — then GUI-90/91 unlock the from-scratch settlement start.
+
 ### Build order (when the user says go)
 1. **Champion summit** — NPC population + Popularity ladder + Lord boss fight (finish
    the Rise). Small, self-contained, reuses combat entirely.

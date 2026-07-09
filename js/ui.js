@@ -970,6 +970,26 @@
           <div class="card-sub">Criers in far taverns sing your games — the first coin shouts loudest.</div></div>
           <button class="btn sm ghost" data-act="decree" data-arg="heralds:-25">−</button>
           <button class="btn sm" data-act="decree" data-arg="heralds:25" style="margin-left:6px">+</button></div></div>`;
+    })() + (() => {
+      // 🐫 The trade card (GUI-77): the founders' ledger is a map of routes.
+      const routes = game.tradeRoutes();
+      if (!routes.length) return "";
+      const stance = st.tradeStance || "export";
+      const season = s.clock.season;
+      const stanceBtn = (id, label) => `<button class="btn sm ${stance === id ? "" : "ghost"}" data-act="trade-stance" data-arg="${id}">${label}</button>`;
+      const rows = routes.map((r) => {
+        const arch = G.data.ARCHETYPES[r.archetype];
+        const fp = game.foreignPrice(r.name, season);
+        return `<div class="card-row" style="margin-top:6px;${r.open ? "" : "opacity:.5"}">
+          <div style="flex:1"><div class="card-title" style="font-size:14px">${arch ? arch.emoji : "🏰"} ${esc(r.name)} ${r.kind === "child" ? `<span class="sys">founded by ${plink(s, r.founder)}</span>` : `<span class="sys">neighbour</span>`}</div>
+          <div class="card-sub">grain there: <b>${fp}g</b> ${fp < (st.grainPrice || 1) ? "🟢 cheap — buy" : "🔴 dear — sell"}</div></div>
+          <button class="btn sm ${r.open ? "" : "ghost"}" data-act="trade-route" data-arg="${esc(r.name)}">${r.open ? "open" : "closed"}</button></div>`;
+      }).join("");
+      const tr = (s.lastDay || {}).trade;
+      return `<div class="card"><div class="card-title">🐫 Trade routes <span class="pill">${routes.filter((r) => r.open).length}/${routes.length} open</span></div>
+        <div class="card-sub">Caravans run once a year. ${tr ? `Last year: <b>${tr.net >= 0 ? "+" : ""}${tr.net}🪙</b>${tr.provisions ? ` · +${tr.provisions} provisions` : ""}.` : "Export goods where grain sells dear; stockpile where it's cheap."}</div>
+        <div class="alloc-row" style="margin-top:6px">${stanceBtn("export", "💰 Export")}${stanceBtn("balance", "⚖️ Balance")}${stanceBtn("stockpile", "🌾 Stockpile")}</div>
+        ${rows}</div>`;
     })();
   }
 
@@ -1015,6 +1035,7 @@
     const money = L ? `<div class="card"><div class="card-title">🏛️ The day's ledger <span class="pill">${L.attendance} spectators · avg ${L.avgSpec}★</span></div>
       <div class="card-sub">🎫 Gate ${L.gate} · 🎲 Wagers ${L.wagers} · 🏪 Licences ${L.licences} · 🧾 Tax ${L.tax}</div>
       <div class="card-sub">🏆 Purses −${L.purses} · 🌾 Provisions −${L.provisions || 0}${L.starving ? ' · <b style="color:var(--bad,#e66)">the hold STARVED today</b>' : ""}</div>
+      ${d.trade ? `<div class="card-sub">🐫 Caravans (${d.trade.stance}, ${d.trade.routes} route${d.trade.routes === 1 ? "" : "s"}): <b>${d.trade.net >= 0 ? "+" : ""}${d.trade.net}</b> 🪙${d.trade.provisions ? ` · +${d.trade.provisions} provisions` : ""}</div>` : ""}
       <div class="card-title" style="margin-top:6px">${L.net >= 0 ? "Net +" : "Net "}${L.net} 🪙 → treasury <b>${s.stronghold.treasury}</b>${s.stronghold.treasury < 0 ? ' <span class="pill">⚠️ the coffers run dry</span>' : ""}</div>
     </div>` : "";
     return topbar(s.player) + `<div class="screen">
@@ -1743,6 +1764,8 @@
       case "rename-hold": { const n = typeof prompt === "function" ? prompt("Name your Stronghold:", (game.state.stronghold || {}).name || "") : null; if (n) game.renameHold(n); break; }
       case "repair": game.repairBuilding(arg); break;
       case "provision": game.setProvisionPolicy(arg); break;
+      case "trade-stance": game.setTradeStance(arg); break;
+      case "trade-route": game.toggleRoute(arg); break;
       case "repair-all": for (const id of Object.keys(G.data.BUILDINGS)) if (game.repairCost(id) != null) game.repairBuilding(id); break;
       case "board-day": ui.boardDay = parseInt(arg, 10); ui.boardBand = null; render(game.state); break;
       case "board-season": {

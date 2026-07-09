@@ -249,6 +249,82 @@
       heralds)));
   }
 
+  /* Trade (GUI-77): the founders' ledger becomes a MAP. Routes = every hold
+   * your champions rode out to found (GUI-89) + one seeded worldgen neighbour,
+   * so caravans run from day one. Each open route sends one caravan a year;
+   * a seeded FOREIGN grain price makes the stance a real timing call. */
+  function tradeNeighbour() {
+    const seed = ((state.player && state.player.worldSeed) || 7) ^ 0xca4a;
+    const rng = G.engine.makeRng(seed >>> 0);
+    const H = G.data.HOLD_NAMES;
+    let name = G.engine.pick(rng, H.prefixes) + G.engine.pick(rng, H.suffixes);
+    // never collide with our own hold or a founder's
+    const taken = new Set([(state.stronghold || {}).name].concat((state.departed || []).map((d) => d.holdName).filter(Boolean)));
+    let guard = 0;
+    while (taken.has(name) && guard++ < 24) name = G.engine.pick(rng, H.prefixes) + G.engine.pick(rng, H.suffixes);
+    return { name, archetype: G.worldgen.pickArchetype(rng, {}), kind: "neighbour" };
+  }
+  function tradeRoutes() {
+    const closed = new Set(((state.stronghold || {}).routesClosed) || []);
+    const founders = (state.departed || [])
+      .filter((d) => d.reason === "found" && d.holdName)
+      .map((d) => ({ name: d.holdName, archetype: d.archetype, founder: d.name, kind: "child" }));
+    const seen = new Set(); const all = [];
+    for (const r of [tradeNeighbour(), ...founders]) {
+      if (seen.has(r.name)) continue; seen.add(r.name);
+      all.push({ ...r, open: !closed.has(r.name) });
+    }
+    return all;
+  }
+  function foreignPrice(routeName, season) {
+    const rng = G.engine.makeRng(((((state.player || {}).worldSeed || 7) ^ (season * 40503)) + nameHash(routeName)) >>> 0)();
+    const S = STEW.foreignSwing;
+    return Math.round((S[0] + rng * (S[1] - S[0])) * 100) / 100;
+  }
+  function setTradeStance(s) {
+    if (!state.player || state.player.role !== "lord" || !state.stronghold) return;
+    if (!["export", "balance", "stockpile"].includes(s)) return;
+    state.stronghold.tradeStance = s; save(); emit();
+  }
+  function toggleRoute(name) {
+    if (!state.player || state.player.role !== "lord" || !state.stronghold) return;
+    const st = state.stronghold;
+    st.routesClosed = st.routesClosed || [];
+    const i = st.routesClosed.indexOf(name);
+    if (i >= 0) st.routesClosed.splice(i, 1); else st.routesClosed.push(name);
+    save(); emit();
+  }
+  /* Run the year's caravans (called at the season turn under a player-Lord).
+   * export = sell goods abroad for gold; stockpile = buy grain where cheap;
+   * balance = a bit of both. Returns a report for the ledger + crier. */
+  function runTrade(season) {
+    const st = state.stronghold;
+    const open = tradeRoutes().filter((r) => r.open);
+    if (!st || !open.length) return null;
+    const stance = st.tradeStance || "export";
+    const cap = STEW.caravanCap, margin = STEW.caravanMargin;
+    let gold = 0, provisions = 0, spent = 0;
+    for (const r of open) {
+      const fp = foreignPrice(r.name, season);
+      if (stance === "export") {
+        gold += Math.round(cap * margin * fp); // goods sold dear pay more
+      } else if (stance === "stockpile") {
+        const room = granaryCap() - (st.stock || 0);
+        const buy = Math.max(0, Math.min(cap, room));
+        provisions += buy; spent += Math.round(buy * fp);
+      } else { // balance
+        gold += Math.round((cap / 2) * margin * fp);
+        const room = granaryCap() - (st.stock || 0);
+        const buy = Math.max(0, Math.min(cap / 2, room));
+        provisions += buy; spent += Math.round(buy * fp);
+      }
+    }
+    st.stock = Math.min(granaryCap(), (st.stock || 0) + provisions);
+    const net = gold - spent;
+    st.treasury += net;
+    return { routes: open.length, stance, gold, provisions, spent, net };
+  }
+
   function setProvisionPolicy(p) {
     if (!state.player || state.player.role !== "lord" || !state.stronghold) return;
     if (!["fill", "half", "none"].includes(p)) return;
@@ -347,6 +423,8 @@
       if (state.stronghold.starvedDays == null) state.stronghold.starvedDays = 0;
       if (state.stronghold.grainPrice == null) state.stronghold.grainPrice = grainPriceFor(state.clock.season);
       if (state.stronghold.heralds == null) state.stronghold.heralds = 0; // pre-GUI-78
+      if (!state.stronghold.tradeStance) state.stronghold.tradeStance = "export"; // pre-GUI-77
+      if (!Array.isArray(state.stronghold.routesClosed)) state.stronghold.routesClosed = [];
       if (!state.stronghold.foundedOn) state.stronghold.foundedOn = 1; // pre-GUI-84 saves: the hold has stood since the world clock began
       // Pre-GUI-87 saves: the chronicle opens with the founding it never wrote down.
       state.chronicle = Array.isArray(data.chronicle) ? data.chronicle : [foundingEntry(state.stronghold.name)];
@@ -428,6 +506,7 @@
     state.stronghold.provisionPolicy = "fill";
     state.stronghold.starvedDays = 0;
     state.stronghold.grainPrice = grainPriceFor(history.clock.season);
+    state.stronghold.tradeStance = "export"; state.stronghold.routesClosed = []; // GUI-77
     state.household = [];
     state.defense = null;
     state.board = history.board;
@@ -717,6 +796,7 @@
       state.clock.day = 1;
       if (state.stronghold) state.stronghold.grainPrice = grainPriceFor(state.clock.season); // the market turns with the year (GUI-76)
       if (state.player.role === "lord" && state.stronghold && state.stronghold.heralds > 0) state.stronghold.treasury -= state.stronghold.heralds; // the heralds are paid yearly (GUI-78)
+      if (state.player.role === "lord") { const tr = runTrade(state.clock.season - 1); if (tr) state.lastDay.trade = tr; } // the caravans run (GUI-77)
       state.lastDay.seasonEnd = state.lastSeason; // surfaced on the sunset screens
       state.lastDay.mayChallenge = state.challengeOpen;
 
@@ -938,6 +1018,10 @@
       if (mig && mig.arrivals > mig.churn) cry("🧲", `Word of ${(state.stronghold || {}).name || "the hold"} spreads — <b>${mig.arrivals}</b> hopeful${mig.arrivals === 1 ? "" : "s"} arrived at the gates (pull ${mig.pull}).`);
       else if (mig && mig.arrivals < mig.churn) cry("🕸️", `Beds stand EMPTY — only <b>${mig.arrivals}</b> came where <b>${mig.churn}</b> left (pull ${mig.pull}).`);
       if (mig && state.npcs.length < STEW.dyingPop) cry("☠️", `<b>${(state.stronghold || {}).name || "The hold"}</b> is DYING — fewer than ${STEW.dyingPop} souls remain. Rule better, or rule ruins.`);
+      const tr = state.lastDay.trade;
+      if (tr) cry("🐫", tr.stance === "stockpile"
+        ? `Caravans from <b>${tr.routes}</b> route${tr.routes === 1 ? "" : "s"} rolled in with <b>${tr.provisions}</b> provisions for the larder${tr.net < 0 ? " (−" + (-tr.net) + "🪙)" : ""}.`
+        : `Caravans worked <b>${tr.routes}</b> route${tr.routes === 1 ? "" : "s"} — <b>${tr.net >= 0 ? "+" : ""}${tr.net}🪙</b> to the treasury${tr.provisions ? " and " + tr.provisions + " provisions" : ""}.`);
       if (state.lastDay.newLord) cry("⚱️", `The old Lord died on the throne. <b>${state.lastDay.newLord}</b>, most famed of the residents, was raised in their place.`);
       if (state.lastDay.defenseComing) cry("⚠️", `<b>${state.lastDay.defenseComing}</b> eyes the throne — a challenge comes with the new year.`);
       if (state.lastDay.mayChallenge) cry("👑", `The year was <b>yours</b> — the right to challenge the Lord awaits at home.`);
@@ -1527,7 +1611,7 @@
     challengeLord, chooseFate,
     allocate, fightOn, retreat, returnHome, resetGame,
     openVendor, closeVendor, buyItem, buyArrow, loadArrow, buyArmor,
-    taxedCost, gearScale, setDecree, buyBuilding, buildCost, condOf, bEff, repairCost, repairBuilding, granaryCap, provisionNeed, setProvisionPolicy, pullScore, recordBout, openBout, renameHold, defaultHoldName,
+    taxedCost, gearScale, setDecree, buyBuilding, buildCost, condOf, bEff, repairCost, repairBuilding, granaryCap, provisionNeed, setProvisionPolicy, pullScore, tradeRoutes, foreignPrice, runTrade, setTradeStance, toggleRoute, recordBout, openBout, renameHold, defaultHoldName,
     beginDefense, defensePerks, startDefenseDuel, removeServant, moveServant,
     reignEnds: () => perish("throne-age"),
     nextSeed, settleDay, emit, // the seam lord.js drives the shared day through

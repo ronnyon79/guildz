@@ -40,10 +40,11 @@ ok(p25 > pNoHeralds, `25g of heralds buys Pull (+${p25 - pNoHeralds})`);
 game.setDecree("heralds", 75); // → 100
 ok(game.pullScore() - pNoHeralds <= STEW.heraldsMax + 1, "…with diminishing returns (sqrt, capped)");
 S.clock.day = G.data.SEASON.days; // the year's last day: the roll charges the heralds
+S.stronghold.routesClosed = game.tradeRoutes().map((r) => r.name); // silence trade so we isolate the heralds line (GUI-77)
 const tBefore = S.stronghold.treasury;
 preside();
 ok(S.stronghold.treasury === tBefore + S.lastDay.ledger.net - 100, "the heralds were paid at the year's turn (net − 100)");
-game.setDecree("heralds", -100);
+game.setDecree("heralds", -100); S.stronghold.routesClosed = [];
 
 console.log("— a well-run hold grows; a squeezed one empties —");
 S.stronghold.purse = 40; S.stronghold.taxRate = 0; S.stronghold.provisionPolicy = "fill";
