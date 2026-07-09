@@ -788,6 +788,20 @@ cap (3) & per-bout replenish (50%)**, servant **upkeep/housing** cost, and **ser
   tools/test_granary.js (24; test_economy/test_fingerprints updated for the retired
   upkeep) → 559 green / 30 suites.
 
+- **GUI-78 Pull score: migration replaces automatic arrivals — v0.49.0** (Stewardship
+  system 3/4, sim-verified weights). `game.pullScore()` (0–100, clamped): purse 25 +
+  condition 25 + taxInv 15 + stability 15 + fame 10 + granary 10, plus a **heralds**
+  budget (sqrt curve, +15 max at 100g/season — a new decree, ±25, paid at the year's
+  turn). Under a **player-Lord**, the automatic 1:1 bed refill is GONE: retirement +
+  departure churn ACCUMULATES, and at the season's turn arrivals = churn + (Pull−50)/6,
+  growth choked by crowding (1 − pop/64). A **fed** hold never drifts below the floor
+  (30); a **starving** one gets NOBODY (the freeze); below **24** it's DYING (☠️
+  chronicle softfail + crier scream). A hold at **Pull ≥ 70 draws REAL careers** (arrivals
+  up to 15 wins, aged to match — not just novices). Commoner worlds (NPC Lord) still
+  refill 1:1 until GUI-79. New 🧲 Pull card on the Lord dashboard (score, last year's
+  arrived-vs-left, heralds stepper); 🧲/🕸️ crier lines. NEW SUITE tools/test_pull.js (22;
+  test_aging/test_departures updated for Pull-driven refill) → 581 green / 31 suites.
+
 ### Build order (when the user says go)
 1. **Champion summit** — NPC population + Popularity ladder + Lord boss fight (finish
    the Rise). Small, self-contained, reuses combat entirely.

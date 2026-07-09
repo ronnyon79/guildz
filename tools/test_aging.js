@@ -53,7 +53,7 @@ const size0 = S.npcs.length, oldId = greybeard.id;
 reignDays(G.data.SEASON.days);
 ok(!S.npcs.find((n) => n.id === oldId), "the greybeard bowed out");
 ok(S.npcs.length === size0, "a young hopeful took the bed (population stable)");
-ok(S.npcs.some((n) => n.id.startsWith("a")), "…a fresh arrival");
+ok(S.npcs.some((n) => n.id.startsWith("p")), "…a fresh arrival (Pull's stream now, GUI-78)");
 ok(S.lastDay.retired && S.lastDay.retired.length >= 1, "the sunset noted the farewell");
 
 console.log("— an NPC Lord dies of old age → succession —");

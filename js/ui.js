@@ -959,7 +959,18 @@
       ${row("ticketPrice", "🎫", "Ticket price", "g", "Steeper tickets thin the crowd.")}
       ${row("taxRate", "🧾", "Sales tax", "%", "Heavy taxes leave champions poorly geared — and the fights duller.")}
       ${row("purse", "🏆", "Band purse", "g", "Fat purses draw crowds — and drain the coffers.")}
-    </div>` + granary;
+    </div>` + granary + (() => {
+      // 🧲 The Pull card (GUI-78): the migration bar the Lord can move.
+      const pull = game.pullScore();
+      const mig = (s.lastDay || {}).migration;
+      return `<div class="card"><div class="card-title">🧲 The hold's Pull <span class="pill ${pull >= 50 ? "on" : ""}">${pull}</span></div>
+        <div class="card-sub">Fat purses, sound roofs, light taxes, a full larder, famous names and a steady crown draw settlers — 50 holds the line, less empties beds.${mig ? ` Last year: <b>${mig.arrivals}</b> arrived where <b>${mig.churn}</b> left.` : ""}</div>
+        <div class="card-row" style="margin-top:6px">
+          <div style="flex:1"><div class="card-title" style="font-size:14px">📯 Heralds abroad: <b>${s.stronghold.heralds || 0}g</b>/year</div>
+          <div class="card-sub">Criers in far taverns sing your games — the first coin shouts loudest.</div></div>
+          <button class="btn sm ghost" data-act="decree" data-arg="heralds:-25">−</button>
+          <button class="btn sm" data-act="decree" data-arg="heralds:25" style="margin-left:6px">+</button></div></div>`;
+    })();
   }
 
   // Stronghold buildings (GUI-15): level the arena, and it serves its Lord.

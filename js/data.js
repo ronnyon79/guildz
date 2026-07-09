@@ -198,8 +198,8 @@
    * duller fights → smaller gate · purse ↑ → prestige draws a bigger crowd
    * (and drains the coffers). Guild rent joins these lines with the Guilds project. */
   const ECONOMY = {
-    start: { treasury: 500, ticketPrice: 5, taxRate: 10, purse: 20 },
-    limits: { ticketPrice: [1, 20], taxRate: [0, 25], purse: [0, 100] },
+    start: { treasury: 500, ticketPrice: 5, taxRate: 10, purse: 20, heralds: 0 },
+    limits: { ticketPrice: [1, 20], taxRate: [0, 25], purse: [0, 100], heralds: [0, 100] },
     crowdBase: 20,        // spectators who turn up regardless
     crowdPerResident: 2,  // every resident champion draws fans
     demand: (price) => Math.max(0.25, 1.5 - price * 0.1), // 5g → ×1.0
@@ -249,6 +249,16 @@
     hungerGateHit: 0.25,             // …and the crowd thins 25% on starving days
     starvationExodus: 0.25,          // a fully starving season drives out a quarter of residents
     hunterTrickle: 5,                // 🐺 the Hunter's Camp hunts this many units/day for free
+    /* Attraction (GUI-78): the Pull score, 0–100 — who wants to live here?
+     * 50 ≈ the old steady state (beds refill 1:1). Weights sim-verified. */
+    pullW: { purse: 25, condition: 25, taxInv: 15, stability: 15, fame: 10, granary: 10 },
+    heraldsMax: 15,        // Pull points a maxed heralds budget buys (sqrt curve)…
+    heraldsBudget: 100,    // …at this cost per SEASON
+    migrationSlope: 6,     // net migrants/season = (Pull − 50) / slope
+    softCapPop: 64,        // growth × (1 − pop/softCap): the hold chokes near ~56–60
+    floorPop: 30,          // a FED, functioning hold finds its level here — never extinct
+    dyingPop: 24,          // below this the hold is DYING (deposition-grade fail)
+    goodHopefulPull: 70,   // at this Pull, real careers start arriving (not just novices)
   };
 
   /* Maintenance (GUI-75, sim-sized by GUI-74/80): built buildings hold a
