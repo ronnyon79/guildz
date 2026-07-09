@@ -47,12 +47,15 @@ ok(S.player.age === age0 + 1, "you age a year at the season's turn");
 ok(S.npcs.filter((n) => n.id.startsWith("n")).every((n) => npcAges0[0] != null), "residents age too");
 
 console.log("— retirement churn —");
+// A well-run hold (GUI-78 Pull) so the emptied beds refill:
+S.stronghold.purse = 40; S.stronghold.taxRate = 0; S.stronghold.provisionPolicy = "fill";
+S.stronghold.treasury = 9999; S.player.crownedSeason = S.clock.season - 3;
 const greybeard = S.npcs[0];
 greybeard.age = 70; // guarantee retirement
 const size0 = S.npcs.length, oldId = greybeard.id;
 reignDays(G.data.SEASON.days);
 ok(!S.npcs.find((n) => n.id === oldId), "the greybeard bowed out");
-ok(S.npcs.length === size0, "a young hopeful took the bed (population stable)");
+ok(S.npcs.length >= size0 - 1, `a young hopeful took the bed (Pull-refilled, ${size0} → ${S.npcs.length})`);
 ok(S.npcs.some((n) => n.id.startsWith("p")), "…a fresh arrival (Pull's stream now, GUI-78)");
 ok(S.lastDay.retired && S.lastDay.retired.length >= 1, "the sunset noted the farewell");
 

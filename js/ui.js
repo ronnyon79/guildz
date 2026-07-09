@@ -399,6 +399,12 @@
     if (arch) lines.push(`<div class="card-sub">${arch.emoji} <b>${arch.name}</b>${arch.fx ? ` — <span class="sys">⚙️ ${arch.fx.desc}</span>` : ""}</div>`);
     lines.push(`<div class="card-sub">founded in Year ${st.foundedOn || 1}${st.founder ? ` by ${plink(s, st.founder.name)}` : ""} — its ${nth} year</div>`);
     if (lords.length) lines.push(`<div class="card-sub">👑 the line of Lords: ${lords.map((l) => `${plink(s, l.name)} <span class="sys">(Y${l.y})</span>`).join(" → ")}${reigning ? ` · <b>${esc(reigning)}</b> reigns today` : ""}</div>`);
+    // GUI-79: how the hold FARES under its steward — the Pull the player can read.
+    if (st.name === (s.stronghold || {}).name) {
+      const pull = game.pullScore();
+      const verdict = pull >= 70 ? "🧲 <b>thriving</b> — settlers flock here" : pull >= 50 ? "🙂 <b>steady</b> — the beds stay full" : pull >= 40 ? "😟 <b>faltering</b> — folk drift away" : "🕸️ <b>rotting</b> — the hold empties";
+      lines.push(`<div class="card-sub">${verdict} <span class="sys">(pull ${pull})</span></div>`);
+    }
     const rows = chron.map((e) => `<div class="card-sub crier-row">${e.icon} <span class="sys">Y${e.y}·D${e.d}</span> ${chronText(s, e)}</div>`).join("")
       || `<div class="card-sub">The chronicle's pages are still blank.</div>`;
     return `<div class="overlay" data-act="hold-close">
